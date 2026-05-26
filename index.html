@@ -12,6 +12,7 @@
         <div class="container">
             <h1>🎮 BatonCHIK Games</h1>
             <p class="subtitle">Выбери игру и начни играть!</p>
+            <p style="color:var(--accent);font-size:14px;margin-bottom:16px;" id="rankDisplay">🐣 Новичок (0 XP)</p>
             <div class="games-grid">
                 <div class="game-card" id="btnClicker">
                     <div class="game-icon red">🔴</div>
@@ -36,6 +37,11 @@
                 <div class="game-card" id="btnFlappy">
                     <div class="game-icon red">🐦</div>
                     <div class="game-info"><div class="game-name">Flappy Bird</div><div class="game-desc">Лети и уворачивайся!</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" id="btnSpaceInvaders">
+                    <div class="game-icon green">👾</div>
+                    <div class="game-info"><div class="game-name">Space Invaders</div><div class="game-desc">Классический шутер</div></div>
                     <div class="game-arrow">▶</div>
                 </div>
             </div>
@@ -132,7 +138,24 @@
         </div>
     </div>
 
-    <div class="version">v2.1 — BatonCHIK Games</div>
+    <div class="game-page" id="spaceInvadersScreen">
+        <div class="container">
+            <button class="back-btn" id="backSpaceInvaders">← Назад</button>
+            <h2>👾 Space Invaders</h2>
+            <div style="display:flex;justify-content:center;gap:30px;margin:10px 0;">
+                <span>Очки: <span id="siScore">0</span></span>
+                <span>Жизни: <span id="siLives">3</span></span>
+            </div>
+            <canvas id="siCanvas" width="300" height="400" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:10px;">
+                <button class="snake-ctrl" id="siLeftBtn">←</button>
+                <button class="snake-ctrl" id="siShootBtn" style="width:80px;">ОГОНЬ</button>
+                <button class="snake-ctrl" id="siRightBtn">→</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="version">v3.0 — BatonCHIK Games</div>
 
     <script src="script.js"></script>
 </body>
