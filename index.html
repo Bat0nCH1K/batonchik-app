@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BatonCHIK Games</title>
+    <style>
+        :root {
+            --bg: #1a1a2e; --card: #16213e; --accent: #e94560;
+            --green: #4caf84; --text: #fff; --text-secondary: #b0b0b0; --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; padding: 20px; text-align: center;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { font-size: 22px; margin-bottom: 6px; color: var(--accent); }
+        h2 { font-size: 18px; margin-bottom: 12px; }
+        .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+        /* Главное меню */
+        .games-grid { display: flex; flex-direction: column; gap: 14px; }
+        .game-card {
+            display: flex; align-items: center; gap: 14px;
+            background: var(--card); border-radius: var(--radius); padding: 16px;
+            cursor: pointer; transition: transform 0.2s; color: var(--text);
+        }
+        .game-card:active { transform: scale(0.97); }
+        .game-icon {
+            font-size: 36px; width: 52px; height: 52px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .game-icon.red { background: #e94560; }
+        .game-icon.blue { background: #4a90d9; }
+        .game-icon.green { background: #4caf84; }
+        .game-icon.orange { background: #e09540; }
+        .game-info { text-align: left; flex: 1; }
+        .game-name { font-size: 16px; font-weight: 600; }
+        .game-desc { font-size: 12px; color: var(--text-secondary); }
+        .game-arrow { font-size: 20px; color: var(--text-secondary); }
+
+        /* Экраны игр */
+        .game-screen { display: none; }
+        .game-screen.active { display: block; }
+        .back-btn {
+            display: inline-block; padding: 8px 16px; background: var(--card);
+            color: var(--text); border: none; border-radius: 10px; cursor: pointer;
+            margin-bottom: 16px; font-size: 14px;
+        }
+
+        /* Кликер */
+        .clicker-score { font-size: 48px; font-weight: bold; margin: 16px 0; color: var(--accent); }
+        .click-btn {
+            width: 120px; height: 120px; border-radius: 50%; border: none;
+            background: var(--accent); color: white; font-size: 24px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 6px 20px rgba(233,69,96,0.4);
+            transition: transform 0.1s; margin: 20px auto;
+        }
+        .click-btn:active { transform: scale(0.9); }
+        .upgrade-btn {
+            display: block; width: 100%; max-width: 300px; margin: 8px auto;
+            padding: 12px; border: none; border-radius: 12px;
+            background: var(--card); color: var(--text); font-size: 14px; cursor: pointer;
+        }
+        .upgrade-btn:disabled { opacity: 0.4; }
+
+        /* Викторина */
+        .settings { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        select {
+            padding: 10px 14px; border-radius: 12px; font-size: 14px;
+            background: var(--card); color: var(--text); border: none; font-family: inherit;
+        }
+        .btn {
+            padding: 10px 18px; border-radius: 12px; font-size: 14px;
+            background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer;
+        }
+        .btn:disabled { opacity: 0.5; }
+        .quiz-card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
+        .question-text { font-size: 17px; margin-bottom: 16px; line-height: 1.4; }
+        .difficulty-badge {
+            display: inline-block; padding: 4px 10px; border-radius: 12px;
+            font-size: 11px; font-weight: bold; margin-bottom: 12px;
+        }
+        .difficulty-Легкий { background: #4caf84; }
+        .difficulty-Средний { background: #ff9800; }
+        .difficulty-Сложный { background: #e94560; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .option-btn {
+            background: #0f3460; color: white; padding: 14px; border: 2px solid transparent;
+            border-radius: var(--radius); font-size: 15px; cursor: pointer;
+        }
+        .option-btn.correct { background: var(--green); }
+        .option-btn.wrong { background: var(--accent); }
+        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
+        .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+
+        /* 2048 */
+        .game-2048-board {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+            background: #0f3460; border-radius: 12px; padding: 12px;
+            width: 280px; height: 280px; margin: 16px auto;
+        }
+        .tile {
+            background: #1a1a4e; border-radius: 8px; display: flex;
+            align-items: center; justify-content: center; font-size: 22px;
+            font-weight: bold; color: white; aspect-ratio: 1;
+            transition: all 0.15s;
+        }
+        .tile-2 { background: #4a90d9; }
+        .tile-4 { background: #4caf84; }
+        .tile-8 { background: #e09540; }
+        .tile-16 { background: #e94560; }
+        .tile-32 { background: #c0392b; }
+        .tile-64 { background: #8e44ad; }
+        .tile-128 { background: #f39c12; }
+        .tile-256 { background: #2ecc71; }
+        .tile-512 { background: #1abc9c; }
+        .tile-1024 { background: #e74c3c; }
+        .tile-2048 { background: #f1c40f; color: #1a1a2e; }
+        .score-2048 { font-size: 20px; margin: 10px 0; }
+
+        /* Змейка */
+        .snake-canvas {
+            border: 2px solid var(--accent); border-radius: 12px;
+            background: #0a0a1a; display: block; margin: 16px auto;
+        }
+        .snake-score { font-size: 20px; margin: 10px 0; }
+        .snake-controls { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; }
+        .snake-row { display: flex; gap: 6px; }
+        .snake-ctrl {
+            width: 50px; height: 50px; border-radius: 12px; background: var(--card);
+            color: var(--text); border: none; font-size: 22px; cursor: pointer;
+        }
+        .snake-ctrl:active { background: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <!-- ГЛАВНОЕ МЕНЮ -->
+    <div class="game-screen active" id="mainScreen">
+        <div class="container">
+            <h1>🎮 BatonCHIK Games</h1>
+            <p class="subtitle">Выбери игру и начни играть!</p>
+            <div class="games-grid">
+                <div class="game-card" onclick="openGame('clicker')">
+                    <div class="game-icon red">🔴</div>
+                    <div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" onclick="openGame('quiz')">
+                    <div class="game-icon blue">🧠</div>
+                    <div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" onclick="openGame('game2048')">
+                    <div class="game-icon green">🧩</div>
+                    <div class="game-info"><div class="game-name">2048</div><div class="game-desc">Собери 2048!</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" onclick="openGame('snake')">
+                    <div class="game-icon orange">🐍</div>
+                    <div class="game-info"><div class="game-name">Змейка</div><div class="game-desc">Классическая аркада</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- КЛИКЕР -->
+    <div class="game-screen" id="clickerScreen">
+        <div class="container">
+            <button class="back-btn" onclick="goBack()">← Назад</button>
+            <h2>🔴 Кликер</h2>
+            <div class="clicker-score" id="score">0</div>
+            <p>Очков: <span id="clicks">0</span></p>
+            <button class="click-btn" id="clickBtn">ЖМИ</button>
+            <div>
+                <button class="upgrade-btn" id="upgrade1" disabled>+1 за клик (10 очков)</button>
+                <button class="upgrade-btn" id="upgrade2" disabled>Автокликер 1/сек (50 очков)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ВИКТОРИНА -->
+    <div class="game-screen" id="quizScreen">
+        <div class="container">
+            <button class="back-btn" onclick="goBack()">← Назад</button>
+            <h2>🧠 ИИ-Викторина</h2>
+            <div class="settings">
+                <select id="topicSelect">
+                    <option value="общие знания">🌍 Общие знания</option>
+                    <option value="история">📜 История</option>
+                    <option value="наука">🔬 Наука</option>
+                    <option value="кино">🎬 Кино</option>
+                    <option value="география">🗺 География</option>
+                    <option value="спорт">⚽ Спорт</option>
+                </select>
+                <select id="difficultySelect">
+                    <option value="Легкий">💚 Легкий</option>
+                    <option value="Средний">🧡 Средний</option>
+                    <option value="Сложный">❤️ Сложный</option>
+                </select>
+                <button class="btn" id="newQuestionBtn" onclick="getAIQuestion()">🎲 Новый вопрос</button>
+            </div>
+            <div class="quiz-card" id="quizCard" style="display:none;">
+                <div class="difficulty-badge" id="difficultyBadge"></div>
+                <div class="question-text" id="questionText"></div>
+                <div class="options-grid" id="optionsGrid"></div>
+                <div class="feedback" id="feedback"></div>
+            </div>
+            <div class="stats" id="stats">Правильных: 0 | Всего: 0</div>
+        </div>
+    </div>
+
+    <!-- 2048 -->
+    <div class="game-screen" id="game2048Screen">
+        <div class="container">
+            <button class="back-btn" onclick="goBack()">← Назад</button>
+            <h2>🧩 2048</h2>
+            <div class="score-2048">Очки: <span id="score2048">0</span></div>
+            <div class="game-2048-board" id="board2048"></div>
+            <p style="color:var(--text-secondary); margin-top:8px;">Свайпай или используй стрелки</p>
+            <button class="btn" onclick="reset2048()" style="margin-top:10px;">🔄 Новая игра</button>
+        </div>
+    </div>
+
+    <!-- ЗМЕЙКА -->
+    <div class="game-screen" id="snakeScreen">
+        <div class="container">
+            <button class="back-btn" onclick="goBack()">← Назад</button>
+            <h2>🐍 Змейка</h2>
+            <div class="snake-score">Очки: <span id="snakeScore">0</span></div>
+            <canvas class="snake-canvas" id="snakeCanvas" width="300" height="300"></canvas>
+            <div class="snake-controls">
+                <div class="snake-row">
+                    <button class="snake-ctrl" onclick="changeDirection('up')">↑</button>
+                </div>
+                <div class="snake-row">
+                    <button class="snake-ctrl" onclick="changeDirection('left')">←</button>
+                    <button class="snake-ctrl" onclick="changeDirection('down')">↓</button>
+                    <button class="snake-ctrl" onclick="changeDirection('right')">→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ НАВИГАЦИЯ ============
+        function openGame(game) {
+            document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+            const screen = document.getElementById(game + 'Screen');
+            if (screen) {
+                screen.classList.add('active');
+                if (game === 'quiz') getAIQuestion();
+                if (game === 'game2048') init2048();
+                if (game === 'snake') startSnake();
+            }
+        }
+        function goBack() {
+            stopSnake();
+            document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('mainScreen').classList.add('active');
+        }
+
+        // ============ КЛИКЕР ============
+        let clickerScore = 0, perClick = 1, autoClicker = 0;
+        const scoreEl = document.getElementById('score');
+        const clicksEl = document.getElementById('clicks');
+        document.getElementById('clickBtn').addEventListener('click', () => {
+            clickerScore += perClick;
+            updateClickerUI();
+        });
+        document.getElementById('upgrade1').addEventListener('click', () => {
+            if (clickerScore >= 10) { clickerScore -= 10; perClick++; updateClickerUI(); }
+        });
+        document.getElementById('upgrade2').addEventListener('click', () => {
+            if (clickerScore >= 50) { clickerScore -= 50; autoClicker++; updateClickerUI(); }
+        });
+        function updateClickerUI() {
+            scoreEl.textContent = clickerScore;
+            clicksEl.textContent = clickerScore;
+            document.getElementById('upgrade1').disabled = clickerScore < 10;
+            document.getElementById('upgrade2').disabled = clickerScore < 50;
+        }
+        setInterval(() => { if (autoClicker > 0) { clickerScore += autoClicker; updateClickerUI(); } }, 1000);
+
+        // ============ ВИКТОРИНА ============
+        let quizCorrect = 0, quizTotal = 0, quizAnswered = false, currentQuestion = null;
+        async function getAIQuestion() {
+            const topic = document.getElementById('topicSelect').value;
+            const difficulty = document.getElementById('difficultySelect').value;
+            const btn = document.getElementById('newQuestionBtn');
+            const card = document.getElementById('quizCard');
+            btn.disabled = true; btn.textContent = '⏳ Генерация...';
+            card.style.display = 'block';
+            document.getElementById('questionText').textContent = 'Нейросеть думает...';
+            document.getElementById('optionsGrid').innerHTML = '';
+            document.getElementById('feedback').textContent = '';
+            quizAnswered = false;
+            try {
+                const resp = await fetch('https://text.pollinations.ai/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'openai',
+                        messages: [{
+                            role: 'user',
+                            content: `Придумай вопрос для викторины. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}. correctIndex — 0,1,2 или 3.`
+                        }],
+                        temperature: 0.9
+                    })
+                });
+                const data = await resp.json();
+                const q = JSON.parse(data.choices[0].message.content);
+                currentQuestion = q;
+                document.getElementById('questionText').textContent = q.question;
+                document.getElementById('difficultyBadge').textContent = difficulty;
+                document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${difficulty}`;
+                document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
+                    `<button class="option-btn" onclick="checkQuiz(${i}, this)">${o}</button>`
+                ).join('');
+            } catch (e) {
+                document.getElementById('questionText').textContent = '😵 Ошибка генерации. Попробуй ещё раз.';
+            }
+            btn.disabled = false; btn.textContent = '🎲 Новый вопрос';
+        }
+        function checkQuiz(index, btn) {
+            if (quizAnswered || !currentQuestion) return;
+            quizAnswered = true; quizTotal++;
+            const all = document.querySelectorAll('#optionsGrid .option-btn');
+            all.forEach(b => b.disabled = true);
+            if (index === currentQuestion.correctIndex) {
+                btn.classList.add('correct'); document.getElementById('feedback').textContent = '✅ Правильно!'; quizCorrect++;
+            } else {
+                btn.classList.add('wrong'); all[currentQuestion.correctIndex].classList.add('correct');
+                document.getElementById('feedback').textContent = '❌ Неправильно!';
+            }
+            document.getElementById('stats').textContent = `Правильных: ${quizCorrect} | Всего: ${quizTotal}`;
+        }
+
+        // ============ 2048 ============
+        let board2048 = [], score2048 = 0;
+        function init2048() {
+            board2048 = Array(4).fill().map(() => Array(4).fill(0));
+            score2048 = 0;
+            addRandom2048(); addRandom2048();
+            draw2048();
+        }
+        function addRandom2048() {
+            const empty = [];
+            for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (board2048[r][c] === 0) empty.push({r, c});
+            if (empty.length) {
+                const {r, c} = empty[Math.floor(Math.random() * empty.length)];
+                board2048[r][c] = Math.random() < 0.9 ? 2 : 4;
+            }
+        }
+        function draw2048() {
+            const board = document.getElementById('board2048');
+            board.innerHTML = '';
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    const val = board2048[r][c];
+                    if (val) { tile.textContent = val; tile.classList.add('tile-' + val); }
+                    board.appendChild(tile);
+                }
+            }
+            document.getElementById('score2048').textContent = score2048;
+        }
+        function move2048(dir) {
+            let moved = false;
+            const old = board2048.map(r => [...r]);
+            if (dir === 'left' || dir === 'right') {
+                for (let r = 0; r < 4; r++) {
+                    let row = board2048[r].filter(v => v);
+                    if (dir === 'right') row.reverse();
+                    for (let i = 0; i < row.length - 1; i++) {
+                        if (row[i] && row[i] === row[i+1]) { row[i] *= 2; score2048 += row[i]; row.splice(i+1, 1); row.push(0); }
+                    }
+                    while (row.length < 4) row.push(0);
+                    if (dir === 'right') row.reverse();
+                    board2048[r] = row;
+                }
+            } else {
+                for (let c = 0; c < 4; c++) {
+                    let col = [board2048[0][c], board2048[1][c], board2048[2][c], board2048[3][c]].filter(v => v);
+                    if (dir === 'down') col.reverse();
+                    for (let i = 0; i < col.length - 1; i++) {
+                        if (col[i] && col[i] === col[i+1]) { col[i] *= 2; score2048 += col[i]; col.splice(i+1, 1); col.push(0); }
+                    }
+                    while (col.length < 4) col.push(0);
+                    if (dir === 'down') col.reverse();
+                    for (let r = 0; r < 4; r++) board2048[r][c] = col[r];
+                }
+            }
+            if (JSON.stringify(old) !== JSON.stringify(board2048)) { addRandom2048(); draw2048(); }
+        }
+        function reset2048() { init2048(); }
+        // Свайпы для 
