@@ -12,11 +12,13 @@ document.getElementById('btnClicker').addEventListener('click', () => showOnly('
 document.getElementById('btnQuiz').addEventListener('click', () => { showOnly('quizScreen'); getAIQuestion(); });
 document.getElementById('btn2048').addEventListener('click', () => { showOnly('game2048Screen'); init2048(); });
 document.getElementById('btnSnake').addEventListener('click', () => { showOnly('snakeScreen'); startSnake(); });
+document.getElementById('btnFlappy').addEventListener('click', () => { showOnly('flappyScreen'); startFlappy(); });
 
 document.getElementById('backClicker').addEventListener('click', showMain);
 document.getElementById('backQuiz').addEventListener('click', showMain);
 document.getElementById('back2048').addEventListener('click', showMain);
 document.getElementById('backSnake').addEventListener('click', () => { stopSnake(); showMain(); });
+document.getElementById('backFlappy').addEventListener('click', () => { stopFlappy(); showMain(); });
 
 // Кликер
 let clickerScore = 0, perClick = 1, autoClicker = 0;
@@ -35,7 +37,7 @@ document.getElementById('upgrade2').addEventListener('click', () => {
 });
 setInterval(() => { if (autoClicker > 0) { clickerScore += autoClicker; document.getElementById('score').textContent = clickerScore; } }, 1000);
 
-// Викторина
+// Викторина (русские промпты)
 let quizCorrect = 0, quizTotal = 0, quizAnswered = false, currentQuestion = null;
 document.getElementById('newQuestionBtn').addEventListener('click', getAIQuestion);
 async function getAIQuestion() {
@@ -54,7 +56,7 @@ async function getAIQuestion() {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model: 'openai',
-                messages: [{ role: 'user', content: `Придумай вопрос для викторины. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}.` }],
+                messages: [{ role: 'user', content: `Придумай вопрос для викторины на русском языке. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON без пояснений: {"question":"вопрос на русском","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}. correctIndex — индекс правильного ответа (0-3). Вопрос и ответы должны быть на русском языке.` }],
                 temperature: 0.9
             })
         });
@@ -89,7 +91,7 @@ function checkQuiz(index, btn) {
     document.getElementById('stats').textContent = `Правильных: ${quizCorrect} | Всего: ${quizTotal}`;
 }
 
-// 2048
+// 2048 + стрелки
 let board2048 = [], score2048 = 0;
 function init2048() { board2048 = Array(4).fill().map(() => Array(4).fill(0)); score2048 = 0; addRandom2048(); addRandom2048(); draw2048(); }
 function addRandom2048() {
@@ -137,16 +139,10 @@ function move2048(dir) {
     if (JSON.stringify(old) !== JSON.stringify(board2048)) { addRandom2048(); draw2048(); }
 }
 document.getElementById('reset2048').addEventListener('click', init2048);
-let touchStartX = 0, touchStartY = 0;
-document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
-document.addEventListener('touchend', e => {
-    if (document.getElementById('game2048Screen').style.display !== 'block') return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;
-    if (Math.abs(dx) > Math.abs(dy)) move2048(dx > 0 ? 'right' : 'left');
-    else move2048(dy > 0 ? 'down' : 'up');
-});
+document.getElementById('arrowUp').addEventListener('click', () => move2048('up'));
+document.getElementById('arrowDown').addEventListener('click', () => move2048('down'));
+document.getElementById('arrowLeft').addEventListener('click', () => move2048('left'));
+document.getElementById('arrowRight').addEventListener('click', () => move2048('right'));
 
 // Змейка
 let snake = [], food = {}, direction = 'right', snakeInterval = null, snakeScoreVal = 0;
@@ -189,3 +185,56 @@ document.getElementById('snakeUp').addEventListener('click', () => { if (directi
 document.getElementById('snakeDown').addEventListener('click', () => { if (direction !== 'up') direction = 'down'; });
 document.getElementById('snakeLeft').addEventListener('click', () => { if (direction !== 'right') direction = 'left'; });
 document.getElementById('snakeRight').addEventListener('click', () => { if (direction !== 'left') direction = 'right'; });
+
+// Flappy Bird
+let flappyInterval = null, flappyScoreVal = 0;
+const flappyCanvas = document.getElementById('flappyCanvas');
+const flappyCtx = flappyCanvas.getContext('2d');
+let bird = { x: 50, y: 200, vy: 0, size: 20 };
+let pipes = [];
+let frame = 0;
+const gravity = 0.4, jumpPower = -7, pipeSpeed = 2, pipeWidth = 50, pipeGap = 120;
+
+function startFlappy() {
+    flappyScoreVal = 0; document.getElementById('flappyScore').textContent = '0';
+    bird = { x: 50, y: 200, vy: 0, size: 20 };
+    pipes = [];
+    frame = 0;
+    if (flappyInterval) clearInterval(flappyInterval);
+    flappyInterval = setInterval(updateFlappy, 20);
+}
+function stopFlappy() { if (flappyInterval) { clearInterval(flappyInterval); flappyInterval = null; } }
+function updateFlappy() {
+    bird.vy += gravity;
+    bird.y += bird.vy;
+    if (bird.y < 0 || bird.y > 400) { stopFlappy(); alert('Игра окончена! Очки: ' + flappyScoreVal); startFlappy(); return; }
+    if (frame % 90 === 0) {
+        const pipeY = Math.random() * (400 - pipeGap - 80) + 40;
+        pipes.push({ x: 300, y: pipeY });
+    }
+    for (let i = pipes.length - 1; i >= 0; i--) {
+        pipes[i].x -= pipeSpeed;
+        if (pipes[i].x + pipeWidth < 0) { pipes.splice(i, 1); flappyScoreVal++; document.getElementById('flappyScore').textContent = flappyScoreVal; continue; }
+        if (bird.x + bird.size > pipes[i].x && bird.x - bird.size < pipes[i].x + pipeWidth) {
+            if (bird.y - bird.size < pipes[i].y || bird.y + bird.size > pipes[i].y + pipeGap) {
+                stopFlappy(); alert('Игра окончена! Очки: ' + flappyScoreVal); startFlappy(); return;
+            }
+        }
+    }
+    drawFlappy();
+    frame++;
+}
+function drawFlappy() {
+    flappyCtx.clearRect(0, 0, flappyCanvas.width, flappyCanvas.height);
+    flappyCtx.fillStyle = '#e94560';
+    flappyCtx.fillRect(bird.x - bird.size, bird.y - bird.size, bird.size * 2, bird.size * 2);
+    flappyCtx.fillStyle = '#4caf84';
+    pipes.forEach(p => {
+        flappyCtx.fillRect(p.x, 0, pipeWidth, p.y);
+        flappyCtx.fillRect(p.x, p.y + pipeGap, pipeWidth, 400 - p.y - pipeGap);
+    });
+}
+function jumpFlappy() { bird.vy = jumpPower; }
+document.getElementById('flappyCanvas').addEventListener('click', jumpFlappy);
+document.addEventListener('keydown', e => { if (e.key === ' ' && document.getElementById('flappyScreen').style.display === 'block') jumpFlappy(); });
+document.getElementById('restartFlappy').addEventListener('click', () => { stopFlappy(); startFlappy(); });
