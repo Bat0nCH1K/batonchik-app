@@ -44,6 +44,26 @@
                     <div class="game-info"><div class="game-name">Space Invaders</div><div class="game-desc">Классический шутер</div></div>
                     <div class="game-arrow">▶</div>
                 </div>
+                <div class="game-card" id="btnMinesweeper">
+                    <div class="game-icon orange">💣</div>
+                    <div class="game-info"><div class="game-name">Сапёр</div><div class="game-desc">Разминируй поле</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" id="btnPacman">
+                    <div class="game-icon blue">🟡</div>
+                    <div class="game-info"><div class="game-name">Pac-Man</div><div class="game-desc">Собери все точки</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" id="btnBrickBreaker">
+                    <div class="game-icon red">🧱</div>
+                    <div class="game-info"><div class="game-name">Brick Breaker</div><div class="game-desc">Разбей все кирпичи</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
+                <div class="game-card" id="btnTicTacToe">
+                    <div class="game-icon green">❌</div>
+                    <div class="game-info"><div class="game-name">Крестики-нолики</div><div class="game-desc">Против нейросети</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
             </div>
         </div>
     </div>
@@ -124,6 +144,7 @@
                     <button class="snake-ctrl" id="snakeRight">→</button>
                 </div>
             </div>
+            <button class="btn" id="startSnakeBtn" style="margin-top:10px;">▶ Старт</button>
         </div>
     </div>
 
@@ -155,8 +176,55 @@
         </div>
     </div>
 
-    <div class="version">v3.0 — BatonCHIK Games</div>
+    <div class="game-page" id="minesweeperScreen">
+        <div class="container">
+            <button class="back-btn" id="backMinesweeper">← Назад</button>
+            <h2>💣 Сапёр</h2>
+            <div class="minesweeper-board" id="msBoard"></div>
+            <button class="btn" id="resetMS" style="margin-top:10px;">🔄 Новая игра</button>
+        </div>
+    </div>
+
+    <div class="game-page" id="pacmanScreen">
+        <div class="container">
+            <button class="back-btn" id="backPacman">← Назад</button>
+            <h2>🟡 Pac-Man</h2>
+            <div class="flappy-score">Очки: <span id="pmScore">0</span></div>
+            <canvas id="pmCanvas" width="300" height="300" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:10px;">
+                <button class="snake-ctrl" id="pmUp">↑</button>
+            </div>
+            <div style="display:flex;justify-content:center;gap:10px;margin-top:5px;">
+                <button class="snake-ctrl" id="pmLeft">←</button>
+                <button class="snake-ctrl" id="pmDown">↓</button>
+                <button class="snake-ctrl" id="pmRight">→</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-page" id="brickBreakerScreen">
+        <div class="container">
+            <button class="back-btn" id="backBrickBreaker">← Назад</button>
+            <h2>🧱 Brick Breaker</h2>
+            <div class="flappy-score">Очки: <span id="bbScore">0</span></div>
+            <canvas id="bbCanvas" width="300" height="400" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas>
+            <p style="color:var(--text-secondary);">Двигай платформу пальцем или стрелками</p>
+        </div>
+    </div>
+
+    <div class="game-page" id="ticTacToeScreen">
+        <div class="container">
+            <button class="back-btn" id="backTicTacToe">← Назад</button>
+            <h2>❌ Крестики-нолики</h2>
+            <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | Нейросеть: ⭕</p>
+            <div class="ttt-board" id="tttBoard"></div>
+            <p class="feedback" id="tttFeedback"></p>
+            <button class="btn" id="resetTTT" style="margin-top:10px;">🔄 Новая игра</button>
+        </div>
+    </div>
+
+    <div class="version">v4.0 — BatonCHIK Games</div>
 
     <script src="script.js"></script>
 </body>
-</html>
+                </html>
