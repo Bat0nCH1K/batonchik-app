@@ -4,7 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>BatonCHIK Games</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --green: #4caf84; --text: #fff; --text-secondary: #b0b0b0; --radius: 16px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { font-size: 22px; margin-bottom: 6px; color: var(--accent); }
+        h2 { font-size: 18px; margin-bottom: 12px; }
+        .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+        .games-grid { display: flex; flex-direction: column; gap: 14px; }
+        .game-card { display: flex; align-items: center; gap: 14px; background: var(--card); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: transform 0.2s; color: var(--text); }
+        .game-card:active { transform: scale(0.97); }
+        .game-icon { font-size: 36px; width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .game-icon.red { background: #e94560; } .game-icon.blue { background: #4a90d9; } .game-icon.green { background: #4caf84; } .game-icon.orange { background: #e09540; }
+        .game-info { text-align: left; flex: 1; } .game-name { font-size: 16px; font-weight: 600; } .game-desc { font-size: 12px; color: var(--text-secondary); } .game-arrow { font-size: 20px; color: var(--text-secondary); }
+        .game-page { display: none; }
+        .back-btn { display: inline-block; padding: 10px 18px; background: var(--card); color: var(--text); border: none; border-radius: 12px; cursor: pointer; margin-bottom: 16px; font-size: 14px; font-weight: bold; }
+        .back-btn:active { background: var(--accent); }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn:active { opacity: 0.8; } .btn:disabled { opacity: 0.4; }
+        .version { text-align: center; color: #555; font-size: 11px; margin-top: 30px; padding-bottom: 10px; }
+        .clicker-score { font-size: 48px; font-weight: bold; margin: 16px 0; color: var(--accent); }
+        .click-btn { width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--accent); background: var(--card); color: white; font-size: 28px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(233,69,96,0.4); transition: transform 0.1s; margin: 20px auto; display: block; }
+        .click-btn:active { transform: scale(0.9); background: var(--accent); }
+        .upgrade-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 14px; border: 2px solid var(--accent); border-radius: 12px; background: var(--card); color: var(--text); font-size: 14px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .upgrade-btn:active { background: var(--accent); } .upgrade-btn:disabled { opacity: 0.3; border-color: #555; }
+        .snake-ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .snake-ctrl:active { background: var(--accent); }
+        .settings { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        select { padding: 12px 14px; border-radius: 12px; font-size: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-family: inherit; }
+        .quiz-card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
+        .question-text { font-size: 17px; margin-bottom: 16px; line-height: 1.4; }
+        .difficulty-badge { display: inline-block; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 12px; }
+        .difficulty-Лёгкий { background: #4caf84; color: #fff; } .difficulty-Средний { background: #ff9800; color: #fff; } .difficulty-Сложный { background: #e94560; color: #fff; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .option-btn { background: #0f3460; color: white; padding: 14px; border: 2px solid #4a90d9; border-radius: var(--radius); font-size: 15px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .option-btn:active { background: #4a90d9; } .option-btn.correct { background: var(--green); border-color: var(--green); } .option-btn.wrong { background: var(--accent); border-color: var(--accent); }
+        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; } .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+        
+        /* 2048 с анимациями */
+        .game-2048-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #0f3460; border-radius: 12px; padding: 12px; width: 280px; height: 280px; margin: 16px auto; }
+        .tile { background: #1a1a4e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; aspect-ratio: 1; }
+        .tile-2 { background: #4a90d9; } .tile-4 { background: #4caf84; } .tile-8 { background: #e09540; } .tile-16 { background: #e94560; }
+        .tile-32 { background: #c0392b; } .tile-64 { background: #8e44ad; } .tile-128 { background: #f39c12; } .tile-256 { background: #2ecc71; } .tile-512 { background: #1abc9c; } .tile-1024 { background: #e74c3c; } .tile-2048 { background: #f1c40f; color: #1a1a2e; }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 80% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes merge { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        
+        .score-2048 { font-size: 20px; margin: 10px 0; }
+        .arrow-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; } .arrow-row { display: flex; gap: 8px; }
+        .arrow-btn { width: 50px; height: 50px; border-radius: 12px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 22px; cursor: pointer; font-weight: bold; }
+        .arrow-btn:active { background: var(--accent); }
+        .snake-canvas { border: 3px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 16px auto; }
+        .snake-score { font-size: 20px; margin: 10px 0; }
+        .snake-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; } .snake-row { display: flex; gap: 8px; }
+        .flappy-canvas { border: 3px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 16px auto; } .flappy-score { font-size: 20px; margin: 10px 0; }
+        .minesweeper-board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; margin: 16px auto; }
+        .ms-cell { width: 33px; height: 33px; background: var(--card); border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .ms-cell.revealed { background: #1a1a4e; } .ms-cell.flag { background: var(--accent); }
+        .ttt-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 240px; margin: 16px auto; }
+        .ttt-cell { width: 76px; height: 76px; background: var(--card); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; cursor: pointer; }
+    </style>
 </head>
 <body>
 
@@ -14,217 +73,57 @@
             <p class="subtitle">Выбери игру и начни играть!</p>
             <p style="color:var(--accent);font-size:14px;margin-bottom:16px;" id="rankDisplay">🐣 Новичок (0 XP)</p>
             <div class="games-grid">
-                <div class="game-card" id="btnClicker">
-                    <div class="game-icon red">🔴</div>
-                    <div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnQuiz">
-                    <div class="game-icon blue">🧠</div>
-                    <div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btn2048">
-                    <div class="game-icon green">🧩</div>
-                    <div class="game-info"><div class="game-name">2048</div><div class="game-desc">Собери 2048!</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnSnake">
-                    <div class="game-icon orange">🐍</div>
-                    <div class="game-info"><div class="game-name">Змейка</div><div class="game-desc">Классическая аркада</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnFlappy">
-                    <div class="game-icon red">🐦</div>
-                    <div class="game-info"><div class="game-name">Flappy Bird</div><div class="game-desc">Лети и уворачивайся!</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnSpaceInvaders">
-                    <div class="game-icon green">👾</div>
-                    <div class="game-info"><div class="game-name">Space Invaders</div><div class="game-desc">Классический шутер</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnMinesweeper">
-                    <div class="game-icon orange">💣</div>
-                    <div class="game-info"><div class="game-name">Сапёр</div><div class="game-desc">Разминируй поле</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnPacman">
-                    <div class="game-icon blue">🟡</div>
-                    <div class="game-info"><div class="game-name">Pac-Man</div><div class="game-desc">Собери все точки</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnBrickBreaker">
-                    <div class="game-icon red">🧱</div>
-                    <div class="game-info"><div class="game-name">Brick Breaker</div><div class="game-desc">Разбей все кирпичи</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-                <div class="game-card" id="btnTicTacToe">
-                    <div class="game-icon green">❌</div>
-                    <div class="game-info"><div class="game-name">Крестики-нолики</div><div class="game-desc">Против нейросети</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
+                <div class="game-card" id="btnClicker"><div class="game-icon red">🔴</div><div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnQuiz"><div class="game-icon blue">🧠</div><div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btn2048"><div class="game-icon green">🧩</div><div class="game-info"><div class="game-name">2048</div><div class="game-desc">Собери 2048!</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnSnake"><div class="game-icon orange">🐍</div><div class="game-info"><div class="game-name">Змейка</div><div class="game-desc">Классическая аркада</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnFlappy"><div class="game-icon red">🐦</div><div class="game-info"><div class="game-name">Flappy Bird</div><div class="game-desc">Лети и уворачивайся!</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnSpaceInvaders"><div class="game-icon green">👾</div><div class="game-info"><div class="game-name">Space Invaders</div><div class="game-desc">Классический шутер</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnMinesweeper"><div class="game-icon orange">💣</div><div class="game-info"><div class="game-name">Сапёр</div><div class="game-desc">Разминируй поле</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnPacman"><div class="game-icon blue">🟡</div><div class="game-info"><div class="game-name">Pac-Man</div><div class="game-desc">Собери все точки</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnBrickBreaker"><div class="game-icon red">🧱</div><div class="game-info"><div class="game-name">Brick Breaker</div><div class="game-desc">Разбей все кирпичи</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnTicTacToe"><div class="game-icon green">❌</div><div class="game-info"><div class="game-name">Крестики-нолики</div><div class="game-desc">Против нейросети</div></div><div class="game-arrow">▶</div></div>
             </div>
         </div>
     </div>
 
-    <div class="game-page" id="clickerScreen">
-        <div class="container">
-            <button class="back-btn" id="backClicker">← Назад</button>
-            <h2>🔴 Кликер</h2>
-            <div class="clicker-score" id="score">0</div>
-            <p>Очков: <span id="clicks">0</span></p>
-            <button class="click-btn" id="clickBtn">ЖМИ</button>
-            <div>
-                <button class="upgrade-btn" id="upgrade1" disabled>+1 за клик (10 очков)</button>
-                <button class="upgrade-btn" id="upgrade2" disabled>Автокликер 1/сек (50 очков)</button>
-            </div>
-        </div>
-    </div>
+    <div class="game-page" id="clickerScreen"><div class="container"><button class="back-btn" id="backClicker">← Назад</button><h2>🔴 Кликер</h2><div class="clicker-score" id="score">0</div><p>Очков: <span id="clicks">0</span></p><button class="click-btn" id="clickBtn">ЖМИ</button><div><button class="upgrade-btn" id="upgrade1" disabled>+1 за клик (10 очков)</button><button class="upgrade-btn" id="upgrade2" disabled>Автокликер 1/сек (50 очков)</button></div></div></div>
+    <div class="game-page" id="quizScreen"><div class="container"><button class="back-btn" id="backQuiz">← Назад</button><h2>🧠 ИИ-Викторина</h2><div class="settings"><select id="topicSelect"><option value="общие знания">🌍 Общие знания</option><option value="история">📜 История</option><option value="наука">🔬 Наука</option><option value="кино">🎬 Кино</option><option value="география">🗺 География</option><option value="спорт">⚽ Спорт</option></select><select id="difficultySelect"><option value="Лёгкий">💚 Лёгкий</option><option value="Средний">🧡 Средний</option><option value="Сложный">❤️ Сложный</option></select><button class="btn" id="newQuestionBtn">🎲 Новый вопрос</button></div><div class="quiz-card" id="quizCard" style="display:none;"><div class="difficulty-badge" id="difficultyBadge"></div><div class="question-text" id="questionText"></div><div class="options-grid" id="optionsGrid"></div><div class="feedback" id="feedback"></div></div><div class="stats" id="stats">Правильных: 0 | Всего: 0</div></div></div>
+    <div class="game-page" id="game2048Screen"><div class="container"><button class="back-btn" id="back2048">← Назад</button><h2>🧩 2048</h2><div class="score-2048">Очки: <span id="score2048">0</span></div><div class="game-2048-board" id="board2048"></div><div class="arrow-controls"><div class="arrow-row"><button class="arrow-btn" id="arrowUp">↑</button></div><div class="arrow-row"><button class="arrow-btn" id="arrowLeft">←</button><button class="arrow-btn" id="arrowDown">↓</button><button class="arrow-btn" id="arrowRight">→</button></div></div><button class="btn" id="reset2048" style="margin-top:10px;">🔄 Новая игра</button></div></div>
+    <div class="game-page" id="snakeScreen"><div class="container"><button class="back-btn" id="backSnake">← Назад</button><h2>🐍 Змейка</h2><div class="snake-score">Очки: <span id="snakeScore">0</span></div><canvas class="snake-canvas" id="snakeCanvas" width="300" height="300"></canvas><div class="snake-controls"><div class="snake-row"><button class="snake-ctrl" id="snakeUp">↑</button></div><div class="snake-row"><button class="snake-ctrl" id="snakeLeft">←</button><button class="snake-ctrl" id="snakeDown">↓</button><button class="snake-ctrl" id="snakeRight">→</button></div></div><button class="btn" id="startSnakeBtn" style="margin-top:10px;">▶ Старт</button></div></div>
+    <div class="game-page" id="flappyScreen"><div class="container"><button class="back-btn" id="backFlappy">← Назад</button><h2>🐦 Flappy Bird</h2><div class="flappy-score">Очки: <span id="flappyScore">0</span></div><canvas class="flappy-canvas" id="flappyCanvas" width="300" height="400"></canvas><p style="color:var(--text-secondary); margin-top:8px;">Нажми на экран или пробел, чтобы лететь</p><button class="btn" id="restartFlappy" style="margin-top:10px;">🔄 Заново</button></div></div>
+    <div class="game-page" id="spaceInvadersScreen"><div class="container"><button class="back-btn" id="backSpaceInvaders">← Назад</button><h2>👾 Space Invaders</h2><div style="display:flex;justify-content:center;gap:30px;margin:10px 0;"><span>Очки: <span id="siScore">0</span></span><span>Жизни: <span id="siLives">3</span></span></div><canvas id="siCanvas" width="300" height="400" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas><div style="display:flex;justify-content:center;gap:10px;margin-top:10px;"><button class="snake-ctrl" id="siLeftBtn">←</button><button class="snake-ctrl" id="siShootBtn" style="width:80px;">ОГОНЬ</button><button class="snake-ctrl" id="siRightBtn">→</button></div></div></div>
+    <div class="game-page" id="minesweeperScreen"><div class="container"><button class="back-btn" id="backMinesweeper">← Назад</button><h2>💣 Сапёр</h2><div class="minesweeper-board" id="msBoard"></div><button class="btn" id="resetMS" style="margin-top:10px;">🔄 Новая игра</button></div></div>
+    <div class="game-page" id="pacmanScreen"><div class="container"><button class="back-btn" id="backPacman">← Назад</button><h2>🟡 Pac-Man</h2><div class="flappy-score">Очки: <span id="pmScore">0</span></div><canvas id="pmCanvas" width="300" height="300" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas><div style="display:flex;justify-content:center;gap:10px;margin-top:10px;"><button class="snake-ctrl" id="pmUp">↑</button></div><div style="display:flex;justify-content:center;gap:10px;margin-top:5px;"><button class="snake-ctrl" id="pmLeft">←</button><button class="snake-ctrl" id="pmDown">↓</button><button class="snake-ctrl" id="pmRight">→</button></div></div></div>
+    <div class="game-page" id="brickBreakerScreen"><div class="container"><button class="back-btn" id="backBrickBreaker">← Назад</button><h2>🧱 Brick Breaker</h2><div class="flappy-score">Очки: <span id="bbScore">0</span></div><canvas id="bbCanvas" width="300" height="400" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas><p style="color:var(--text-secondary);">Двигай платформу пальцем или стрелками</p></div></div>
+    <div class="game-page" id="ticTacToeScreen"><div class="container"><button class="back-btn" id="backTicTacToe">← Назад</button><h2>❌ Крестики-нолики</h2><p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | Нейросеть: ⭕</p><div class="ttt-board" id="tttBoard"></div><p class="feedback" id="tttFeedback"></p><button class="btn" id="resetTTT" style="margin-top:10px;">🔄 Новая игра</button></div></div>
 
-    <div class="game-page" id="quizScreen">
-        <div class="container">
-            <button class="back-btn" id="backQuiz">← Назад</button>
-            <h2>🧠 ИИ-Викторина</h2>
-            <div class="settings">
-                <select id="topicSelect">
-                    <option value="общие знания">🌍 Общие знания</option>
-                    <option value="история">📜 История</option>
-                    <option value="наука">🔬 Наука</option>
-                    <option value="кино">🎬 Кино</option>
-                    <option value="география">🗺 География</option>
-                    <option value="спорт">⚽ Спорт</option>
-                </select>
-                <select id="difficultySelect">
-                    <option value="Лёгкий">💚 Лёгкий</option>
-                    <option value="Средний">🧡 Средний</option>
-                    <option value="Сложный">❤️ Сложный</option>
-                </select>
-                <button class="btn" id="newQuestionBtn">🎲 Новый вопрос</button>
-            </div>
-            <div class="quiz-card" id="quizCard" style="display:none;">
-                <div class="difficulty-badge" id="difficultyBadge"></div>
-                <div class="question-text" id="questionText"></div>
-                <div class="options-grid" id="optionsGrid"></div>
-                <div class="feedback" id="feedback"></div>
-            </div>
-            <div class="stats" id="stats">Правильных: 0 | Всего: 0</div>
-        </div>
-    </div>
+    <div class="version">v4.1 — BatonCHIK Games</div>
 
-    <div class="game-page" id="game2048Screen">
-        <div class="container">
-            <button class="back-btn" id="back2048">← Назад</button>
-            <h2>🧩 2048</h2>
-            <div class="score-2048">Очки: <span id="score2048">0</span></div>
-            <div class="game-2048-board" id="board2048"></div>
-            <div class="arrow-controls">
-                <div class="arrow-row"><button class="arrow-btn" id="arrowUp">↑</button></div>
-                <div class="arrow-row">
-                    <button class="arrow-btn" id="arrowLeft">←</button>
-                    <button class="arrow-btn" id="arrowDown">↓</button>
-                    <button class="arrow-btn" id="arrowRight">→</button>
-                </div>
-            </div>
-            <button class="btn" id="reset2048" style="margin-top:10px;">🔄 Новая игра</button>
-        </div>
-    </div>
+    <script>
+        // Система опыта и званий
+        const RANKS = [{ name: 'Новичок', minXP: 0, emoji: '🐣' },{ name: 'Любитель', minXP: 100, emoji: '🎮' },{ name: 'Профи', minXP: 500, emoji: '🔥' },{ name: 'Мастер', minXP: 2000, emoji: '⚡' },{ name: 'Легенда', minXP: 10000, emoji: '👑' }];
+        let userData = JSON.parse(localStorage.getItem('batonchikProfile') || '{"xp":0,"clicker":0,"snake":0,"flappy":0,"game2048":0,"quiz":0,"spaceInvaders":0,"minesweeper":0,"pacman":0,"brickBreaker":0,"ticTacToe":0}');
+        function saveProfile() { localStorage.setItem('batonchikProfile', JSON.stringify(userData)); }
+        function addXP(amount) { userData.xp += amount; saveProfile(); updateRankDisplay(); }
+        function getRank() { let rank = RANKS[0]; for (const r of RANKS) { if (userData.xp >= r.minXP) rank = r; } return rank; }
+        function updateRankDisplay() { const rank = getRank(); const el = document.getElementById('rankDisplay'); if (el) el.innerHTML = `${rank.emoji} ${rank.name} (${userData.xp} XP)`; }
 
-    <div class="game-page" id="snakeScreen">
-        <div class="container">
-            <button class="back-btn" id="backSnake">← Назад</button>
-            <h2>🐍 Змейка</h2>
-            <div class="snake-score">Очки: <span id="snakeScore">0</span></div>
-            <canvas class="snake-canvas" id="snakeCanvas" width="300" height="300"></canvas>
-            <div class="snake-controls">
-                <div class="snake-row"><button class="snake-ctrl" id="snakeUp">↑</button></div>
-                <div class="snake-row">
-                    <button class="snake-ctrl" id="snakeLeft">←</button>
-                    <button class="snake-ctrl" id="snakeDown">↓</button>
-                    <button class="snake-ctrl" id="snakeRight">→</button>
-                </div>
-            </div>
-            <button class="btn" id="startSnakeBtn" style="margin-top:10px;">▶ Старт</button>
-        </div>
-    </div>
+        function showOnly(id) { document.querySelectorAll('.game-page').forEach(p => p.style.display = 'none'); document.getElementById('mainScreen').style.display = 'none'; document.getElementById(id).style.display = 'block'; }
+        function showMain() { document.querySelectorAll('.game-page').forEach(p => p.style.display = 'none'); document.getElementById('mainScreen').style.display = 'block'; updateRankDisplay(); }
 
-    <div class="game-page" id="flappyScreen">
-        <div class="container">
-            <button class="back-btn" id="backFlappy">← Назад</button>
-            <h2>🐦 Flappy Bird</h2>
-            <div class="flappy-score">Очки: <span id="flappyScore">0</span></div>
-            <canvas class="flappy-canvas" id="flappyCanvas" width="300" height="400"></canvas>
-            <p style="color:var(--text-secondary); margin-top:8px;">Нажми на экран или пробел, чтобы лететь</p>
-            <button class="btn" id="restartFlappy" style="margin-top:10px;">🔄 Заново</button>
-        </div>
-    </div>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('btnClicker').addEventListener('click', () => showOnly('clickerScreen'));
+            document.getElementById('btnQuiz').addEventListener('click', () => { showOnly('quizScreen'); getAIQuestion(); });
+            document.getElementById('btn2048').addEventListener('click', () => { showOnly('game2048Screen'); init2048(); });
+            document.getElementById('btnSnake').addEventListener('click', () => { showOnly('snakeScreen'); resetSnakeUI(); });
+            document.getElementById('btnFlappy').addEventListener('click', () => { showOnly('flappyScreen'); startFlappy(); });
+            document.getElementById('btnSpaceInvaders').addEventListener('click', () => { showOnly('spaceInvadersScreen'); startSpaceInvaders(); });
+            document.getElementById('btnMinesweeper').addEventListener('click', () => { showOnly('minesweeperScreen'); initMinesweeper(); });
+            document.getElementById('btnPacman').addEventListener('click', () => { showOnly('pacmanScreen'); startPacman(); });
+            document.getElementById('btnBrickBreaker').addEventListener('click', () => { showOnly('brickBreakerScreen'); startBrickBreaker(); });
+            document.getElementById('btnTicTacToe').addEventListener('click', () => { showOnly('ticTacToeScreen'); initTicTacToe(); });
 
-    <div class="game-page" id="spaceInvadersScreen">
-        <div class="container">
-            <button class="back-btn" id="backSpaceInvaders">← Назад</button>
-            <h2>👾 Space Invaders</h2>
-            <div style="display:flex;justify-content:center;gap:30px;margin:10px 0;">
-                <span>Очки: <span id="siScore">0</span></span>
-                <span>Жизни: <span id="siLives">3</span></span>
-            </div>
-            <canvas id="siCanvas" width="300" height="400" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas>
-            <div style="display:flex;justify-content:center;gap:10px;margin-top:10px;">
-                <button class="snake-ctrl" id="siLeftBtn">←</button>
-                <button class="snake-ctrl" id="siShootBtn" style="width:80px;">ОГОНЬ</button>
-                <button class="snake-ctrl" id="siRightBtn">→</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="game-page" id="minesweeperScreen">
-        <div class="container">
-            <button class="back-btn" id="backMinesweeper">← Назад</button>
-            <h2>💣 Сапёр</h2>
-            <div class="minesweeper-board" id="msBoard"></div>
-            <button class="btn" id="resetMS" style="margin-top:10px;">🔄 Новая игра</button>
-        </div>
-    </div>
-
-    <div class="game-page" id="pacmanScreen">
-        <div class="container">
-            <button class="back-btn" id="backPacman">← Назад</button>
-            <h2>🟡 Pac-Man</h2>
-            <div class="flappy-score">Очки: <span id="pmScore">0</span></div>
-            <canvas id="pmCanvas" width="300" height="300" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas>
-            <div style="display:flex;justify-content:center;gap:10px;margin-top:10px;">
-                <button class="snake-ctrl" id="pmUp">↑</button>
-            </div>
-            <div style="display:flex;justify-content:center;gap:10px;margin-top:5px;">
-                <button class="snake-ctrl" id="pmLeft">←</button>
-                <button class="snake-ctrl" id="pmDown">↓</button>
-                <button class="snake-ctrl" id="pmRight">→</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="game-page" id="brickBreakerScreen">
-        <div class="container">
-            <button class="back-btn" id="backBrickBreaker">← Назад</button>
-            <h2>🧱 Brick Breaker</h2>
-            <div class="flappy-score">Очки: <span id="bbScore">0</span></div>
-            <canvas id="bbCanvas" width="300" height="400" style="border:2px solid var(--accent);border-radius:12px;background:#0a0a1a;display:block;margin:10px auto;"></canvas>
-            <p style="color:var(--text-secondary);">Двигай платформу пальцем или стрелками</p>
-        </div>
-    </div>
-
-    <div class="game-page" id="ticTacToeScreen">
-        <div class="container">
-            <button class="back-btn" id="backTicTacToe">← Назад</button>
-            <h2>❌ Крестики-нолики</h2>
-            <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | Нейросеть: ⭕</p>
-            <div class="ttt-board" id="tttBoard"></div>
-            <p class="feedback" id="tttFeedback"></p>
-            <button class="btn" id="resetTTT" style="margin-top:10px;">🔄 Новая игра</button>
-        </div>
-    </div>
-
-    <div class="version">v4.0 — BatonCHIK Games</div>
-
-    <script src="script.js"></script>
-</body>
-                </html>
+            document.getElementById('backClicker').addEventListener('click', () => { addXP(Math.floor(clickerScore / 10)); showMain(); });
+            document.getElementById('backQuiz').addEventListener('click', showMain);
+            
