@@ -33,6 +33,11 @@
                     <div class="game-info"><div class="game-name">Змейка</div><div class="game-desc">Классическая аркада</div></div>
                     <div class="game-arrow">▶</div>
                 </div>
+                <div class="game-card" id="btnFlappy">
+                    <div class="game-icon red">🐦</div>
+                    <div class="game-info"><div class="game-name">Flappy Bird</div><div class="game-desc">Лети и уворачивайся!</div></div>
+                    <div class="game-arrow">▶</div>
+                </div>
             </div>
         </div>
     </div>
@@ -65,7 +70,7 @@
                     <option value="спорт">⚽ Спорт</option>
                 </select>
                 <select id="difficultySelect">
-                    <option value="Легкий">💚 Легкий</option>
+                    <option value="Лёгкий">💚 Лёгкий</option>
                     <option value="Средний">🧡 Средний</option>
                     <option value="Сложный">❤️ Сложный</option>
                 </select>
@@ -87,7 +92,14 @@
             <h2>🧩 2048</h2>
             <div class="score-2048">Очки: <span id="score2048">0</span></div>
             <div class="game-2048-board" id="board2048"></div>
-            <p style="color:var(--text-secondary); margin-top:8px;">Свайпай или используй стрелки</p>
+            <div class="arrow-controls">
+                <div class="arrow-row"><button class="arrow-btn" id="arrowUp">↑</button></div>
+                <div class="arrow-row">
+                    <button class="arrow-btn" id="arrowLeft">←</button>
+                    <button class="arrow-btn" id="arrowDown">↓</button>
+                    <button class="arrow-btn" id="arrowRight">→</button>
+                </div>
+            </div>
             <button class="btn" id="reset2048" style="margin-top:10px;">🔄 Новая игра</button>
         </div>
     </div>
@@ -109,7 +121,18 @@
         </div>
     </div>
 
-    <div class="version">v2.0 — BatonCHIK Games</div>
+    <div class="game-page" id="flappyScreen">
+        <div class="container">
+            <button class="back-btn" id="backFlappy">← Назад</button>
+            <h2>🐦 Flappy Bird</h2>
+            <div class="flappy-score">Очки: <span id="flappyScore">0</span></div>
+            <canvas class="flappy-canvas" id="flappyCanvas" width="300" height="400"></canvas>
+            <p style="color:var(--text-secondary); margin-top:8px;">Нажми на экран или пробел, чтобы лететь</p>
+            <button class="btn" id="restartFlappy" style="margin-top:10px;">🔄 Заново</button>
+        </div>
+    </div>
+
+    <div class="version">v2.1 — BatonCHIK Games</div>
 
     <script src="script.js"></script>
 </body>
