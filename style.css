@@ -78,7 +78,7 @@ select {
     display: inline-block; padding: 6px 12px; border-radius: 12px;
     font-size: 12px; font-weight: bold; margin-bottom: 12px;
 }
-.difficulty-Легкий { background: #4caf84; color: #fff; }
+.difficulty-Лёгкий { background: #4caf84; color: #fff; }
 .difficulty-Средний { background: #ff9800; color: #fff; }
 .difficulty-Сложный { background: #e94560; color: #fff; }
 .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -115,6 +115,14 @@ select {
 .tile-1024 { background: #e74c3c; }
 .tile-2048 { background: #f1c40f; color: #1a1a2e; }
 .score-2048 { font-size: 20px; margin: 10px 0; }
+.arrow-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
+.arrow-row { display: flex; gap: 8px; }
+.arrow-btn {
+    width: 50px; height: 50px; border-radius: 12px; background: var(--card);
+    color: var(--text); border: 2px solid var(--accent); font-size: 22px;
+    cursor: pointer; font-weight: bold;
+}
+.arrow-btn:active { background: var(--accent); }
 
 .snake-canvas {
     border: 3px solid var(--accent); border-radius: 12px;
@@ -129,6 +137,12 @@ select {
     cursor: pointer; font-weight: bold;
 }
 .snake-ctrl:active { background: var(--accent); }
+
+.flappy-canvas {
+    border: 3px solid var(--accent); border-radius: 12px;
+    background: #0a0a1a; display: block; margin: 16px auto;
+}
+.flappy-score { font-size: 20px; margin: 10px 0; }
 
 .version {
     text-align: center; color: #555; font-size: 11px;
