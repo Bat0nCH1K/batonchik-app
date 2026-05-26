@@ -1,3 +1,39 @@
+// Система опыта и званий
+const RANKS = [
+    { name: 'Новичок', minXP: 0, emoji: '🐣' },
+    { name: 'Любитель', minXP: 100, emoji: '🎮' },
+    { name: 'Профи', minXP: 500, emoji: '🔥' },
+    { name: 'Мастер', minXP: 2000, emoji: '⚡' },
+    { name: 'Легенда', minXP: 10000, emoji: '👑' },
+];
+
+let userData = JSON.parse(localStorage.getItem('batonchikProfile') || '{"xp":0,"clicker":0,"snake":0,"flappy":0,"game2048":0,"quiz":0,"spaceInvaders":0}');
+
+function saveProfile() {
+    localStorage.setItem('batonchikProfile', JSON.stringify(userData));
+}
+
+function addXP(amount) {
+    userData.xp += amount;
+    saveProfile();
+    updateRankDisplay();
+}
+
+function getRank() {
+    let rank = RANKS[0];
+    for (const r of RANKS) {
+        if (userData.xp >= r.minXP) rank = r;
+    }
+    return rank;
+}
+
+function updateRankDisplay() {
+    const rank = getRank();
+    const el = document.getElementById('rankDisplay');
+    if (el) el.innerHTML = `${rank.emoji} ${rank.name} (${userData.xp} XP)`;
+}
+
+// Навигация
 function showOnly(id) {
     document.querySelectorAll('.game-page').forEach(p => p.style.display = 'none');
     document.getElementById('mainScreen').style.display = 'none';
@@ -6,6 +42,7 @@ function showOnly(id) {
 function showMain() {
     document.querySelectorAll('.game-page').forEach(p => p.style.display = 'none');
     document.getElementById('mainScreen').style.display = 'block';
+    updateRankDisplay();
 }
 
 document.getElementById('btnClicker').addEventListener('click', () => showOnly('clickerScreen'));
@@ -13,12 +50,14 @@ document.getElementById('btnQuiz').addEventListener('click', () => { showOnly('q
 document.getElementById('btn2048').addEventListener('click', () => { showOnly('game2048Screen'); init2048(); });
 document.getElementById('btnSnake').addEventListener('click', () => { showOnly('snakeScreen'); startSnake(); });
 document.getElementById('btnFlappy').addEventListener('click', () => { showOnly('flappyScreen'); startFlappy(); });
+document.getElementById('btnSpaceInvaders').addEventListener('click', () => { showOnly('spaceInvadersScreen'); startSpaceInvaders(); });
 
 document.getElementById('backClicker').addEventListener('click', showMain);
 document.getElementById('backQuiz').addEventListener('click', showMain);
 document.getElementById('back2048').addEventListener('click', showMain);
 document.getElementById('backSnake').addEventListener('click', () => { stopSnake(); showMain(); });
 document.getElementById('backFlappy').addEventListener('click', () => { stopFlappy(); showMain(); });
+document.getElementById('backSpaceInvaders').addEventListener('click', () => { stopSpaceInvaders(); showMain(); });
 
 // Кликер
 let clickerScore = 0, perClick = 1, autoClicker = 0;
@@ -37,7 +76,7 @@ document.getElementById('upgrade2').addEventListener('click', () => {
 });
 setInterval(() => { if (autoClicker > 0) { clickerScore += autoClicker; document.getElementById('score').textContent = clickerScore; } }, 1000);
 
-// Викторина (русские промпты)
+// Викторина (исправленная)
 let quizCorrect = 0, quizTotal = 0, quizAnswered = false, currentQuestion = null;
 document.getElementById('newQuestionBtn').addEventListener('click', getAIQuestion);
 async function getAIQuestion() {
@@ -51,30 +90,39 @@ async function getAIQuestion() {
     document.getElementById('optionsGrid').innerHTML = '';
     document.getElementById('feedback').textContent = '';
     quizAnswered = false;
-    try {
-        const resp = await fetch('https://text.pollinations.ai/openai', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'openai',
-                messages: [{ role: 'user', content: `Придумай вопрос для викторины на русском языке. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON без пояснений: {"question":"вопрос на русском","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}. correctIndex — индекс правильного ответа (0-3). Вопрос и ответы должны быть на русском языке.` }],
-                temperature: 0.9
-            })
-        });
-        const data = await resp.json();
-        const q = JSON.parse(data.choices[0].message.content);
-        currentQuestion = q;
-        document.getElementById('questionText').textContent = q.question;
-        document.getElementById('difficultyBadge').textContent = difficulty;
-        document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${difficulty}`;
-        document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
-            `<button class="option-btn" data-index="${i}">${o}</button>`
-        ).join('');
-        document.querySelectorAll('.option-btn').forEach(b => b.addEventListener('click', function() {
-            checkQuiz(parseInt(this.dataset.index), this);
-        }));
-    } catch (e) {
-        document.getElementById('questionText').textContent = '😵 Ошибка генерации.';
+    let retries = 0;
+    const maxRetries = 3;
+    while (retries < maxRetries) {
+        try {
+            const resp = await fetch('https://text.pollinations.ai/openai', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'openai',
+                    messages: [{ role: 'user', content: `Придумай вопрос для викторины на русском языке. Тема: "${topic}". Сложность: "${difficulty}". Ответ должен быть СТРОГО валидным JSON без текста вне JSON: {"question":"вопрос на русском","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}. correctIndex — число 0-3. Не добавляй комментарии.` }],
+                    temperature: 0.9
+                })
+            });
+            const data = await resp.json();
+            const raw = data.choices[0].message.content.trim();
+            const jsonMatch = raw.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) { retries++; continue; }
+            const q = JSON.parse(jsonMatch[0]);
+            if (!q.question || !q.options || q.options.length !== 4 || typeof q.correctIndex !== 'number') { retries++; continue; }
+            currentQuestion = q;
+            document.getElementById('questionText').textContent = q.question;
+            document.getElementById('difficultyBadge').textContent = difficulty;
+            document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${difficulty}`;
+            document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
+                `<button class="option-btn" data-index="${i}">${o}</button>`
+            ).join('');
+            document.querySelectorAll('.option-btn').forEach(b => b.addEventListener('click', function() {
+                checkQuiz(parseInt(this.dataset.index), this);
+            }));
+            btn.disabled = false; btn.textContent = '🎲 Новый вопрос';
+            return;
+        } catch (e) { retries++; }
     }
+    document.getElementById('questionText').textContent = '😵 Не удалось сгенерировать вопрос. Попробуй ещё раз.';
     btn.disabled = false; btn.textContent = '🎲 Новый вопрос';
 }
 function checkQuiz(index, btn) {
@@ -84,6 +132,7 @@ function checkQuiz(index, btn) {
     all.forEach(b => b.disabled = true);
     if (index === currentQuestion.correctIndex) {
         btn.classList.add('correct'); document.getElementById('feedback').textContent = '✅ Правильно!'; quizCorrect++;
+        addXP(10);
     } else {
         btn.classList.add('wrong'); all[currentQuestion.correctIndex].classList.add('correct');
         document.getElementById('feedback').textContent = '❌ Неправильно!';
@@ -91,7 +140,7 @@ function checkQuiz(index, btn) {
     document.getElementById('stats').textContent = `Правильных: ${quizCorrect} | Всего: ${quizTotal}`;
 }
 
-// 2048 + стрелки
+// 2048
 let board2048 = [], score2048 = 0;
 function init2048() { board2048 = Array(4).fill().map(() => Array(4).fill(0)); score2048 = 0; addRandom2048(); addRandom2048(); draw2048(); }
 function addRandom2048() {
@@ -149,38 +198,18 @@ let snake = [], food = {}, direction = 'right', snakeInterval = null, snakeScore
 const snakeCanvas = document.getElementById('snakeCanvas');
 const snakeCtx = snakeCanvas.getContext('2d');
 const gridSize = 15, cellSize = 20;
-function startSnake() {
-    snakeScoreVal = 0; document.getElementById('snakeScore').textContent = '0';
-    snake = [{x: 7, y: 7}, {x: 6, y: 7}, {x: 5, y: 7}]; direction = 'right';
-    placeFood(); if (snakeInterval) clearInterval(snakeInterval);
-    snakeInterval = setInterval(updateSnake, 120);
-}
+function startSnake() { snakeScoreVal = 0; document.getElementById('snakeScore').textContent = '0'; snake = [{x: 7, y: 7}, {x: 6, y: 7}, {x: 5, y: 7}]; direction = 'right'; placeFood(); if (snakeInterval) clearInterval(snakeInterval); snakeInterval = setInterval(updateSnake, 120); }
 function stopSnake() { if (snakeInterval) { clearInterval(snakeInterval); snakeInterval = null; } }
-function placeFood() {
-    do { food = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) }; }
-    while (snake.some(s => s.x === food.x && s.y === food.y));
-}
+function placeFood() { do { food = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) }; } while (snake.some(s => s.x === food.x && s.y === food.y)); }
 function updateSnake() {
     const head = { ...snake[0] };
-    if (direction === 'up') head.y--;
-    if (direction === 'down') head.y++;
-    if (direction === 'left') head.x--;
-    if (direction === 'right') head.x++;
-    if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize || snake.some(s => s.x === head.x && s.y === head.y)) {
-        stopSnake(); alert('Игра окончена! Очки: ' + snakeScoreVal); startSnake(); return;
-    }
+    if (direction === 'up') head.y--; if (direction === 'down') head.y++; if (direction === 'left') head.x--; if (direction === 'right') head.x++;
+    if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize || snake.some(s => s.x === head.x && s.y === head.y)) { stopSnake(); alert('Игра окончена! Очки: ' + snakeScoreVal); startSnake(); return; }
     snake.unshift(head);
-    if (head.x === food.x && head.y === food.y) { snakeScoreVal += 10; document.getElementById('snakeScore').textContent = snakeScoreVal; placeFood(); }
-    else { snake.pop(); }
+    if (head.x === food.x && head.y === food.y) { snakeScoreVal += 10; document.getElementById('snakeScore').textContent = snakeScoreVal; placeFood(); } else { snake.pop(); }
     drawSnake();
 }
-function drawSnake() {
-    snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height);
-    snakeCtx.fillStyle = '#e94560';
-    snake.forEach(s => snakeCtx.fillRect(s.x * cellSize + 1, s.y * cellSize + 1, cellSize - 2, cellSize - 2));
-    snakeCtx.fillStyle = '#4caf84';
-    snakeCtx.fillRect(food.x * cellSize + 2, food.y * cellSize + 2, cellSize - 4, cellSize - 4);
-}
+function drawSnake() { snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height); snakeCtx.fillStyle = '#e94560'; snake.forEach(s => snakeCtx.fillRect(s.x * cellSize + 1, s.y * cellSize + 1, cellSize - 2, cellSize - 2)); snakeCtx.fillStyle = '#4caf84'; snakeCtx.fillRect(food.x * cellSize + 2, food.y * cellSize + 2, cellSize - 4, cellSize - 4); }
 document.getElementById('snakeUp').addEventListener('click', () => { if (direction !== 'down') direction = 'up'; });
 document.getElementById('snakeDown').addEventListener('click', () => { if (direction !== 'up') direction = 'down'; });
 document.getElementById('snakeLeft').addEventListener('click', () => { if (direction !== 'right') direction = 'left'; });
@@ -190,51 +219,153 @@ document.getElementById('snakeRight').addEventListener('click', () => { if (dire
 let flappyInterval = null, flappyScoreVal = 0;
 const flappyCanvas = document.getElementById('flappyCanvas');
 const flappyCtx = flappyCanvas.getContext('2d');
-let bird = { x: 50, y: 200, vy: 0, size: 20 };
-let pipes = [];
-let frame = 0;
-const gravity = 0.4, jumpPower = -7, pipeSpeed = 2, pipeWidth = 50, pipeGap = 120;
-
-function startFlappy() {
-    flappyScoreVal = 0; document.getElementById('flappyScore').textContent = '0';
-    bird = { x: 50, y: 200, vy: 0, size: 20 };
-    pipes = [];
-    frame = 0;
-    if (flappyInterval) clearInterval(flappyInterval);
-    flappyInterval = setInterval(updateFlappy, 20);
-}
+let bird = { x: 50, y: 200, vy: 0, size: 18 };
+let pipes = []; let frame = 0;
+const gravity = 0.3, jumpPower = -6, pipeSpeed = 1.8, pipeWidth = 50, pipeGap = 150;
+function startFlappy() { flappyScoreVal = 0; document.getElementById('flappyScore').textContent = '0'; bird = { x: 50, y: 200, vy: 0, size: 18 }; pipes = []; frame = 0; if (flappyInterval) clearInterval(flappyInterval); flappyInterval = setInterval(updateFlappy, 20); }
 function stopFlappy() { if (flappyInterval) { clearInterval(flappyInterval); flappyInterval = null; } }
 function updateFlappy() {
-    bird.vy += gravity;
-    bird.y += bird.vy;
+    bird.vy += gravity; bird.y += bird.vy;
     if (bird.y < 0 || bird.y > 400) { stopFlappy(); alert('Игра окончена! Очки: ' + flappyScoreVal); startFlappy(); return; }
-    if (frame % 90 === 0) {
-        const pipeY = Math.random() * (400 - pipeGap - 80) + 40;
-        pipes.push({ x: 300, y: pipeY });
-    }
+    if (frame % 100 === 0) { const pipeY = Math.random() * (400 - pipeGap - 60) + 30; pipes.push({ x: 300, y: pipeY }); }
     for (let i = pipes.length - 1; i >= 0; i--) {
         pipes[i].x -= pipeSpeed;
         if (pipes[i].x + pipeWidth < 0) { pipes.splice(i, 1); flappyScoreVal++; document.getElementById('flappyScore').textContent = flappyScoreVal; continue; }
         if (bird.x + bird.size > pipes[i].x && bird.x - bird.size < pipes[i].x + pipeWidth) {
-            if (bird.y - bird.size < pipes[i].y || bird.y + bird.size > pipes[i].y + pipeGap) {
-                stopFlappy(); alert('Игра окончена! Очки: ' + flappyScoreVal); startFlappy(); return;
-            }
+            if (bird.y - bird.size < pipes[i].y || bird.y + bird.size > pipes[i].y + pipeGap) { stopFlappy(); alert('Игра окончена! Очки: ' + flappyScoreVal); startFlappy(); return; }
         }
     }
-    drawFlappy();
-    frame++;
+    drawFlappy(); frame++;
 }
-function drawFlappy() {
-    flappyCtx.clearRect(0, 0, flappyCanvas.width, flappyCanvas.height);
-    flappyCtx.fillStyle = '#e94560';
-    flappyCtx.fillRect(bird.x - bird.size, bird.y - bird.size, bird.size * 2, bird.size * 2);
-    flappyCtx.fillStyle = '#4caf84';
-    pipes.forEach(p => {
-        flappyCtx.fillRect(p.x, 0, pipeWidth, p.y);
-        flappyCtx.fillRect(p.x, p.y + pipeGap, pipeWidth, 400 - p.y - pipeGap);
-    });
-}
+function drawFlappy() { flappyCtx.clearRect(0, 0, flappyCanvas.width, flappyCanvas.height); flappyCtx.fillStyle = '#e94560'; flappyCtx.fillRect(bird.x - bird.size, bird.y - bird.size, bird.size * 2, bird.size * 2); flappyCtx.fillStyle = '#4caf84'; pipes.forEach(p => { flappyCtx.fillRect(p.x, 0, pipeWidth, p.y); flappyCtx.fillRect(p.x, p.y + pipeGap, pipeWidth, 400 - p.y - pipeGap); }); }
 function jumpFlappy() { bird.vy = jumpPower; }
 document.getElementById('flappyCanvas').addEventListener('click', jumpFlappy);
-document.addEventListener('keydown', e => { if (e.key === ' ' && document.getElementById('flappyScreen').style.display === 'block') jumpFlappy(); });
 document.getElementById('restartFlappy').addEventListener('click', () => { stopFlappy(); startFlappy(); });
+
+// Space Invaders
+let siInterval = null, siScore = 0, siLives = 3;
+const siCanvas = document.getElementById('siCanvas');
+const siCtx = siCanvas.getContext('2d');
+let player = { x: 150, y: 350, w: 30, h: 20 };
+let bullets = [];
+let enemies = [];
+let enemyBullets = [];
+let siLeft = false, siRight = false;
+
+function startSpaceInvaders() {
+    siScore = 0; siLives = 3;
+    document.getElementById('siScore').textContent = '0';
+    document.getElementById('siLives').textContent = '3';
+    player.x = 150;
+    bullets = []; enemies = []; enemyBullets = [];
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 8; c++) {
+            enemies.push({ x: c * 35 + 20, y: r * 30 + 20, w: 25, h: 20, alive: true });
+        }
+    }
+    if (siInterval) clearInterval(siInterval);
+    siInterval = setInterval(updateSI, 30);
+    document.addEventListener('keydown', siKeyDown);
+    document.addEventListener('keyup', siKeyUp);
+}
+
+function stopSpaceInvaders() {
+    if (siInterval) { clearInterval(siInterval); siInterval = null; }
+    document.removeEventListener('keydown', siKeyDown);
+    document.removeEventListener('keyup', siKeyUp);
+}
+
+function siKeyDown(e) { if (e.key === 'ArrowLeft') siLeft = true; if (e.key === 'ArrowRight') siRight = true; if (e.key === ' ') { e.preventDefault(); shootBullet(); } }
+function siKeyUp(e) { if (e.key === 'ArrowLeft') siLeft = false; if (e.key === 'ArrowRight') siRight = false; }
+
+document.getElementById('siLeftBtn').addEventListener('pointerdown', () => { siLeft = true; });
+document.getElementById('siLeftBtn').addEventListener('pointerup', () => { siLeft = false; });
+document.getElementById('siRightBtn').addEventListener('pointerdown', () => { siRight = true; });
+document.getElementById('siRightBtn').addEventListener('pointerup', () => { siRight = false; });
+document.getElementById('siShootBtn').addEventListener('click', shootBullet);
+
+function shootBullet() {
+    if (bullets.length < 3) {
+        bullets.push({ x: player.x + player.w / 2 - 2, y: player.y, vy: -6 });
+    }
+}
+
+function updateSI() {
+    if (siLeft && player.x > 0) player.x -= 5;
+    if (siRight && player.x < 300 - player.w) player.x += 5;
+    let moveDown = false;
+    const aliveEnemies = enemies.filter(e => e.alive);
+    if (aliveEnemies.length === 0) {
+        stopSpaceInvaders();
+        addXP(50);
+        alert('🎉 Победа! Все враги уничтожены! Очки: ' + siScore + ' | +50 XP');
+        startSpaceInvaders();
+        return;
+    }
+    const rightmost = Math.max(...aliveEnemies.map(e => e.x));
+    const leftmost = Math.min(...aliveEnemies.map(e => e.x));
+    if (rightmost + 25 >= 300 || leftmost <= 0) moveDown = true;
+    enemies.forEach(e => {
+        if (!e.alive) return;
+        e.x += moveDown ? 0 : (rightmost + 25 >= 300 ? -10 : 10);
+        if (moveDown) e.y += 10;
+    });
+    bullets = bullets.filter(b => b.y > 0);
+    bullets.forEach(b => b.y += b.vy);
+    bullets.forEach(b => {
+        enemies.forEach(e => {
+            if (!e.alive) return;
+            if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
+                e.alive = false;
+                b.y = -1;
+                siScore += 10;
+                document.getElementById('siScore').textContent = siScore;
+            }
+        });
+    });
+    bullets = bullets.filter(b => b.y > 0);
+    if (Math.random() < 0.02 && aliveEnemies.length > 0) {
+        const shooter = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+        enemyBullets.push({ x: shooter.x + shooter.w / 2, y: shooter.y + shooter.h, vy: 4 });
+    }
+    enemyBullets = enemyBullets.filter(b => b.y < 400);
+    enemyBullets.forEach(b => b.y += b.vy);
+    enemyBullets.forEach(b => {
+        if (b.x > player.x && b.x < player.x + player.w && b.y > player.y && b.y < player.y + player.h) {
+            siLives--;
+            document.getElementById('siLives').textContent = siLives;
+            b.y = 999;
+            if (siLives <= 0) {
+                stopSpaceInvaders();
+                addXP(Math.floor(siScore / 2));
+                alert('💀 Игра окончена! Очки: ' + siScore + ' | +' + Math.floor(siScore / 2) + ' XP');
+                startSpaceInvaders();
+            }
+        }
+    });
+    enemyBullets = enemyBullets.filter(b => b.y < 400);
+    enemies.forEach(e => {
+        if (e.alive && e.y + e.h >= player.y) {
+            stopSpaceInvaders();
+            addXP(Math.floor(siScore / 2));
+            alert('💀 Враги достигли базы! Очки: ' + siScore + ' | +' + Math.floor(siScore / 2) + ' XP');
+            startSpaceInvaders();
+        }
+    });
+    drawSI();
+}
+
+function drawSI() {
+    siCtx.clearRect(0, 0, siCanvas.width, siCanvas.height);
+    siCtx.fillStyle = '#00ff00';
+    siCtx.fillRect(player.x, player.y, player.w, player.h);
+    siCtx.fillStyle = '#ff0000';
+    enemies.forEach(e => { if (e.alive) siCtx.fillRect(e.x, e.y, e.w, e.h); });
+    siCtx.fillStyle = '#ffffff';
+    bullets.forEach(b => siCtx.fillRect(b.x, b.y, 3, 8));
+    siCtx.fillStyle = '#ffff00';
+    enemyBullets.forEach(b => siCtx.fillRect(b.x, b.y, 3, 8));
+}
+
+// Инициализация
+updateRankDisplay();
