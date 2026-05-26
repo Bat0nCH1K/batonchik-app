@@ -21,7 +21,6 @@
         h2 { font-size: 18px; margin-bottom: 12px; }
         .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
 
-        /* Главное меню */
         .games-grid { display: flex; flex-direction: column; gap: 14px; }
         .game-card {
             display: flex; align-items: center; gap: 14px;
@@ -42,7 +41,6 @@
         .game-desc { font-size: 12px; color: var(--text-secondary); }
         .game-arrow { font-size: 20px; color: var(--text-secondary); }
 
-        /* Экраны игр */
         .game-screen { display: none; }
         .game-screen.active { display: block; }
         .back-btn {
@@ -51,7 +49,6 @@
             margin-bottom: 16px; font-size: 14px;
         }
 
-        /* Кликер */
         .clicker-score { font-size: 48px; font-weight: bold; margin: 16px 0; color: var(--accent); }
         .click-btn {
             width: 120px; height: 120px; border-radius: 50%; border: none;
@@ -67,7 +64,6 @@
         }
         .upgrade-btn:disabled { opacity: 0.4; }
 
-        /* Викторина */
         .settings { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
         select {
             padding: 10px 14px; border-radius: 12px; font-size: 14px;
@@ -97,7 +93,6 @@
         .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
         .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
 
-        /* 2048 */
         .game-2048-board {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
             background: #0f3460; border-radius: 12px; padding: 12px;
@@ -107,7 +102,6 @@
             background: #1a1a4e; border-radius: 8px; display: flex;
             align-items: center; justify-content: center; font-size: 22px;
             font-weight: bold; color: white; aspect-ratio: 1;
-            transition: all 0.15s;
         }
         .tile-2 { background: #4a90d9; }
         .tile-4 { background: #4caf84; }
@@ -122,7 +116,6 @@
         .tile-2048 { background: #f1c40f; color: #1a1a2e; }
         .score-2048 { font-size: 20px; margin: 10px 0; }
 
-        /* Змейка */
         .snake-canvas {
             border: 2px solid var(--accent); border-radius: 12px;
             background: #0a0a1a; display: block; margin: 16px auto;
@@ -139,7 +132,6 @@
 </head>
 <body>
 
-    <!-- ГЛАВНОЕ МЕНЮ -->
     <div class="game-screen active" id="mainScreen">
         <div class="container">
             <h1>🎮 BatonCHIK Games</h1>
@@ -169,7 +161,6 @@
         </div>
     </div>
 
-    <!-- КЛИКЕР -->
     <div class="game-screen" id="clickerScreen">
         <div class="container">
             <button class="back-btn" onclick="goBack()">← Назад</button>
@@ -184,7 +175,6 @@
         </div>
     </div>
 
-    <!-- ВИКТОРИНА -->
     <div class="game-screen" id="quizScreen">
         <div class="container">
             <button class="back-btn" onclick="goBack()">← Назад</button>
@@ -215,7 +205,6 @@
         </div>
     </div>
 
-    <!-- 2048 -->
     <div class="game-screen" id="game2048Screen">
         <div class="container">
             <button class="back-btn" onclick="goBack()">← Назад</button>
@@ -227,7 +216,6 @@
         </div>
     </div>
 
-    <!-- ЗМЕЙКА -->
     <div class="game-screen" id="snakeScreen">
         <div class="container">
             <button class="back-btn" onclick="goBack()">← Назад</button>
@@ -235,9 +223,7 @@
             <div class="snake-score">Очки: <span id="snakeScore">0</span></div>
             <canvas class="snake-canvas" id="snakeCanvas" width="300" height="300"></canvas>
             <div class="snake-controls">
-                <div class="snake-row">
-                    <button class="snake-ctrl" onclick="changeDirection('up')">↑</button>
-                </div>
+                <div class="snake-row"><button class="snake-ctrl" onclick="changeDirection('up')">↑</button></div>
                 <div class="snake-row">
                     <button class="snake-ctrl" onclick="changeDirection('left')">←</button>
                     <button class="snake-ctrl" onclick="changeDirection('down')">↓</button>
@@ -248,7 +234,6 @@
     </div>
 
     <script>
-        // ============ НАВИГАЦИЯ ============
         function openGame(game) {
             document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
             const screen = document.getElementById(game + 'Screen');
@@ -265,29 +250,24 @@
             document.getElementById('mainScreen').classList.add('active');
         }
 
-        // ============ КЛИКЕР ============
+        // Кликер
         let clickerScore = 0, perClick = 1, autoClicker = 0;
-        const scoreEl = document.getElementById('score');
-        const clicksEl = document.getElementById('clicks');
         document.getElementById('clickBtn').addEventListener('click', () => {
             clickerScore += perClick;
-            updateClickerUI();
-        });
-        document.getElementById('upgrade1').addEventListener('click', () => {
-            if (clickerScore >= 10) { clickerScore -= 10; perClick++; updateClickerUI(); }
-        });
-        document.getElementById('upgrade2').addEventListener('click', () => {
-            if (clickerScore >= 50) { clickerScore -= 50; autoClicker++; updateClickerUI(); }
-        });
-        function updateClickerUI() {
-            scoreEl.textContent = clickerScore;
-            clicksEl.textContent = clickerScore;
+            document.getElementById('score').textContent = clickerScore;
+            document.getElementById('clicks').textContent = clickerScore;
             document.getElementById('upgrade1').disabled = clickerScore < 10;
             document.getElementById('upgrade2').disabled = clickerScore < 50;
-        }
-        setInterval(() => { if (autoClicker > 0) { clickerScore += autoClicker; updateClickerUI(); } }, 1000);
+        });
+        document.getElementById('upgrade1').addEventListener('click', () => {
+            if (clickerScore >= 10) { clickerScore -= 10; perClick++; document.getElementById('score').textContent = clickerScore; }
+        });
+        document.getElementById('upgrade2').addEventListener('click', () => {
+            if (clickerScore >= 50) { clickerScore -= 50; autoClicker++; }
+        });
+        setInterval(() => { if (autoClicker > 0) { clickerScore += autoClicker; document.getElementById('score').textContent = clickerScore; } }, 1000);
 
-        // ============ ВИКТОРИНА ============
+        // Викторина
         let quizCorrect = 0, quizTotal = 0, quizAnswered = false, currentQuestion = null;
         async function getAIQuestion() {
             const topic = document.getElementById('topicSelect').value;
@@ -306,10 +286,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model: 'openai',
-                        messages: [{
-                            role: 'user',
-                            content: `Придумай вопрос для викторины. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}. correctIndex — 0,1,2 или 3.`
-                        }],
+                        messages: [{ role: 'user', content: `Придумай вопрос для викторины. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}. correctIndex — 0,1,2 или 3.` }],
                         temperature: 0.9
                     })
                 });
@@ -341,7 +318,7 @@
             document.getElementById('stats').textContent = `Правильных: ${quizCorrect} | Всего: ${quizTotal}`;
         }
 
-        // ============ 2048 ============
+        // 2048
         let board2048 = [], score2048 = 0;
         function init2048() {
             board2048 = Array(4).fill().map(() => Array(4).fill(0));
@@ -372,7 +349,6 @@
             document.getElementById('score2048').textContent = score2048;
         }
         function move2048(dir) {
-            let moved = false;
             const old = board2048.map(r => [...r]);
             if (dir === 'left' || dir === 'right') {
                 for (let r = 0; r < 4; r++) {
@@ -400,4 +376,13 @@
             if (JSON.stringify(old) !== JSON.stringify(board2048)) { addRandom2048(); draw2048(); }
         }
         function reset2048() { init2048(); }
-        // Свайпы для 
+
+        let touchStartX = 0, touchStartY = 0;
+        document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
+        document.addEventListener('touchend', e => {
+            if (!document.getElementById('game2048Screen').classList.contains('active')) return;
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;
+            if (Math.abs(dx) > Math.abs(dy)) move2048(dx > 0 ? 'right' : 'left');
+            else move2048(dy > 0 ? 'down' : 'up');
