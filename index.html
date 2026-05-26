@@ -2,29 +2,47 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест кнопок</title>
-    <style>
-        body { background: #1a1a2e; color: white; text-align: center; padding: 40px; font-family: sans-serif; }
-        button { padding: 20px; font-size: 20px; margin: 10px; border-radius: 12px; border: none; cursor: pointer; background: #e94560; color: white; display: block; width: 200px; margin: 10px auto; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BatonCHIK Games</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Тест кнопок</h1>
-    <button id="btn1">Кнопка 1</button>
-    <button id="btn2">Кнопка 2</button>
-    <button id="btn3">Кнопка 3</button>
 
-    <script>
-        document.getElementById('btn1').addEventListener('click', function() {
-            alert('Кнопка 1 работает!');
-        });
-        document.getElementById('btn2').addEventListener('click', function() {
-            alert('Кнопка 2 работает!');
-        });
-        document.getElementById('btn3').addEventListener('click', function() {
-            alert('Кнопка 3 работает!');
-        });
-    </script>
+    <div id="mainScreen">
+        <div class="container">
+            <h1>🎮 BatonCHIK Games</h1>
+            <p class="subtitle">Выбери игру и начни играть!</p>
+            <p style="color:var(--accent);font-size:14px;margin-bottom:16px;" id="rankDisplay">🐣 Новичок (0 XP)</p>
+            <div class="games-grid">
+                <div class="game-card" id="btnClicker"><div class="game-icon red">🔴</div><div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnQuiz"><div class="game-icon blue">🧠</div><div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btn2048"><div class="game-icon green">🧩</div><div class="game-info"><div class="game-name">2048</div><div class="game-desc">Собери 2048!</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnSnake"><div class="game-icon orange">🐍</div><div class="game-info"><div class="game-name">Змейка</div><div class="game-desc">Классическая аркада</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnFlappy"><div class="game-icon red">🐦</div><div class="game-info"><div class="game-name">Flappy Bird</div><div class="game-desc">Лети и уворачивайся!</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnSpaceInvaders"><div class="game-icon green">👾</div><div class="game-info"><div class="game-name">Space Invaders</div><div class="game-desc">Классический шутер</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnMinesweeper"><div class="game-icon orange">💣</div><div class="game-info"><div class="game-name">Сапёр</div><div class="game-desc">Разминируй поле</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnPacman"><div class="game-icon blue">🟡</div><div class="game-info"><div class="game-name">Pac-Man</div><div class="game-desc">Собери все точки</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnBrickBreaker"><div class="game-icon red">🧱</div><div class="game-info"><div class="game-name">Brick Breaker</div><div class="game-desc">Разбей все кирпичи</div></div><div class="game-arrow">▶</div></div>
+                <div class="game-card" id="btnTicTacToe"><div class="game-icon green">❌</div><div class="game-info"><div class="game-name">Крестики-нолики</div><div class="game-desc">Против нейросети</div></div><div class="game-arrow">▶</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Заглушки для игр (HTML-экраны загружаются динамически) -->
+    <div id="gameContainer"></div>
+
+    <div class="version">v4.2 — BatonCHIK Games</div>
+
+    <script src="js/core.js"></script>
+    <script src="js/clicker.js"></script>
+    <script src="js/quiz.js"></script>
+    <script src="js/game2048.js"></script>
+    <script src="js/snake.js"></script>
+    <script src="js/flappy.js"></script>
+    <script src="js/invaders.js"></script>
+    <script src="js/minesweeper.js"></script>
+    <script src="js/pacman.js"></script>
+    <script src="js/brickbreaker.js"></script>
+    <script src="js/tictactoe.js"></script>
 </body>
 </html>
