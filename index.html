@@ -4,7 +4,143 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>BatonCHIK Games</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --bg: #1a1a2e; --card: #16213e; --accent: #e94560;
+            --green: #4caf84; --text: #fff; --text-secondary: #b0b0b0; --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; padding: 20px; text-align: center;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { font-size: 22px; margin-bottom: 6px; color: var(--accent); }
+        h2 { font-size: 18px; margin-bottom: 12px; }
+        .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+        .games-grid { display: flex; flex-direction: column; gap: 14px; }
+        .game-card {
+            display: flex; align-items: center; gap: 14px;
+            background: var(--card); border-radius: var(--radius); padding: 16px;
+            cursor: pointer; transition: transform 0.2s; color: var(--text);
+        }
+        .game-card:active { transform: scale(0.97); }
+        .game-icon {
+            font-size: 36px; width: 52px; height: 52px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .game-icon.red { background: #e94560; }
+        .game-icon.blue { background: #4a90d9; }
+        .game-icon.green { background: #4caf84; }
+        .game-icon.orange { background: #e09540; }
+        .game-info { text-align: left; flex: 1; }
+        .game-name { font-size: 16px; font-weight: 600; }
+        .game-desc { font-size: 12px; color: var(--text-secondary); }
+        .game-arrow { font-size: 20px; color: var(--text-secondary); }
+
+        .back-btn {
+            display: inline-block; padding: 10px 18px; background: var(--card);
+            color: var(--text); border: none; border-radius: 12px; cursor: pointer;
+            margin-bottom: 16px; font-size: 14px; font-weight: bold;
+        }
+        .back-btn:active { background: var(--accent); }
+
+        .clicker-score { font-size: 48px; font-weight: bold; margin: 16px 0; color: var(--accent); }
+        .click-btn {
+            width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--accent);
+            background: var(--card); color: white; font-size: 28px; font-weight: bold;
+            cursor: pointer; box-shadow: 0 6px 20px rgba(233,69,96,0.4);
+            transition: transform 0.1s; margin: 20px auto; display: block;
+        }
+        .click-btn:active { transform: scale(0.9); background: var(--accent); }
+        .upgrade-btn {
+            display: block; width: 100%; max-width: 300px; margin: 10px auto;
+            padding: 14px; border: 2px solid var(--accent); border-radius: 12px;
+            background: var(--card); color: var(--text); font-size: 14px;
+            cursor: pointer; font-weight: bold; transition: 0.2s;
+        }
+        .upgrade-btn:active { background: var(--accent); }
+        .upgrade-btn:disabled { opacity: 0.3; border-color: #555; }
+
+        .settings { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        select {
+            padding: 12px 14px; border-radius: 12px; font-size: 14px;
+            background: var(--card); color: var(--text); border: 2px solid var(--accent);
+            font-family: inherit;
+        }
+        .btn {
+            padding: 12px 20px; border-radius: 12px; font-size: 14px;
+            background: var(--accent); color: white; border: none; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+        }
+        .btn:active { opacity: 0.8; }
+        .btn:disabled { opacity: 0.4; }
+        .quiz-card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
+        .question-text { font-size: 17px; margin-bottom: 16px; line-height: 1.4; }
+        .difficulty-badge {
+            display: inline-block; padding: 6px 12px; border-radius: 12px;
+            font-size: 12px; font-weight: bold; margin-bottom: 12px;
+        }
+        .difficulty-Легкий { background: #4caf84; color: #fff; }
+        .difficulty-Средний { background: #ff9800; color: #fff; }
+        .difficulty-Сложный { background: #e94560; color: #fff; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .option-btn {
+            background: #0f3460; color: white; padding: 14px; border: 2px solid #4a90d9;
+            border-radius: var(--radius); font-size: 15px; cursor: pointer;
+            font-weight: bold; transition: 0.2s;
+        }
+        .option-btn:active { background: #4a90d9; }
+        .option-btn.correct { background: var(--green); border-color: var(--green); }
+        .option-btn.wrong { background: var(--accent); border-color: var(--accent); }
+        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
+        .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+
+        .game-2048-board {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+            background: #0f3460; border-radius: 12px; padding: 12px;
+            width: 280px; height: 280px; margin: 16px auto;
+        }
+        .tile {
+            background: #1a1a4e; border-radius: 8px; display: flex;
+            align-items: center; justify-content: center; font-size: 24px;
+            font-weight: bold; color: white; aspect-ratio: 1;
+        }
+        .tile-2 { background: #4a90d9; }
+        .tile-4 { background: #4caf84; }
+        .tile-8 { background: #e09540; }
+        .tile-16 { background: #e94560; }
+        .tile-32 { background: #c0392b; }
+        .tile-64 { background: #8e44ad; }
+        .tile-128 { background: #f39c12; }
+        .tile-256 { background: #2ecc71; }
+        .tile-512 { background: #1abc9c; }
+        .tile-1024 { background: #e74c3c; }
+        .tile-2048 { background: #f1c40f; color: #1a1a2e; }
+        .score-2048 { font-size: 20px; margin: 10px 0; }
+
+        .snake-canvas {
+            border: 3px solid var(--accent); border-radius: 12px;
+            background: #0a0a1a; display: block; margin: 16px auto;
+        }
+        .snake-score { font-size: 20px; margin: 10px 0; }
+        .snake-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; }
+        .snake-row { display: flex; gap: 8px; }
+        .snake-ctrl {
+            width: 55px; height: 55px; border-radius: 14px; background: var(--card);
+            color: var(--text); border: 2px solid var(--accent); font-size: 24px;
+            cursor: pointer; font-weight: bold;
+        }
+        .snake-ctrl:active { background: var(--accent); }
+
+        .version {
+            text-align: center; color: #555; font-size: 11px;
+            margin-top: 30px; padding-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
 
@@ -111,6 +247,130 @@
 
     <div class="version">v2.0 — BatonCHIK Games</div>
 
-    <script src="script.js"></script>
-</body>
-</html>
+    <script>
+        function openGame(game) {
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('clickerScreen').style.display = 'none';
+            document.getElementById('quizScreen').style.display = 'none';
+            document.getElementById('game2048Screen').style.display = 'none';
+            document.getElementById('snakeScreen').style.display = 'none';
+            const screen = document.getElementById(game + 'Screen');
+            if (screen) {
+                screen.style.display = 'block';
+                if (game === 'quiz') getAIQuestion();
+                if (game === 'game2048') init2048();
+                if (game === 'snake') startSnake();
+            }
+        }
+        function goBack() {
+            stopSnake();
+            document.getElementById('mainScreen').style.display = 'block';
+            document.getElementById('clickerScreen').style.display = 'none';
+            document.getElementById('quizScreen').style.display = 'none';
+            document.getElementById('game2048Screen').style.display = 'none';
+            document.getElementById('snakeScreen').style.display = 'none';
+        }
+
+        let clickerScore = 0, perClick = 1, autoClicker = 0;
+        document.getElementById('clickBtn').addEventListener('click', () => {
+            clickerScore += perClick;
+            document.getElementById('score').textContent = clickerScore;
+            document.getElementById('clicks').textContent = clickerScore;
+            document.getElementById('upgrade1').disabled = clickerScore < 10;
+            document.getElementById('upgrade2').disabled = clickerScore < 50;
+        });
+        document.getElementById('upgrade1').addEventListener('click', () => {
+            if (clickerScore >= 10) { clickerScore -= 10; perClick++; document.getElementById('score').textContent = clickerScore; document.getElementById('upgrade1').disabled = clickerScore < 10; }
+        });
+        document.getElementById('upgrade2').addEventListener('click', () => {
+            if (clickerScore >= 50) { clickerScore -= 50; autoClicker++; document.getElementById('upgrade2').disabled = clickerScore < 50; }
+        });
+        setInterval(() => { if (autoClicker > 0) { clickerScore += autoClicker; document.getElementById('score').textContent = clickerScore; } }, 1000);
+
+        let quizCorrect = 0, quizTotal = 0, quizAnswered = false, currentQuestion = null;
+        async function getAIQuestion() {
+            const topic = document.getElementById('topicSelect').value;
+            const difficulty = document.getElementById('difficultySelect').value;
+            const btn = document.getElementById('newQuestionBtn');
+            const card = document.getElementById('quizCard');
+            btn.disabled = true; btn.textContent = '⏳ Генерация...';
+            card.style.display = 'block';
+            document.getElementById('questionText').textContent = 'Нейросеть думает...';
+            document.getElementById('optionsGrid').innerHTML = '';
+            document.getElementById('feedback').textContent = '';
+            quizAnswered = false;
+            try {
+                const resp = await fetch('https://text.pollinations.ai/openai', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'openai',
+                        messages: [{ role: 'user', content: `Придумай вопрос для викторины. Тема: "${topic}". Сложность: "${difficulty}". Ответ — строго JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}. correctIndex — 0,1,2 или 3.` }],
+                        temperature: 0.9
+                    })
+                });
+                const data = await resp.json();
+                const q = JSON.parse(data.choices[0].message.content);
+                currentQuestion = q;
+                document.getElementById('questionText').textContent = q.question;
+                document.getElementById('difficultyBadge').textContent = difficulty;
+                document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${difficulty}`;
+                document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
+                    `<button class="option-btn" onclick="checkQuiz(${i}, this)">${o}</button>`
+                ).join('');
+            } catch (e) {
+                document.getElementById('questionText').textContent = '😵 Ошибка генерации. Попробуй ещё раз.';
+            }
+            btn.disabled = false; btn.textContent = '🎲 Новый вопрос';
+        }
+        function checkQuiz(index, btn) {
+            if (quizAnswered || !currentQuestion) return;
+            quizAnswered = true; quizTotal++;
+            const all = document.querySelectorAll('#optionsGrid .option-btn');
+            all.forEach(b => b.disabled = true);
+            if (index === currentQuestion.correctIndex) {
+                btn.classList.add('correct'); document.getElementById('feedback').textContent = '✅ Правильно!'; quizCorrect++;
+            } else {
+                btn.classList.add('wrong'); all[currentQuestion.correctIndex].classList.add('correct');
+                document.getElementById('feedback').textContent = '❌ Неправильно!';
+            }
+            document.getElementById('stats').textContent = `Правильных: ${quizCorrect} | Всего: ${quizTotal}`;
+        }
+
+        let board2048 = [], score2048 = 0;
+        function init2048() { board2048 = Array(4).fill().map(() => Array(4).fill(0)); score2048 = 0; addRandom2048(); addRandom2048(); draw2048(); }
+        function addRandom2048() {
+            const empty = [];
+            for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (board2048[r][c] === 0) empty.push({r, c});
+            if (empty.length) { const {r, c} = empty[Math.floor(Math.random() * empty.length)]; board2048[r][c] = Math.random() < 0.9 ? 2 : 4; }
+        }
+        function draw2048() {
+            const board = document.getElementById('board2048'); board.innerHTML = '';
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const tile = document.createElement('div'); tile.className = 'tile';
+                    const val = board2048[r][c];
+                    if (val) { tile.textContent = val; tile.classList.add('tile-' + val); }
+                    board.appendChild(tile);
+                }
+            }
+            document.getElementById('score2048').textContent = score2048;
+        }
+        function move2048(dir) {
+            const old = board2048.map(r => [...r]);
+            if (dir === 'left' || dir === 'right') {
+                for (let r = 0; r < 4; r++) {
+                    let row = board2048[r].filter(v => v);
+                    if (dir === 'right') row.reverse();
+                    for (let i = 0; i < row.length - 1; i++) {
+                        if (row[i] && row[i] === row[i+1]) { row[i] *= 2; score2048 += row[i]; row.splice(i+1, 1); row.push(0); }
+                    }
+                    while (row.length < 4) row.push(0);
+                    if (dir === 'right') row.reverse();
+                    board2048[r] = row;
+                }
+            } else {
+                for (let c = 0; c < 4; c++) {
+                    let col = [board2048[0][c], board2048[1][c], board2048[2][c], board2048[3][c]].filter(v => v);
+                    if (dir === 'down') col.reverse();
+                    for (let i = 0; i < col.length - 1; i++) {
+                        if (col[i] && col[i] === co
