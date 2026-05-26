@@ -28,21 +28,6 @@ function showMain() {
     updateRankDisplay();
 }
 
-// Динамическая загрузка HTML-экранов игр
-function loadGameHTML(gameId, html) {
-    const container = document.getElementById('gameContainer');
-    const existing = document.getElementById(gameId);
-    if (existing) return existing;
-    
-    const div = document.createElement('div');
-    div.id = gameId;
-    div.className = 'game-page';
-    div.innerHTML = html;
-    container.appendChild(div);
-    return div;
-}
-
-// Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', function() {
     updateRankDisplay();
 });
