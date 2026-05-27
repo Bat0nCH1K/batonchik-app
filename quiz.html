@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИИ-Викторина — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --green: #4caf84; --text: #fff; --text-secondary: #b0b0b0; --radius: 14px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 16px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .settings { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        select { padding: 10px 14px; border-radius: 12px; font-size: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-family: inherit; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn:disabled { opacity: 0.4; }
+        .quiz-card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
+        .question-text { font-size: 17px; margin-bottom: 16px; line-height: 1.4; }
+        .difficulty-badge { display: inline-block; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 12px; }
+        .difficulty-Лёгкий { background: #4caf84; } .difficulty-Средний { background: #ff9800; } .difficulty-Сложный { background: #e94560; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .option-btn { background: #0f3460; color: white; padding: 14px; border: 2px solid #4a90d9; border-radius: var(--radius); font-size: 15px; cursor: pointer; font-weight: bold; }
+        .option-btn.correct { background: var(--green); border-color: var(--green); }
+        .option-btn.wrong { background: var(--accent); border-color: var(--accent); }
+        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
+        .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🧠 ИИ-Викторина</h2>
+        <div class="settings">
+            <select id="topicSelect">
+                <option value="общие знания">🌍 Общие знания</option>
+                <option value="история">📜 История</option>
+                <option value="наука">🔬 Наука</option>
+                <option value="кино">🎬 Кино</option>
+                <option value="география">🗺 География</option>
+                <option value="спорт">⚽ Спорт</option>
+            </select>
+            <select id="difficultySelect">
+                <option value="Лёгкий">💚 Лёгкий</option>
+                <option value="Средний">🧡 Средний</option>
+                <option value="Сложный">❤️ Сложный</option>
+            </select>
+            <button class="btn" id="newQuestionBtn">🎲 Новый вопрос</button>
+        </div>
+        <div class="quiz-card" id="quizCard" style="display:none;">
+            <div class="difficulty-badge" id="difficultyBadge"></div>
+            <div class="question-text" id="questionText"></div>
+            <div class="options-grid" id="optionsGrid"></div>
+            <div class="feedback" id="feedback"></div>
+        </div>
+        <div class="stats" id="stats">Правильных: 0 | Всего: 0</div>
+    </div>
+    <script>
+        let correct = 0, total = 0, answered = false, question = null;
+        document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
+        async function getQuestion() {
+            const topic = document.getElementById('topicSelect').value, diff = document.getElementById('difficultySelect').value;
+            const btn = document.getElementById('newQuestionBtn'), card = document.getElementById('quizCard');
+            btn.disabled = true; btn.textContent = '⏳'; card.style.display = 'block';
+            document.getElementById('questionText').textContent = 'Думаю...';
+            document.getElementById('optionsGrid').innerHTML = '';
+            document.getElementById('feedback').textContent = '';
+            answered = false;
+            for (let retry = 0; retry < 3; retry++) {
+                try {
+                    const resp = await fetch('https://text.pollinations.ai/openai', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model: 'openai', messages: [{ role: 'user', content: `Придумай уникальный вопрос на русском. Тема: ${topic}. Сложность: ${diff}. JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}` }], temperature: 1.2 })
+                    });
+                    const q = JSON.parse((await resp.json()).choices[0].message.content.match(/\{[\s\S]*\}/)[0]);
+                    if (!q.question || !q.options || q.options.length !== 4 || typeof q.correctIndex !== 'number') continue;
+                    question = q;
+                    document.getElementById('questionText').textContent = q.question;
+                    document.getElementById('difficultyBadge').textContent = diff;
+                    document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${diff}`;
+                    document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
+                        `<button class="option-btn" data-idx="${i}">${o}</button>`
+                    ).join('');
+                    document.querySelectorAll('.option-btn').forEach(b => b.addEventListener('click', function() { check(parseInt(this.dataset.idx), this); }));
+                    btn.disabled = false; btn.textContent = '🎲';
+                    return;
+                } catch (e) {}
+            }
+            document.getElementById('questionText').textContent = '😵 Ошибка';
+            btn.disabled = false; btn.textContent = '🎲';
+        }
+        function check(i, btn) {
+            if (answered || !question) return;
+            answered = true; total++;
+            document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            if (i === question.correctIndex) { btn.classList.add('correct'); document.getElementById('feedback').textContent = '✅'; correct++; }
+            else { btn.classList.add('wrong'); document.querySelectorAll('.option-btn')[question.correctIndex].classList.add('correct'); document.getElementById('feedback').textContent = '❌'; }
+            document.getElementById('stats').textContent = `${correct}/${total}`;
+        }
+        getQuestion();
+    </script>
+</body>
+</html>
