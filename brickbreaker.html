@@ -21,39 +21,50 @@
         <h2>🧱 Brick Breaker</h2>
         <div class="score">Очки: <span id="bbScore">0</span></div>
         <canvas id="bbCanvas" width="300" height="400"></canvas>
-        <p style="color:var(--text-secondary);">Двигай платформу пальцем или стрелками</p>
+        <p style="color:var(--text-secondary);">Перетаскивай платформу пальцем</p>
     </div>
     <script>
         const canvas = document.getElementById('bbCanvas'), ctx = canvas.getContext('2d');
-        let paddle = { x:120, y:370, w:60, h:10 }, ball = { x:150, y:350, vx:2, vy:-3, r:5 }, bricks = [];
-        let right = false, left = false, score = 0, interval = null;
+        let paddle = { x:120, y:370, w:50, h:10 }, ball = { x:150, y:300, vx:3, vy:-4, r:6 };
+        let bricks = [], score = 0, interval = null;
 
         function start() {
             score = 0; document.getElementById('bbScore').textContent = '0';
-            paddle.x = 120; ball = { x:150, y:350, vx:2, vy:-3, r:5 }; bricks = [];
-            for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) bricks.push({ x:c*40+10, y:r*25+10, w:35, h:20, alive:true });
-            if (interval) clearInterval(interval); interval = setInterval(update, 20);
-            document.addEventListener('keydown', kd); document.addEventListener('keyup', ku);
-            canvas.addEventListener('touchmove', tm);
+            paddle.x = 120; ball = { x:150, y:300, vx:3, vy:-4, r:6 };
+            bricks = [];
+            for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) bricks.push({ x:c*40+10, y:r*25+10, w:35, h:20, alive:true, color: ['#e94560','#ff9800','#f1c40f','#4caf84','#4a90d9'][r] });
+            if (interval) clearInterval(interval);
+            interval = setInterval(update, 16);
         }
 
-        function kd(e) { if (e.key==='ArrowRight') right=true; if (e.key==='ArrowLeft') left=true; }
-        function ku(e) { if (e.key==='ArrowRight') right=false; if (e.key==='ArrowLeft') left=false; }
-        function tm(e) { e.preventDefault(); const r = canvas.getBoundingClientRect(); paddle.x = Math.max(0, Math.min(300-paddle.w, e.touches[0].clientX-r.left-paddle.w/2)); }
-
         function update() {
-            if (right && paddle.x<300-paddle.w) paddle.x+=6; if (left && paddle.x>0) paddle.x-=6;
             ball.x += ball.vx; ball.y += ball.vy;
-            if (ball.x-ball.r<=0 || ball.x+ball.r>=300) ball.vx *= -1;
-            if (ball.y-ball.r<=0) ball.vy *= -1;
-            if (ball.y+ball.r>=paddle.y && ball.y-ball.r<=paddle.y+paddle.h && ball.x>paddle.x && ball.x<paddle.x+paddle.w) { ball.vy *= -1; ball.y = paddle.y-ball.r; }
+            if (ball.x - ball.r <= 0 || ball.x + ball.r >= 300) ball.vx *= -1;
+            if (ball.y - ball.r <= 0) ball.vy *= -1;
+            if (ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x > paddle.x && ball.x < paddle.x + paddle.w) {
+                ball.vy = -Math.abs(ball.vy);
+                ball.y = paddle.y - ball.r;
+                const hitPos = (ball.x - paddle.x) / paddle.w;
+                ball.vx = (hitPos - 0.5) * 8;
+            }
             if (ball.y > 400) { clearInterval(interval); alert('Очки: ' + score); start(); return; }
-            bricks.forEach(b => { if (!b.alive) return; if (ball.x+ball.r>b.x && ball.x-ball.r<b.x+b.w && ball.y+ball.r>b.y && ball.y-ball.r<b.y+b.h) { b.alive = false; ball.vy *= -1; score += 10; document.getElementById('bbScore').textContent = score; } });
-            if (bricks.every(b => !b.alive)) { clearInterval(interval); alert('🎉 Победа!'); start(); }
+            bricks.forEach(b => {
+                if (!b.alive) return;
+                if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) { b.alive = false; ball.vy *= -1; score += 10; document.getElementById('bbScore').textContent = score; }
+            });
+            if (bricks.every(b => !b.alive)) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
             draw();
         }
 
-        function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#fff'; ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h); ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#e94560'; bricks.forEach(b => { if(b.alive) ctx.fillRect(b.x,b.y,b.w,b.h); }); }
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#fff'; ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+            bricks.forEach(b => { if (!b.alive) return; ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); });
+        }
+
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); paddle.x = Math.max(0, Math.min(300 - paddle.w, e.touches[0].clientX - rect.left - paddle.w/2)); });
+        canvas.addEventListener('mousemove', e => { const rect = canvas.getBoundingClientRect(); paddle.x = Math.max(0, Math.min(300 - paddle.w, e.clientX - rect.left - paddle.w/2)); });
 
         start();
     </script>
