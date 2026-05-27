@@ -14,7 +14,7 @@
         .score { font-size: 20px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
         .ctrl:active { background: var(--accent); }
     </style>
 </head>
@@ -35,9 +35,9 @@
     </div>
     <script>
         const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:7, y:7 }, moving = false, currentDir = null;
+        let player = { x:7, y:7 }, currentDir = null;
         let dots = [], walls = [], ghosts = [];
-        let score = 0, lives = 3, interval = null, powerMode = false, powerTimer = 0;
+        let score = 0, lives = 3, interval = null;
 
         const maze = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -58,10 +58,10 @@
         ];
 
         function start() {
-            score = 0; lives = 3; powerMode = false; powerTimer = 0;
+            score = 0; lives = 3;
             document.getElementById('pmScore').textContent = '0';
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
-            player = { x:7, y:7 }; moving = false; currentDir = null;
+            player = { x:7, y:7 }; currentDir = null;
             dots = []; walls = []; ghosts = [];
             
             for (let r = 0; r < 15; r++) {
@@ -82,32 +82,25 @@
         }
 
         function update() {
-            if (powerMode) { powerTimer--; if (powerTimer <= 0) powerMode = false; }
-            
-            // Игрок двигается только если зажата кнопка
-            if (moving && currentDir) {
+            // Игрок
+            if (currentDir) {
                 let nx = player.x, ny = player.y;
                 if (currentDir === 'up') ny--;
                 if (currentDir === 'down') ny++;
                 if (currentDir === 'left') nx--;
                 if (currentDir === 'right') nx++;
                 
-                // Порталы по бокам
+                // Порталы
                 if (nx < 0) nx = 14;
                 if (nx > 14) nx = 0;
                 
-                if (!walls[ny]?.[nx]) {
-                    player.x = nx;
-                    player.y = ny;
-                }
-                // Если стена — просто стоим, не зависаем
+                if (!walls[ny]?.[nx]) { player.x = nx; player.y = ny; }
             }
             
-            // Сбор точек
+            // Точки
             const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
             if (di !== -1) { dots.splice(di,1); score += 10; document.getElementById('pmScore').textContent = score; }
-            
-            if (dots.length === 0) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
+            if (dots.length === 0) { clearInterval(interval); alert('🎉 Победа!'); start(); return; }
             
             // Призраки
             ghosts.forEach(g => {
@@ -126,15 +119,12 @@
             // Столкновение
             ghosts.forEach((g, idx) => {
                 if (Math.abs(player.x-g.x) < 1 && Math.abs(player.y-g.y) < 1) {
-                    if (powerMode) { g.x = g.homeX; g.y = g.homeY; score += 50; document.getElementById('pmScore').textContent = score; }
-                    else {
-                        lives--;
-                        document.getElementById('pmLives').textContent = '❤️'.repeat(Math.max(0, lives));
-                        if (lives <= 0) { clearInterval(interval); alert('💀 Игра окончена! Очки: ' + score); start(); return; }
-                        player = { x:7, y:7 }; moving = false; currentDir = null;
-                        ghosts[0] = { x:7, y:6, dir:'up', color:'#ff6b6b', homeX:7, homeY:6 };
-                        ghosts[1] = { x:7, y:8, dir:'down', color:'#6bff6b', homeX:7, homeY:8 };
-                    }
+                    lives--;
+                    document.getElementById('pmLives').textContent = '❤️'.repeat(Math.max(0, lives));
+                    if (lives <= 0) { clearInterval(interval); alert('💀 Игра окончена! Очки: ' + score); start(); return; }
+                    player = { x:7, y:7 }; currentDir = null;
+                    ghosts[0] = { x:7, y:6, dir:'up', color:'#ff6b6b', homeX:7, homeY:6 };
+                    ghosts[1] = { x:7, y:8, dir:'down', color:'#6bff6b', homeX:7, homeY:8 };
                 }
             });
             
@@ -147,21 +137,15 @@
             for (let r=0;r<15;r++) for (let c=0;c<15;c++) if (walls[r][c]) ctx.fillRect(c*20,r*20,20,20);
             ctx.fillStyle = '#fff';
             dots.forEach(d => ctx.fillRect(d.x*20+8,d.y*20+8,4,4));
-            ghosts.forEach(g => { ctx.fillStyle = powerMode ? '#4444ff' : g.color; ctx.beginPath(); ctx.arc(g.x*20+10,g.y*20+10,8,0,Math.PI*2); ctx.fill(); });
+            ghosts.forEach(g => { ctx.fillStyle = g.color; ctx.beginPath(); ctx.arc(g.x*20+10,g.y*20+10,8,0,Math.PI*2); ctx.fill(); });
             ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(player.x*20+10,player.y*20+10,8,0,Math.PI*2); ctx.fill();
         }
 
-        // Управление — двигается пока зажата
-        function hold(dir) { moving = true; currentDir = dir; }
-        function release() { moving = false; }
-
-        ['pmUp','pmDown','pmLeft','pmRight'].forEach((id, i) => {
-            const btn = document.getElementById(id);
-            const dirs = ['up','down','left','right'];
-            btn.addEventListener('pointerdown', () => hold(dirs[i]));
-            btn.addEventListener('pointerup', release);
-            btn.addEventListener('pointerleave', release);
-        });
+        // Управление — переключение по клику
+        document.getElementById('pmUp').addEventListener('click', () => currentDir = 'up');
+        document.getElementById('pmDown').addEventListener('click', () => currentDir = 'down');
+        document.getElementById('pmLeft').addEventListener('click', () => currentDir = 'left');
+        document.getElementById('pmRight').addEventListener('click', () => currentDir = 'right');
         
         start();
     </script>
