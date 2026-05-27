@@ -57,46 +57,111 @@
     </div>
     <script>
         let correct = 0, total = 0, answered = false, question = null;
+        const usedQuestions = [];
+
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
+
         async function getQuestion() {
-            const topic = document.getElementById('topicSelect').value, diff = document.getElementById('difficultySelect').value;
-            const btn = document.getElementById('newQuestionBtn'), card = document.getElementById('quizCard');
-            btn.disabled = true; btn.textContent = '⏳'; card.style.display = 'block';
-            document.getElementById('questionText').textContent = 'Думаю...';
+            const topic = document.getElementById('topicSelect').value;
+            const diff = document.getElementById('difficultySelect').value;
+            const btn = document.getElementById('newQuestionBtn');
+            const card = document.getElementById('quizCard');
+
+            btn.disabled = true;
+            btn.textContent = '⏳';
+            card.style.display = 'block';
+            document.getElementById('questionText').textContent = 'Генерирую вопрос...';
             document.getElementById('optionsGrid').innerHTML = '';
             document.getElementById('feedback').textContent = '';
             answered = false;
-            for (let retry = 0; retry < 3; retry++) {
+
+            let success = false;
+            for (let retry = 0; retry < 5; retry++) {
                 try {
+                    const prompt = `Придумай новый интересный вопрос для викторины на русском языке. Тема: "${topic}". Сложность: "${diff}". 
+                    Вопрос должен быть уникальным, не повторять эти: ${JSON.stringify(usedQuestions.slice(-5))}.
+                    Ответь СТРОГО валидным JSON без текста вне JSON:
+                    {"question":"вопрос на русском","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}
+                    correctIndex — число 0-3.`;
+
                     const resp = await fetch('https://text.pollinations.ai/openai', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ model: 'openai', messages: [{ role: 'user', content: `Придумай уникальный вопрос на русском. Тема: ${topic}. Сложность: ${diff}. JSON: {"question":"...","options":["a","b","c","d"],"correctIndex":0}` }], temperature: 1.2 })
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: 'openai',
+                            messages: [{ role: 'user', content: prompt }],
+                            temperature: 1.2
+                        })
                     });
-                    const q = JSON.parse((await resp.json()).choices[0].message.content.match(/\{[\s\S]*\}/)[0]);
-                    if (!q.question || !q.options || q.options.length !== 4 || typeof q.correctIndex !== 'number') continue;
+
+                    const data = await resp.json();
+                    const raw = data.choices[0].message.content.trim();
+                    
+                    // Извлекаем JSON из ответа (может быть обёрнут в ```)
+                    let jsonStr = raw;
+                    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) jsonStr = jsonMatch[0];
+                    
+                    const q = JSON.parse(jsonStr);
+                    
+                    if (!q.question || !q.options || q.options.length !== 4 || typeof q.correctIndex !== 'number') {
+                        continue;
+                    }
+                    if (q.correctIndex < 0 || q.correctIndex > 3) continue;
+                    
                     question = q;
+                    usedQuestions.push(q.question);
+                    if (usedQuestions.length > 20) usedQuestions.shift();
+                    
                     document.getElementById('questionText').textContent = q.question;
                     document.getElementById('difficultyBadge').textContent = diff;
                     document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${diff}`;
                     document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
                         `<button class="option-btn" data-idx="${i}">${o}</button>`
                     ).join('');
-                    document.querySelectorAll('.option-btn').forEach(b => b.addEventListener('click', function() { check(parseInt(this.dataset.idx), this); }));
-                    btn.disabled = false; btn.textContent = '🎲';
-                    return;
-                } catch (e) {}
+                    document.querySelectorAll('.option-btn').forEach(b => {
+                        b.addEventListener('click', function() {
+                            check(parseInt(this.dataset.idx), this);
+                        });
+                    });
+                    
+                    success = true;
+                    break;
+                } catch (e) {
+                    console.error('Попытка ' + (retry+1) + ' не удалась');
+                }
             }
-            document.getElementById('questionText').textContent = '😵 Ошибка';
-            btn.disabled = false; btn.textContent = '🎲';
+
+            if (!success) {
+                document.getElementById('questionText').textContent = '😵 Не удалось сгенерировать вопрос. Попробуй ещё раз.';
+            }
+
+            btn.disabled = false;
+            btn.textContent = '🎲';
         }
+
         function check(i, btn) {
             if (answered || !question) return;
-            answered = true; total++;
-            document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-            if (i === question.correctIndex) { btn.classList.add('correct'); document.getElementById('feedback').textContent = '✅'; correct++; }
-            else { btn.classList.add('wrong'); document.querySelectorAll('.option-btn')[question.correctIndex].classList.add('correct'); document.getElementById('feedback').textContent = '❌'; }
-            document.getElementById('stats').textContent = `${correct}/${total}`;
+            answered = true;
+            total++;
+            
+            const allBtns = document.querySelectorAll('.option-btn');
+            allBtns.forEach(b => b.disabled = true);
+            
+            if (i === question.correctIndex) {
+                btn.classList.add('correct');
+                document.getElementById('feedback').textContent = '✅ Правильно!';
+                correct++;
+            } else {
+                btn.classList.add('wrong');
+                allBtns[question.correctIndex].classList.add('correct');
+                document.getElementById('feedback').textContent = '❌ Неправильно!';
+            }
+            
+            document.getElementById('stats').textContent = `Правильных: ${correct} | Всего: ${total}`;
         }
+
+        // Загружаем первый вопрос сразу
         getQuestion();
     </script>
 </body>
