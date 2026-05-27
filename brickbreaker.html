@@ -33,16 +33,20 @@
         function init() {
             score = 0; document.getElementById('bbScore').textContent = '0';
             paddle.x = 120;
-            // Гарантированно летит вверх
-            const angle = Math.random() * 0.6 + 0.2; // 0.2–0.8 радиан от вертикали
+            // Гарантированно летит вверх (угол 120°–150° от оси X вправо = 30°–60° влево-вверх)
+            const baseAngle = Math.PI / 2; // 90° — строго вверх
+            const spread = Math.PI / 6; // ±30°
+            const angle = baseAngle + (Math.random() - 0.5) * spread;
             const speed = 7;
             ball = {
                 x: paddle.x + paddle.w/2,
                 y: paddle.y - 15,
-                vx: Math.sin(angle) * speed * (Math.random() < 0.5 ? 1 : -1),
-                vy: -Math.abs(Math.cos(angle) * speed), // всегда вверх
+                vx: Math.cos(angle) * speed,
+                vy: -Math.sin(angle) * speed,
                 r: 6
             };
+            // Двойная проверка: vy должен быть отрицательным
+            if (ball.vy >= 0) ball.vy = -speed;
             bricks = [];
             for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) bricks.push({ x:c*40+10, y:r*25+10, w:35, h:20, alive:true, color: ['#e94560','#ff9800','#f1c40f','#4caf84','#4a90d9'][r] });
             running = false;
@@ -74,7 +78,7 @@
                 const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
                 ball.vx = Math.sin(angle) * speed;
                 ball.vy = -Math.abs(Math.cos(angle) * speed);
-                if (Math.abs(ball.vy) < 3) ball.vy = -4;
+                if (Math.abs(ball.vy) < 4) ball.vy = -5;
             }
 
             if (ball.y > 420) { clearInterval(interval); running = false; alert('Очки: ' + score); init(); return; }
