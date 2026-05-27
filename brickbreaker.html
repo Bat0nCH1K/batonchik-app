@@ -27,6 +27,7 @@
         const canvas = document.getElementById('bbCanvas'), ctx = canvas.getContext('2d');
         let paddle = { x:120, y:370, w:50, h:10 }, ball = { x:150, y:300, vx:3, vy:-4, r:6 };
         let bricks = [], score = 0, interval = null;
+        let prevBallX, prevBallY;
 
         function start() {
             score = 0; document.getElementById('bbScore').textContent = '0';
@@ -38,20 +39,55 @@
         }
 
         function update() {
+            prevBallX = ball.x; prevBallY = ball.y;
             ball.x += ball.vx; ball.y += ball.vy;
+
             if (ball.x - ball.r <= 0 || ball.x + ball.r >= 300) ball.vx *= -1;
             if (ball.y - ball.r <= 0) ball.vy *= -1;
+
             if (ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x > paddle.x && ball.x < paddle.x + paddle.w) {
                 ball.vy = -Math.abs(ball.vy);
                 ball.y = paddle.y - ball.r;
                 const hitPos = (ball.x - paddle.x) / paddle.w;
                 ball.vx = (hitPos - 0.5) * 8;
             }
+
             if (ball.y > 400) { clearInterval(interval); alert('Очки: ' + score); start(); return; }
+
+            let hit = false;
             bricks.forEach(b => {
-                if (!b.alive) return;
-                if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) { b.alive = false; ball.vy *= -1; score += 10; document.getElementById('bbScore').textContent = score; }
+                if (!b.alive || hit) return;
+                // Проверяем столкновение с учётом предыдущей позиции
+                if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+                    b.alive = false;
+                    hit = true;
+                    score += 10;
+                    document.getElementById('bbScore').textContent = score;
+                    
+                    // Определяем сторону столкновения
+                    const overlapLeft = (ball.x + ball.r) - b.x;
+                    const overlapRight = (b.x + b.w) - (ball.x - ball.r);
+                    const overlapTop = (ball.y + ball.r) - b.y;
+                    const overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+                    
+                    const minOverlapX = Math.min(overlapLeft, overlapRight);
+                    const minOverlapY = Math.min(overlapTop, overlapBottom);
+                    
+                    if (minOverlapX < minOverlapY) {
+                        ball.vx *= -1;
+                    } else {
+                        ball.vy *= -1;
+                    }
+                    
+                    // Выталкиваем шарик из кирпича
+                    if (minOverlapX < minOverlapY) {
+                        ball.x = overlapLeft < overlapRight ? b.x - ball.r : b.x + b.w + ball.r;
+                    } else {
+                        ball.y = overlapTop < overlapBottom ? b.y - ball.r : b.y + b.h + ball.r;
+                    }
+                }
             });
+
             if (bricks.every(b => !b.alive)) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
             draw();
         }
