@@ -25,13 +25,25 @@
     </div>
     <script>
         const canvas = document.getElementById('bbCanvas'), ctx = canvas.getContext('2d');
-        let paddle = { x:120, y:370, w:50, h:10 }, ball = { x:150, y:300, vx:3, vy:-4, r:6 };
+        let paddle = { x:120, y:370, w:50, h:10 }, ball = { x:150, y:300, vx:0, vy:0, r:6 };
         let bricks = [], score = 0, interval = null;
-        let prevBallX, prevBallY;
+
+        function randomBall() {
+            const angle = (Math.random() * 0.8 + 0.2) * Math.PI; // угол от 36° до 144° от вертикали
+            const speed = 5;
+            return {
+                x: paddle.x + paddle.w/2,
+                y: paddle.y - 10,
+                vx: Math.sin(angle) * speed * (Math.random() < 0.5 ? 1 : -1),
+                vy: -Math.cos(angle) * speed,
+                r: 6
+            };
+        }
 
         function start() {
             score = 0; document.getElementById('bbScore').textContent = '0';
-            paddle.x = 120; ball = { x:150, y:300, vx:3, vy:-4, r:6 };
+            paddle.x = 120;
+            ball = randomBall();
             bricks = [];
             for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) bricks.push({ x:c*40+10, y:r*25+10, w:35, h:20, alive:true, color: ['#e94560','#ff9800','#f1c40f','#4caf84','#4a90d9'][r] });
             if (interval) clearInterval(interval);
@@ -39,54 +51,50 @@
         }
 
         function update() {
-            prevBallX = ball.x; prevBallY = ball.y;
-            ball.x += ball.vx; ball.y += ball.vy;
+            ball.x += ball.vx * 0.016 * 60;
+            ball.y += ball.vy * 0.016 * 60;
 
-            if (ball.x - ball.r <= 0 || ball.x + ball.r >= 300) ball.vx *= -1;
-            if (ball.y - ball.r <= 0) ball.vy *= -1;
-
-            if (ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x > paddle.x && ball.x < paddle.x + paddle.w) {
-                ball.vy = -Math.abs(ball.vy);
+            // Стены
+            if (ball.x - ball.r <= 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
+            if (ball.x + ball.r >= 300) { ball.x = 300 - ball.r; ball.vx = -Math.abs(ball.vx); }
+            if (ball.y - ball.r <= 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
+            
+            // Платформа
+            if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w) {
                 ball.y = paddle.y - ball.r;
                 const hitPos = (ball.x - paddle.x) / paddle.w;
-                ball.vx = (hitPos - 0.5) * 8;
+                const angle = (hitPos - 0.5) * Math.PI * 0.6;
+                const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
+                ball.vx = Math.sin(angle) * speed;
+                ball.vy = -Math.cos(angle) * speed;
+                if (Math.abs(ball.vy) < 2) ball.vy = -3;
             }
 
-            if (ball.y > 400) { clearInterval(interval); alert('Очки: ' + score); start(); return; }
+            // Падение
+            if (ball.y > 420) { clearInterval(interval); alert('Очки: ' + score); start(); return; }
 
-            let hit = false;
-            bricks.forEach(b => {
-                if (!b.alive || hit) return;
-                // Проверяем столкновение с учётом предыдущей позиции
+            // Кирпичи
+            for (const b of bricks) {
+                if (!b.alive) continue;
                 if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
                     b.alive = false;
-                    hit = true;
                     score += 10;
                     document.getElementById('bbScore').textContent = score;
                     
-                    // Определяем сторону столкновения
-                    const overlapLeft = (ball.x + ball.r) - b.x;
-                    const overlapRight = (b.x + b.w) - (ball.x - ball.r);
-                    const overlapTop = (ball.y + ball.r) - b.y;
-                    const overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+                    const cx = Math.max(b.x, Math.min(ball.x, b.x + b.w));
+                    const cy = Math.max(b.y, Math.min(ball.y, b.y + b.h));
+                    const dx = ball.x - cx, dy = ball.y - cy;
                     
-                    const minOverlapX = Math.min(overlapLeft, overlapRight);
-                    const minOverlapY = Math.min(overlapTop, overlapBottom);
-                    
-                    if (minOverlapX < minOverlapY) {
-                        ball.vx *= -1;
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        ball.vx = ball.x < cx ? -Math.abs(ball.vx) : Math.abs(ball.vx);
+                        ball.x += ball.vx > 0 ? 2 : -2;
                     } else {
-                        ball.vy *= -1;
+                        ball.vy = ball.y < cy ? -Math.abs(ball.vy) : Math.abs(ball.vy);
+                        ball.y += ball.vy > 0 ? 2 : -2;
                     }
-                    
-                    // Выталкиваем шарик из кирпича
-                    if (minOverlapX < minOverlapY) {
-                        ball.x = overlapLeft < overlapRight ? b.x - ball.r : b.x + b.w + ball.r;
-                    } else {
-                        ball.y = overlapTop < overlapBottom ? b.y - ball.r : b.y + b.h + ball.r;
-                    }
+                    break;
                 }
-            });
+            }
 
             if (bricks.every(b => !b.alive)) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
             draw();
