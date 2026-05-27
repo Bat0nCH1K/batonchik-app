@@ -57,10 +57,15 @@
     </div>
     <script>
         let correct = 0, total = 0, answered = false, question = null;
+        let abortController = null;
 
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
 
         async function getQuestion() {
+            if (abortController) abortController.abort();
+            abortController = new AbortController();
+            const signal = abortController.signal;
+
             const topic = document.getElementById('topicSelect').value;
             const diff = document.getElementById('difficultySelect').value;
             const btn = document.getElementById('newQuestionBtn');
@@ -81,6 +86,8 @@
 Где "c" — номер правильного ответа (0, 1, 2 или 3).`;
 
             try {
+                const timeout = setTimeout(() => abortController.abort(), 8000);
+
                 const resp = await fetch('https://text.pollinations.ai/openai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -89,19 +96,18 @@
                         messages: [{ role: 'user', content: prompt }],
                         temperature: 1.2,
                         jsonMode: true
-                    })
+                    }),
+                    signal
                 });
 
+                clearTimeout(timeout);
                 const data = await resp.json();
                 const raw = data.choices[0].message.content.trim();
                 
-                // Извлекаем JSON
-                const match = raw.match(/\{[^}]+\}/);
+                const match = raw.match(/\{[^}]+\}/) || raw.match(/\{[\s\S]*\}/);
                 if (!match) throw new Error('No JSON');
                 
                 const q = JSON.parse(match[0]);
-                
-                // Поддерживаем и старый формат, и новый короткий
                 question = {
                     question: q.question || q.q,
                     options: q.options || q.o,
@@ -113,36 +119,16 @@
                 }
 
             } catch (e) {
-                console.log('Ошибка парсинга, пробую упрощённый промпт');
-                // Запасной вариант с упрощённым промптом
-                try {
-                    const resp2 = await fetch('https://text.pollinations.ai/openai', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            model: 'openai',
-                            messages: [{ role: 'user', content: `Вопрос викторины на русском. Тема: ${topic}. Сложность: ${diff}. Ответь JSON: {"question":"...","options":["...","...","...","..."],"correctIndex":0}` }],
-                            temperature: 0.8
-                        })
-                    });
-                    const data2 = await resp2.json();
-                    const raw2 = data2.choices[0].message.content.trim();
-                    const match2 = raw2.match(/\{[\s\S]*\}/);
-                    if (match2) {
-                        question = JSON.parse(match2[0]);
-                        if (!question.question || !question.options || question.options.length !== 4) throw new Error('Invalid');
-                    } else {
-                        throw new Error('No match');
-                    }
-                } catch (e2) {
+                if (e.name === 'AbortError') {
+                    document.getElementById('questionText').textContent = '⏰ Загрузка прервана. Нажми кнопку ещё раз.';
+                } else {
                     document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
-                    btn.disabled = false;
-                    btn.textContent = '🎲';
-                    return;
                 }
+                btn.disabled = false;
+                btn.textContent = '🎲';
+                return;
             }
 
-            // Показываем вопрос
             document.getElementById('questionText').textContent = question.question;
             document.getElementById('difficultyBadge').textContent = diff;
             document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${diff}`;
