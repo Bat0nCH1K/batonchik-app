@@ -57,15 +57,10 @@
     </div>
     <script>
         let correct = 0, total = 0, answered = false, question = null;
-        let abortController = null;
 
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
 
         async function getQuestion() {
-            if (abortController) abortController.abort();
-            abortController = new AbortController();
-            const signal = abortController.signal;
-
             const topic = document.getElementById('topicSelect').value;
             const diff = document.getElementById('difficultySelect').value;
             const btn = document.getElementById('newQuestionBtn');
@@ -79,51 +74,43 @@
             document.getElementById('feedback').textContent = '';
             answered = false;
 
-            const prompt = `Ты — ведущий викторины. Придумай ОДИН вопрос на русском языке.
-Тема: ${topic}. Сложность: ${diff}.
-Ответь ТОЛЬКО этой строкой JSON, без пояснений:
-{"q":"вопрос","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}
-Где "c" — номер правильного ответа (0, 1, 2 или 3).`;
+            const prompt = `Придумай один вопрос для викторины на русском языке. Тема: ${topic}. Сложность: ${diff}. 
+Ответь только JSON, без лишнего текста:
+{"question":"вопрос","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}`;
 
             try {
-                const timeout = setTimeout(() => abortController.abort(), 8000);
-
                 const resp = await fetch('https://text.pollinations.ai/openai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: 'openai-large',
+                        model: 'openai',
                         messages: [{ role: 'user', content: prompt }],
-                        temperature: 1.2,
-                        jsonMode: true
-                    }),
-                    signal
+                        temperature: 1.0
+                    })
                 });
 
-                clearTimeout(timeout);
                 const data = await resp.json();
                 const raw = data.choices[0].message.content.trim();
                 
-                const match = raw.match(/\{[^}]+\}/) || raw.match(/\{[\s\S]*\}/);
-                if (!match) throw new Error('No JSON');
+                const jsonMatch = raw.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
+                    btn.disabled = false;
+                    btn.textContent = '🎲';
+                    return;
+                }
                 
-                const q = JSON.parse(match[0]);
-                question = {
-                    question: q.question || q.q,
-                    options: q.options || q.o,
-                    correctIndex: q.correctIndex !== undefined ? q.correctIndex : q.c
-                };
+                question = JSON.parse(jsonMatch[0]);
 
-                if (!question.question || !question.options || question.options.length !== 4 || question.correctIndex === undefined) {
-                    throw new Error('Invalid data');
+                if (!question.question || !question.options || question.options.length !== 4) {
+                    document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
+                    btn.disabled = false;
+                    btn.textContent = '🎲';
+                    return;
                 }
 
             } catch (e) {
-                if (e.name === 'AbortError') {
-                    document.getElementById('questionText').textContent = '⏰ Загрузка прервана. Нажми кнопку ещё раз.';
-                } else {
-                    document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
-                }
+                document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
                 btn.disabled = false;
                 btn.textContent = '🎲';
                 return;
