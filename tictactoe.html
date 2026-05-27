@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Крестики-нолики — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 240px; margin: 16px auto; }
+        .cell { width: 76px; height: 76px; background: var(--card); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; cursor: pointer; }
+        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>❌ Крестики-нолики</h2>
+        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | Нейросеть: ⭕</p>
+        <div class="board" id="tttBoard"></div>
+        <p class="feedback" id="tttFeedback"></p>
+        <button class="btn" id="resetTTT">🔄 Новая игра</button>
+    </div>
+    <script>
+        let board = [], gameOver = false;
+
+        function start() { board = Array(9).fill(''); gameOver = false; document.getElementById('tttFeedback').textContent = 'Твой ход'; draw(); }
+
+        function draw() { document.getElementById('tttBoard').innerHTML = board.map((v,i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join(''); }
+
+        async function move(i) {
+            if (board[i] || gameOver) return;
+            board[i] = '❌'; draw();
+            if (check('❌')) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
+            if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
+            document.getElementById('tttFeedback').textContent = 'Думаю...';
+            try {
+                const r = await fetch('https://text.pollinations.ai/openai', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ model:'openai', messages:[{ role:'user', content:`Крестики-нолики. Ты за ⭕. Поле: ${JSON.stringify(board)}. Твой ход — число 0-8.` }], temperature:0.3 }) });
+                const m = parseInt((await r.json()).choices[0].message.content.trim());
+                if (isNaN(m) || board[m] || m<0 || m>8) { const e = board.map((v,i)=>v?-1:i).filter(v=>v>=0); board[e[Math.floor(Math.random()*e.length)]] = '⭕'; }
+                else { board[m] = '⭕'; }
+            } catch(e) { const e = board.map((v,i)=>v?-1:i).filter(v=>v>=0); board[e[Math.floor(Math.random()*e.length)]] = '⭕'; }
+            draw();
+            if (check('⭕')) { document.getElementById('tttFeedback').textContent = 'Нейросеть победила!'; gameOver = true; return; }
+            if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
+            document.getElementById('tttFeedback').textContent = 'Твой ход';
+        }
+
+        function check(p) { const w = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; return w.some(w => w.every(i => board[i]===p)); }
+
+        document.getElementById('resetTTT').addEventListener('click', start);
+        start();
+    </script>
+</body>
+</html>
