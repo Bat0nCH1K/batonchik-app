@@ -14,7 +14,7 @@
         .score { font-size: 20px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; }
         .ctrl:active { background: var(--accent); }
     </style>
 </head>
@@ -35,26 +35,25 @@
     </div>
     <script>
         const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:7, y:7 }, dir = 'right', nextDir = 'right';
+        let player = { x:7, y:7 }, moving = false, currentDir = null;
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null, powerMode = false, powerTimer = 0;
 
-        // Лабиринт (1 = стена, 0 = пусто)
         const maze = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-            [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1],
-            [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-            [1,0,1,0,1,1,0,1,0,1,1,0,1,0,1],
-            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
             [1,0,1,0,1,0,0,0,0,0,1,0,1,0,1],
-            [1,0,0,0,1,0,1,0,1,0,1,0,0,0,1],
+            [1,0,0,0,1,0,1,1,1,0,1,0,0,0,1],
             [1,0,1,0,1,0,0,0,0,0,1,0,1,0,1],
-            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-            [1,0,1,0,1,1,0,1,0,1,1,0,1,0,1],
-            [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-            [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1],
-            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
 
@@ -62,21 +61,20 @@
             score = 0; lives = 3; powerMode = false; powerTimer = 0;
             document.getElementById('pmScore').textContent = '0';
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
-            player = { x:7, y:7 }; dir = 'right'; nextDir = 'right';
+            player = { x:7, y:7 }; moving = false; currentDir = null;
             dots = []; walls = []; ghosts = [];
             
             for (let r = 0; r < 15; r++) {
                 walls[r] = [];
                 for (let c = 0; c < 15; c++) {
                     walls[r][c] = maze[r][c] === 1;
-                    if (!walls[r][c] && !(c===7 && r===7)) dots.push({x:c, y:r});
+                    if (!walls[r][c] && !(c===7 && r===7) && !(c===7 && r===8)) dots.push({x:c, y:r});
                 }
             }
             
-            // 2 призрака
             ghosts = [
-                { x:1, y:1, dir:'right', color:'#ff6b6b' },
-                { x:13, y:1, dir:'left', color:'#6bff6b' }
+                { x:7, y:6, dir:'up', color:'#ff6b6b', homeX:7, homeY:6 },
+                { x:7, y:8, dir:'down', color:'#6bff6b', homeX:7, homeY:8 }
             ];
             
             if (interval) clearInterval(interval);
@@ -84,85 +82,58 @@
         }
 
         function update() {
-            // Power mode
-            if (powerMode) {
-                powerTimer--;
-                if (powerTimer <= 0) powerMode = false;
+            if (powerMode) { powerTimer--; if (powerTimer <= 0) powerMode = false; }
+            
+            // Игрок двигается только если зажата кнопка
+            if (moving && currentDir) {
+                let nx = player.x, ny = player.y;
+                if (currentDir === 'up') ny--;
+                if (currentDir === 'down') ny++;
+                if (currentDir === 'left') nx--;
+                if (currentDir === 'right') nx++;
+                
+                // Порталы по бокам
+                if (nx < 0) nx = 14;
+                if (nx > 14) nx = 0;
+                
+                if (!walls[ny]?.[nx]) {
+                    player.x = nx;
+                    player.y = ny;
+                }
+                // Если стена — просто стоим, не зависаем
             }
-            
-            // Игрок
-            if (nextDir === 'up' && !walls[player.y-1]?.[player.x]) dir = 'up';
-            else if (nextDir === 'down' && !walls[player.y+1]?.[player.x]) dir = 'down';
-            else if (nextDir === 'left' && !walls[player.y]?.[player.x-1]) dir = 'left';
-            else if (nextDir === 'right' && !walls[player.y]?.[player.x+1]) dir = 'right';
-            
-            const head = { ...player };
-            if (dir === 'up' && !walls[head.y-1]?.[head.x]) head.y--;
-            else if (dir === 'down' && !walls[head.y+1]?.[head.x]) head.y++;
-            else if (dir === 'left' && !walls[head.y]?.[head.x-1]) head.x--;
-            else if (dir === 'right' && !walls[head.y]?.[head.x+1]) head.x++;
-            else return;
-            
-            player = head;
             
             // Сбор точек
             const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
-            if (di !== -1) {
-                dots.splice(di,1);
-                score += 10;
-                document.getElementById('pmScore').textContent = score;
-            }
+            if (di !== -1) { dots.splice(di,1); score += 10; document.getElementById('pmScore').textContent = score; }
             
-            // Победа
-            if (dots.length === 0) {
-                clearInterval(interval);
-                alert('🎉 Победа! Очки: ' + score);
-                start();
-                return;
-            }
+            if (dots.length === 0) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
             
-            // Двигаем призраков
+            // Призраки
             ghosts.forEach(g => {
                 const moves = [];
                 if (!walls[g.y-1]?.[g.x]) moves.push('up');
                 if (!walls[g.y+1]?.[g.x]) moves.push('down');
                 if (!walls[g.y]?.[g.x-1]) moves.push('left');
                 if (!walls[g.y]?.[g.x+1]) moves.push('right');
-                
                 if (moves.length > 0) {
-                    g.dir = moves[Math.floor(Math.random() * moves.length)];
-                    if (g.dir === 'up') g.y--;
-                    if (g.dir === 'down') g.y++;
-                    if (g.dir === 'left') g.x--;
-                    if (g.dir === 'right') g.x++;
+                    const d = moves[Math.floor(Math.random()*moves.length)];
+                    if (d==='up') g.y--; if (d==='down') g.y++; if (d==='left') g.x--; if (d==='right') g.x++;
+                    if (g.x < 0) g.x = 14; if (g.x > 14) g.x = 0;
                 }
             });
             
-            // Проверка столкновения с призраками
+            // Столкновение
             ghosts.forEach((g, idx) => {
-                if (Math.abs(player.x - g.x) < 1 && Math.abs(player.y - g.y) < 1) {
-                    if (powerMode) {
-                        // Съедаем призрака
-                        g.x = idx === 0 ? 1 : 13;
-                        g.y = 1;
-                        score += 50;
-                        document.getElementById('pmScore').textContent = score;
-                    } else {
-                        // Потеря жизни
+                if (Math.abs(player.x-g.x) < 1 && Math.abs(player.y-g.y) < 1) {
+                    if (powerMode) { g.x = g.homeX; g.y = g.homeY; score += 50; document.getElementById('pmScore').textContent = score; }
+                    else {
                         lives--;
                         document.getElementById('pmLives').textContent = '❤️'.repeat(Math.max(0, lives));
-                        if (lives <= 0) {
-                            clearInterval(interval);
-                            alert('💀 Игра окончена! Очки: ' + score);
-                            start();
-                            return;
-                        }
-                        // Сброс позиций
-                        player = { x:7, y:7 };
-                        dir = 'right';
-                        nextDir = 'right';
-                        ghosts[0] = { x:1, y:1, dir:'right', color:'#ff6b6b' };
-                        ghosts[1] = { x:13, y:1, dir:'left', color:'#6bff6b' };
+                        if (lives <= 0) { clearInterval(interval); alert('💀 Игра окончена! Очки: ' + score); start(); return; }
+                        player = { x:7, y:7 }; moving = false; currentDir = null;
+                        ghosts[0] = { x:7, y:6, dir:'up', color:'#ff6b6b', homeX:7, homeY:6 };
+                        ghosts[1] = { x:7, y:8, dir:'down', color:'#6bff6b', homeX:7, homeY:8 };
                     }
                 }
             });
@@ -172,38 +143,25 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            
-            // Стены
             ctx.fillStyle = '#3333ff';
-            for (let r = 0; r < 15; r++) {
-                for (let c = 0; c < 15; c++) {
-                    if (walls[r][c]) ctx.fillRect(c*20, r*20, 20, 20);
-                }
-            }
-            
-            // Точки
+            for (let r=0;r<15;r++) for (let c=0;c<15;c++) if (walls[r][c]) ctx.fillRect(c*20,r*20,20,20);
             ctx.fillStyle = '#fff';
-            dots.forEach(d => ctx.fillRect(d.x*20+8, d.y*20+8, 4, 4));
-            
-            // Призраки
-            ghosts.forEach(g => {
-                ctx.fillStyle = powerMode ? '#4444ff' : g.color;
-                ctx.beginPath();
-                ctx.arc(g.x*20+10, g.y*20+10, 8, 0, Math.PI*2);
-                ctx.fill();
-            });
-            
-            // Игрок
-            ctx.fillStyle = '#ffff00';
-            ctx.beginPath();
-            ctx.arc(player.x*20+10, player.y*20+10, 8, 0, Math.PI*2);
-            ctx.fill();
+            dots.forEach(d => ctx.fillRect(d.x*20+8,d.y*20+8,4,4));
+            ghosts.forEach(g => { ctx.fillStyle = powerMode ? '#4444ff' : g.color; ctx.beginPath(); ctx.arc(g.x*20+10,g.y*20+10,8,0,Math.PI*2); ctx.fill(); });
+            ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(player.x*20+10,player.y*20+10,8,0,Math.PI*2); ctx.fill();
         }
 
-        document.getElementById('pmUp').addEventListener('click', () => nextDir='up');
-        document.getElementById('pmDown').addEventListener('click', () => nextDir='down');
-        document.getElementById('pmLeft').addEventListener('click', () => nextDir='left');
-        document.getElementById('pmRight').addEventListener('click', () => nextDir='right');
+        // Управление — двигается пока зажата
+        function hold(dir) { moving = true; currentDir = dir; }
+        function release() { moving = false; }
+
+        ['pmUp','pmDown','pmLeft','pmRight'].forEach((id, i) => {
+            const btn = document.getElementById(id);
+            const dirs = ['up','down','left','right'];
+            btn.addEventListener('pointerdown', () => hold(dirs[i]));
+            btn.addEventListener('pointerup', release);
+            btn.addEventListener('pointerleave', release);
+        });
         
         start();
     </script>
