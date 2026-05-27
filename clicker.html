@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --radius: 14px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 16px; }
+        .score { font-size: 48px; font-weight: bold; color: var(--accent); margin: 16px 0; }
+        .btn {
+            padding: 20px 40px; font-size: 24px; border-radius: 50%; border: 4px solid var(--accent);
+            background: var(--card); color: white; cursor: pointer; margin: 20px auto; display: block;
+        }
+        .btn:active { transform: scale(0.9); background: var(--accent); }
+        .upgrade-btn {
+            display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 14px;
+            border: 2px solid var(--accent); border-radius: 12px; background: var(--card);
+            color: var(--text); font-size: 14px; cursor: pointer; font-weight: bold;
+        }
+        .upgrade-btn:disabled { opacity: 0.3; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🔴 Кликер</h2>
+        <div class="score" id="score">0</div>
+        <p>Очков: <span id="clicks">0</span></p>
+        <button class="btn" id="clickBtn">ЖМИ</button>
+        <button class="upgrade-btn" id="upgrade1" disabled>+1 за клик (10 очков)</button>
+        <button class="upgrade-btn" id="upgrade2" disabled>Автокликер 1/сек (50 очков)</button>
+    </div>
+    <script>
+        let score = 0, perClick = 1, autoClicker = 0;
+        document.getElementById('clickBtn').addEventListener('click', () => {
+            score += perClick;
+            document.getElementById('score').textContent = score;
+            document.getElementById('clicks').textContent = score;
+            document.getElementById('upgrade1').disabled = score < 10;
+            document.getElementById('upgrade2').disabled = score < 50;
+        });
+        document.getElementById('upgrade1').addEventListener('click', () => {
+            if (score >= 10) { score -= 10; perClick++; document.getElementById('score').textContent = score; document.getElementById('upgrade1').disabled = score < 10; }
+        });
+        document.getElementById('upgrade2').addEventListener('click', () => {
+            if (score >= 50) { score -= 50; autoClicker++; document.getElementById('upgrade2').disabled = score < 50; }
+        });
+        setInterval(() => { if (autoClicker > 0) { score += autoClicker; document.getElementById('score').textContent = score; } }, 1000);
+    </script>
+</body>
+</html>
