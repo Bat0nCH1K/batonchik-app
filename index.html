@@ -2,84 +2,85 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>BatonCHIK Games — Тест</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --radius: 16px; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
-        h1 { font-size: 22px; margin-bottom: 6px; color: var(--accent); }
-        .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+        h1 { font-size: 24px; margin-bottom: 6px; color: var(--accent); }
+        .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; }
         .games-grid { display: flex; flex-direction: column; gap: 14px; }
-        .game-card { display: flex; align-items: center; gap: 14px; background: var(--card); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: transform 0.2s; color: var(--text); }
+        .game-card {
+            display: flex; align-items: center; gap: 14px;
+            background: var(--card); border-radius: var(--radius); padding: 16px;
+            text-decoration: none; color: var(--text); transition: transform 0.2s;
+        }
         .game-card:active { transform: scale(0.97); }
-        .game-icon { font-size: 36px; width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #e94560; }
+        .game-icon { font-size: 36px; width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .game-icon.red { background: #e94560; } .game-icon.blue { background: #4a90d9; } .game-icon.green { background: #4caf84; } .game-icon.orange { background: #e09540; }
         .game-info { text-align: left; flex: 1; } .game-name { font-size: 16px; font-weight: 600; } .game-desc { font-size: 12px; color: var(--text-secondary); } .game-arrow { font-size: 20px; color: var(--text-secondary); }
-        .game-page { display: none; }
-        .back-btn { display: inline-block; padding: 10px 18px; background: var(--card); color: var(--text); border: none; border-radius: 12px; cursor: pointer; margin-bottom: 16px; font-size: 14px; font-weight: bold; }
-        .clicker-score { font-size: 48px; font-weight: bold; margin: 16px 0; color: var(--accent); }
-        .click-btn { width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--accent); background: var(--card); color: white; font-size: 28px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(233,69,96,0.4); transition: transform 0.1s; margin: 20px auto; display: block; }
-        .click-btn:active { transform: scale(0.9); background: var(--accent); }
-        .version { text-align: center; color: #555; font-size: 11px; margin-top: 30px; padding-bottom: 10px; }
+        .version { text-align: center; color: #555; font-size: 11px; margin-top: 30px; }
     </style>
 </head>
 <body>
-
-    <div id="mainScreen">
-        <div class="container">
-            <h1>🎮 BatonCHIK Games — Тест</h1>
-            <p class="subtitle">Выбери игру и начни играть!</p>
-            <div class="games-grid">
-                <div class="game-card" id="btnClicker">
-                    <div class="game-icon">🔴</div>
-                    <div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div>
-                    <div class="game-arrow">▶</div>
-                </div>
-            </div>
+    <div class="container">
+        <h1>🎮 BatonCHIK Games</h1>
+        <p class="subtitle">Выбери игру и начни играть!</p>
+        <div class="games-grid">
+            <a href="clicker.html" class="game-card">
+                <div class="game-icon red">🔴</div>
+                <div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="quiz.html" class="game-card">
+                <div class="game-icon blue">🧠</div>
+                <div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="game2048.html" class="game-card">
+                <div class="game-icon green">🧩</div>
+                <div class="game-info"><div class="game-name">2048</div><div class="game-desc">Собери 2048!</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="snake.html" class="game-card">
+                <div class="game-icon orange">🐍</div>
+                <div class="game-info"><div class="game-name">Змейка</div><div class="game-desc">Классическая аркада</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="flappy.html" class="game-card">
+                <div class="game-icon red">🐦</div>
+                <div class="game-info"><div class="game-name">Flappy Bird</div><div class="game-desc">Лети и уворачивайся!</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="invaders.html" class="game-card">
+                <div class="game-icon green">👾</div>
+                <div class="game-info"><div class="game-name">Space Invaders</div><div class="game-desc">Классический шутер</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="minesweeper.html" class="game-card">
+                <div class="game-icon orange">💣</div>
+                <div class="game-info"><div class="game-name">Сапёр</div><div class="game-desc">Разминируй поле</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="pacman.html" class="game-card">
+                <div class="game-icon blue">🟡</div>
+                <div class="game-info"><div class="game-name">Pac-Man</div><div class="game-desc">Собери все точки</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="brickbreaker.html" class="game-card">
+                <div class="game-icon red">🧱</div>
+                <div class="game-info"><div class="game-name">Brick Breaker</div><div class="game-desc">Разбей все кирпичи</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
+            <a href="tictactoe.html" class="game-card">
+                <div class="game-icon green">❌</div>
+                <div class="game-info"><div class="game-name">Крестики-нолики</div><div class="game-desc">Против нейросети</div></div>
+                <div class="game-arrow">▶</div>
+            </a>
         </div>
+        <div class="version">v5.0 — BatonCHIK Games</div>
     </div>
-
-    <div class="game-page" id="clickerScreen">
-        <div class="container">
-            <button class="back-btn" id="backClicker">← Назад</button>
-            <h2>🔴 Кликер</h2>
-            <div class="clicker-score" id="score">0</div>
-            <p>Очков: <span id="clicks">0</span></p>
-            <button class="click-btn" id="clickBtn">ЖМИ</button>
-        </div>
-    </div>
-
-    <div class="version">v4.2.1 — Тест</div>
-
-    <script>
-        let clickerScore = 0;
-
-        function showOnly(id) {
-            document.getElementById('mainScreen').style.display = 'none';
-            document.getElementById('clickerScreen').style.display = 'none';
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'block';
-        }
-
-        function showMain() {
-            document.getElementById('mainScreen').style.display = 'block';
-            document.getElementById('clickerScreen').style.display = 'none';
-        }
-
-        document.getElementById('btnClicker').addEventListener('click', () => {
-            showOnly('clickerScreen');
-        });
-
-        document.getElementById('backClicker').addEventListener('click', () => {
-            showMain();
-        });
-
-        document.getElementById('clickBtn').addEventListener('click', () => {
-            clickerScore++;
-            document.getElementById('score').textContent = clickerScore;
-            document.getElementById('clicks').textContent = clickerScore;
-        });
-    </script>
 </body>
 </html>
