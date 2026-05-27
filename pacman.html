@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl:active { background: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🟡 Pac-Man</h2>
+        <div class="score">Очки: <span id="pmScore">0</span></div>
+        <canvas id="pmCanvas" width="300" height="300"></canvas>
+        <div class="controls">
+            <button class="ctrl" id="pmUp">↑</button>
+        </div>
+        <div class="controls" style="margin-top:5px;">
+            <button class="ctrl" id="pmLeft">←</button>
+            <button class="ctrl" id="pmDown">↓</button>
+            <button class="ctrl" id="pmRight">→</button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
+        let player = { x:5, y:5 }, dir = 'right', dots = [], walls = [], score = 0, interval = null;
+
+        function start() {
+            score = 0; document.getElementById('pmScore').textContent = '0';
+            player = { x:5, y:5 }; dir = 'right'; dots = []; walls = [];
+            for (let r = 0; r < 15; r++) { walls[r] = []; for (let c = 0; c < 15; c++) { walls[r][c] = (r===0||r===14||c===0||c===14); if (!walls[r][c]) dots.push({x:c,y:r}); } }
+            if (interval) clearInterval(interval); interval = setInterval(update, 200);
+        }
+
+        function update() {
+            const head = { ...player };
+            if (dir==='up') head.y--; if (dir==='down') head.y++; if (dir==='left') head.x--; if (dir==='right') head.x++;
+            if (!walls[head.y] || walls[head.y][head.x]) return;
+            player = head;
+            const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
+            if (di !== -1) { dots.splice(di,1); score += 10; document.getElementById('pmScore').textContent = score; }
+            if (dots.length === 0) { clearInterval(interval); alert('🎉 Победа!'); start(); }
+            draw();
+        }
+
+        function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#ff0'; ctx.fillRect(player.x*20+2, player.y*20+2, 16, 16); ctx.fillStyle = '#fff'; dots.forEach(d => ctx.fillRect(d.x*20+8, d.y*20+8, 4, 4)); ctx.fillStyle = '#33f'; for (let r=0;r<15;r++) for (let c=0;c<15;c++) if (walls[r][c]) ctx.fillRect(c*20, r*20, 20, 20); }
+
+        document.getElementById('pmUp').addEventListener('click', () => dir='up');
+        document.getElementById('pmDown').addEventListener('click', () => dir='down');
+        document.getElementById('pmLeft').addEventListener('click', () => dir='left');
+        document.getElementById('pmRight').addEventListener('click', () => dir='right');
+        start();
+    </script>
+</body>
+</html>
