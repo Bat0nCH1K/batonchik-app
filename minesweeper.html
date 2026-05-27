@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сапёр — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; margin: 16px auto; }
+        .cell { width: 33px; height: 33px; background: var(--card); border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .cell.revealed { background: #1a1a4e; }
+        .cell.flag { background: var(--accent); }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>💣 Сапёр</h2>
+        <div class="board" id="msBoard"></div>
+        <button class="btn" id="resetMS">🔄 Новая игра</button>
+    </div>
+    <script>
+        let msBoard = [];
+        function init() { msBoard = Array(8).fill().map(() => Array(8).fill({ mine:false, revealed:false, flag:false, count:0 })); for (let i = 0; i < 10; i++) { let r,c; do { r = Math.floor(Math.random()*8); c = Math.floor(Math.random()*8); } while (msBoard[r][c].mine); msBoard[r][c] = { ...msBoard[r][c], mine:true }; } for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { if (msBoard[r][c].mine) continue; let cnt = 0; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && msBoard[nr][nc].mine) cnt++; } msBoard[r][c] = { ...msBoard[r][c], count:cnt }; } draw(); }
+        function draw() { const b = document.getElementById('msBoard'); b.innerHTML = msBoard.map((row,r) => row.map((cell,c) => { let cnt = '', cls = 'cell'; if (cell.revealed) { cls += ' revealed'; cnt = cell.mine ? '💣' : cell.count || ''; } else if (cell.flag) { cls += ' flag'; cnt = '🚩'; } return `<div class="${cls}" onclick="reveal(${r},${c})" oncontextmenu="event.preventDefault();flag(${r},${c})">${cnt}</div>`; }).join('')).join(''); }
+        function reveal(r,c) { if (msBoard[r][c].revealed || msBoard[r][c].flag) return; msBoard[r][c] = { ...msBoard[r][c], revealed:true }; if (msBoard[r][c].mine) { alert('💥 Мина!'); init(); return; } if (msBoard[r][c].count === 0) { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && !msBoard[nr][nc].revealed) reveal(nr,nc); } } draw(); if (msBoard.every(row => row.every(cell => cell.revealed || cell.mine))) { alert('🎉 Победа!'); init(); } }
+        function flag(r,c) { if (!msBoard[r][c].revealed) { msBoard[r][c] = { ...msBoard[r][c], flag:!msBoard[r][c].flag }; draw(); } }
+        document.getElementById('resetMS').addEventListener('click', init);
+        init();
+    </script>
+</body>
+</html>
