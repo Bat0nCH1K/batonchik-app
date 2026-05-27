@@ -57,7 +57,6 @@
     </div>
     <script>
         let correct = 0, total = 0, answered = false, question = null;
-        const usedQuestions = [];
 
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
 
@@ -75,66 +74,84 @@
             document.getElementById('feedback').textContent = '';
             answered = false;
 
-            let success = false;
-            for (let retry = 0; retry < 5; retry++) {
-                try {
-                    const prompt = `Придумай новый интересный вопрос для викторины на русском языке. Тема: "${topic}". Сложность: "${diff}". 
-                    Вопрос должен быть уникальным, не повторять эти: ${JSON.stringify(usedQuestions.slice(-5))}.
-                    Ответь СТРОГО валидным JSON без текста вне JSON:
-                    {"question":"вопрос на русском","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}
-                    correctIndex — число 0-3.`;
+            const prompt = `Ты — ведущий викторины. Придумай ОДИН вопрос на русском языке.
+Тема: ${topic}. Сложность: ${diff}.
+Ответь ТОЛЬКО этой строкой JSON, без пояснений:
+{"q":"вопрос","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}
+Где "c" — номер правильного ответа (0, 1, 2 или 3).`;
 
-                    const resp = await fetch('https://text.pollinations.ai/openai', {
+            try {
+                const resp = await fetch('https://text.pollinations.ai/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'openai-large',
+                        messages: [{ role: 'user', content: prompt }],
+                        temperature: 1.2,
+                        jsonMode: true
+                    })
+                });
+
+                const data = await resp.json();
+                const raw = data.choices[0].message.content.trim();
+                
+                // Извлекаем JSON
+                const match = raw.match(/\{[^}]+\}/);
+                if (!match) throw new Error('No JSON');
+                
+                const q = JSON.parse(match[0]);
+                
+                // Поддерживаем и старый формат, и новый короткий
+                question = {
+                    question: q.question || q.q,
+                    options: q.options || q.o,
+                    correctIndex: q.correctIndex !== undefined ? q.correctIndex : q.c
+                };
+
+                if (!question.question || !question.options || question.options.length !== 4 || question.correctIndex === undefined) {
+                    throw new Error('Invalid data');
+                }
+
+            } catch (e) {
+                console.log('Ошибка парсинга, пробую упрощённый промпт');
+                // Запасной вариант с упрощённым промптом
+                try {
+                    const resp2 = await fetch('https://text.pollinations.ai/openai', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             model: 'openai',
-                            messages: [{ role: 'user', content: prompt }],
-                            temperature: 1.2
+                            messages: [{ role: 'user', content: `Вопрос викторины на русском. Тема: ${topic}. Сложность: ${diff}. Ответь JSON: {"question":"...","options":["...","...","...","..."],"correctIndex":0}` }],
+                            temperature: 0.8
                         })
                     });
-
-                    const data = await resp.json();
-                    const raw = data.choices[0].message.content.trim();
-                    
-                    // Извлекаем JSON из ответа (может быть обёрнут в ```)
-                    let jsonStr = raw;
-                    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) jsonStr = jsonMatch[0];
-                    
-                    const q = JSON.parse(jsonStr);
-                    
-                    if (!q.question || !q.options || q.options.length !== 4 || typeof q.correctIndex !== 'number') {
-                        continue;
+                    const data2 = await resp2.json();
+                    const raw2 = data2.choices[0].message.content.trim();
+                    const match2 = raw2.match(/\{[\s\S]*\}/);
+                    if (match2) {
+                        question = JSON.parse(match2[0]);
+                        if (!question.question || !question.options || question.options.length !== 4) throw new Error('Invalid');
+                    } else {
+                        throw new Error('No match');
                     }
-                    if (q.correctIndex < 0 || q.correctIndex > 3) continue;
-                    
-                    question = q;
-                    usedQuestions.push(q.question);
-                    if (usedQuestions.length > 20) usedQuestions.shift();
-                    
-                    document.getElementById('questionText').textContent = q.question;
-                    document.getElementById('difficultyBadge').textContent = diff;
-                    document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${diff}`;
-                    document.getElementById('optionsGrid').innerHTML = q.options.map((o, i) =>
-                        `<button class="option-btn" data-idx="${i}">${o}</button>`
-                    ).join('');
-                    document.querySelectorAll('.option-btn').forEach(b => {
-                        b.addEventListener('click', function() {
-                            check(parseInt(this.dataset.idx), this);
-                        });
-                    });
-                    
-                    success = true;
-                    break;
-                } catch (e) {
-                    console.error('Попытка ' + (retry+1) + ' не удалась');
+                } catch (e2) {
+                    document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
+                    btn.disabled = false;
+                    btn.textContent = '🎲';
+                    return;
                 }
             }
 
-            if (!success) {
-                document.getElementById('questionText').textContent = '😵 Не удалось сгенерировать вопрос. Попробуй ещё раз.';
-            }
+            // Показываем вопрос
+            document.getElementById('questionText').textContent = question.question;
+            document.getElementById('difficultyBadge').textContent = diff;
+            document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${diff}`;
+            document.getElementById('optionsGrid').innerHTML = question.options.map((o, i) =>
+                `<button class="option-btn" data-idx="${i}">${o}</button>`
+            ).join('');
+            document.querySelectorAll('.option-btn').forEach(b => {
+                b.addEventListener('click', function() { check(parseInt(this.dataset.idx), this); });
+            });
 
             btn.disabled = false;
             btn.textContent = '🎲';
@@ -144,10 +161,8 @@
             if (answered || !question) return;
             answered = true;
             total++;
-            
             const allBtns = document.querySelectorAll('.option-btn');
             allBtns.forEach(b => b.disabled = true);
-            
             if (i === question.correctIndex) {
                 btn.classList.add('correct');
                 document.getElementById('feedback').textContent = '✅ Правильно!';
@@ -157,11 +172,9 @@
                 allBtns[question.correctIndex].classList.add('correct');
                 document.getElementById('feedback').textContent = '❌ Неправильно!';
             }
-            
             document.getElementById('stats').textContent = `Правильных: ${correct} | Всего: ${total}`;
         }
 
-        // Загружаем первый вопрос сразу
         getQuestion();
     </script>
 </body>
