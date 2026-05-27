@@ -33,9 +33,16 @@
         function init() {
             score = 0; document.getElementById('bbScore').textContent = '0';
             paddle.x = 120;
-            const angle = (Math.random() * 0.6 + 0.7) * Math.PI; // 126°–162° от горизонтали
+            // Гарантированно летит вверх
+            const angle = Math.random() * 0.6 + 0.2; // 0.2–0.8 радиан от вертикали
             const speed = 7;
-            ball = { x: paddle.x + paddle.w/2, y: paddle.y - 10, vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? 1 : -1), vy: Math.sin(angle) * speed, r: 6 };
+            ball = {
+                x: paddle.x + paddle.w/2,
+                y: paddle.y - 15,
+                vx: Math.sin(angle) * speed * (Math.random() < 0.5 ? 1 : -1),
+                vy: -Math.abs(Math.cos(angle) * speed), // всегда вверх
+                r: 6
+            };
             bricks = [];
             for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) bricks.push({ x:c*40+10, y:r*25+10, w:35, h:20, alive:true, color: ['#e94560','#ff9800','#f1c40f','#4caf84','#4a90d9'][r] });
             running = false;
@@ -63,7 +70,7 @@
             if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w) {
                 ball.y = paddle.y - ball.r;
                 const hitPos = (ball.x - paddle.x) / paddle.w;
-                const angle = (hitPos - 0.5) * Math.PI * 0.5;
+                const angle = (hitPos - 0.5) * 1.2;
                 const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
                 ball.vx = Math.sin(angle) * speed;
                 ball.vy = -Math.abs(Math.cos(angle) * speed);
@@ -78,8 +85,8 @@
                     b.alive = false; score += 10; document.getElementById('bbScore').textContent = score;
                     const cx = Math.max(b.x, Math.min(ball.x, b.x + b.w)), cy = Math.max(b.y, Math.min(ball.y, b.y + b.h));
                     const dx = ball.x - cx, dy = ball.y - cy;
-                    if (Math.abs(dx) > Math.abs(dy)) { ball.vx = ball.x < cx ? -Math.abs(ball.vx) : Math.abs(ball.vx); ball.x += ball.vx > 0 ? 2 : -2; }
-                    else { ball.vy = ball.y < cy ? -Math.abs(ball.vy) : Math.abs(ball.vy); ball.y += ball.vy > 0 ? 2 : -2; }
+                    if (Math.abs(dx) > Math.abs(dy)) { ball.vx = ball.x < cx ? -Math.abs(ball.vx) : Math.abs(ball.vx); ball.x += ball.vx > 0 ? 3 : -3; }
+                    else { ball.vy = ball.y < cy ? -Math.abs(ball.vy) : Math.abs(ball.vy); ball.y += ball.vy > 0 ? 3 : -3; }
                     break;
                 }
             }
