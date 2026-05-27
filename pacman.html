@@ -35,7 +35,7 @@
     </div>
     <script>
         const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:7, y:7 }, currentDir = null;
+        let player = { x:7, y:7 };
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null;
 
@@ -61,7 +61,7 @@
             score = 0; lives = 3;
             document.getElementById('pmScore').textContent = '0';
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
-            player = { x:7, y:7 }; currentDir = null;
+            player = { x:7, y:7 };
             dots = []; walls = []; ghosts = [];
             
             for (let r = 0; r < 15; r++) {
@@ -73,36 +73,39 @@
             }
             
             ghosts = [
-                { x:7, y:6, dir:'up', color:'#ff6b6b', homeX:7, homeY:6 },
-                { x:7, y:8, dir:'down', color:'#6bff6b', homeX:7, homeY:8 }
+                { x:7, y:6, color:'#ff6b6b', homeX:7, homeY:6 },
+                { x:7, y:8, color:'#6bff6b', homeX:7, homeY:8 }
             ];
             
             if (interval) clearInterval(interval);
-            interval = setInterval(update, 180);
+            interval = setInterval(updateGhosts, 250);
+            draw();
         }
 
-        function update() {
-            // Игрок
-            if (currentDir) {
-                let nx = player.x, ny = player.y;
-                if (currentDir === 'up') ny--;
-                if (currentDir === 'down') ny++;
-                if (currentDir === 'left') nx--;
-                if (currentDir === 'right') nx++;
+        function movePlayer(dir) {
+            let nx = player.x, ny = player.y;
+            if (dir === 'up') ny--;
+            if (dir === 'down') ny++;
+            if (dir === 'left') nx--;
+            if (dir === 'right') nx++;
+            
+            if (nx < 0) nx = 14;
+            if (nx > 14) nx = 0;
+            
+            if (!walls[ny]?.[nx]) {
+                player.x = nx;
+                player.y = ny;
                 
-                // Порталы
-                if (nx < 0) nx = 14;
-                if (nx > 14) nx = 0;
+                const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
+                if (di !== -1) { dots.splice(di,1); score += 10; document.getElementById('pmScore').textContent = score; }
+                if (dots.length === 0) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
                 
-                if (!walls[ny]?.[nx]) { player.x = nx; player.y = ny; }
+                checkCollision();
+                draw();
             }
-            
-            // Точки
-            const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
-            if (di !== -1) { dots.splice(di,1); score += 10; document.getElementById('pmScore').textContent = score; }
-            if (dots.length === 0) { clearInterval(interval); alert('🎉 Победа!'); start(); return; }
-            
-            // Призраки
+        }
+
+        function updateGhosts() {
             ghosts.forEach(g => {
                 const moves = [];
                 if (!walls[g.y-1]?.[g.x]) moves.push('up');
@@ -115,20 +118,21 @@
                     if (g.x < 0) g.x = 14; if (g.x > 14) g.x = 0;
                 }
             });
-            
-            // Столкновение
+            checkCollision();
+            draw();
+        }
+
+        function checkCollision() {
             ghosts.forEach((g, idx) => {
                 if (Math.abs(player.x-g.x) < 1 && Math.abs(player.y-g.y) < 1) {
                     lives--;
                     document.getElementById('pmLives').textContent = '❤️'.repeat(Math.max(0, lives));
                     if (lives <= 0) { clearInterval(interval); alert('💀 Игра окончена! Очки: ' + score); start(); return; }
-                    player = { x:7, y:7 }; currentDir = null;
-                    ghosts[0] = { x:7, y:6, dir:'up', color:'#ff6b6b', homeX:7, homeY:6 };
-                    ghosts[1] = { x:7, y:8, dir:'down', color:'#6bff6b', homeX:7, homeY:8 };
+                    player = { x:7, y:7 };
+                    ghosts[0] = { x:7, y:6, color:'#ff6b6b', homeX:7, homeY:6 };
+                    ghosts[1] = { x:7, y:8, color:'#6bff6b', homeX:7, homeY:8 };
                 }
             });
-            
-            draw();
         }
 
         function draw() {
@@ -141,11 +145,10 @@
             ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(player.x*20+10,player.y*20+10,8,0,Math.PI*2); ctx.fill();
         }
 
-        // Управление — переключение по клику
-        document.getElementById('pmUp').addEventListener('click', () => currentDir = 'up');
-        document.getElementById('pmDown').addEventListener('click', () => currentDir = 'down');
-        document.getElementById('pmLeft').addEventListener('click', () => currentDir = 'left');
-        document.getElementById('pmRight').addEventListener('click', () => currentDir = 'right');
+        document.getElementById('pmUp').addEventListener('click', () => movePlayer('up'));
+        document.getElementById('pmDown').addEventListener('click', () => movePlayer('down'));
+        document.getElementById('pmLeft').addEventListener('click', () => movePlayer('left'));
+        document.getElementById('pmRight').addEventListener('click', () => movePlayer('right'));
         
         start();
     </script>
