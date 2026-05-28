@@ -24,7 +24,7 @@
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
         <h2>❌ Крестики-нолики</h2>
-        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | ИИ: ⭕</p>
+        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: 🎮 | ИИ: ⭕</p>
         <div class="board" id="tttBoard"></div>
         <p class="feedback" id="tttFeedback">Твой ход</p>
         <div class="title-earned" id="titleEarned">🏆 Титул получен: Невозможный!</div>
@@ -32,7 +32,7 @@
     </div>
     <script>
         let board, gameOver;
-        const HU = '❌', AI = '❌';
+        const HU = '🎮', AI = '⭕';
 
         function start() {
             board = Array(9).fill('');
