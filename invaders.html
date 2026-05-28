@@ -33,9 +33,9 @@
         <div class="diff-select">
             <select id="diffSelect">
                 <option value="easy">🟢 Новичок</option>
-                <option value="medium" disabled>🟡 Солдат (победи Новичка)</option>
-                <option value="hard" disabled>🔴 Очень сложно (победи Солдата)</option>
-                <option value="ultra" disabled>💀 Ультрахардкор (победи Очень сложно)</option>
+                <option value="medium" disabled>🟡 Солдат</option>
+                <option value="hard" disabled>🔴 Очень сложно</option>
+                <option value="ultra" disabled>💀 Ультрахардкор</option>
             </select>
         </div>
         <div class="info"><span>Очки: <span id="siScore">0</span></span><span>Жизни: <span id="siLives">❤️❤️❤️</span></span></div>
@@ -49,6 +49,7 @@
             <button class="ctrl" id="siRightBtn">→</button>
         </div>
     </div>
+    <script src="sfx.js"></script>
     <script>
         const canvas = document.getElementById('siCanvas'), ctx = canvas.getContext('2d');
         let player = { x:150, y:350, w:30, h:20 }, bullets = [], enemies = [], enemyBullets = [];
@@ -72,10 +73,7 @@
             sel.value = currentDiff;
         }
 
-        document.getElementById('diffSelect').addEventListener('change', function() {
-            currentDiff = this.value;
-            start();
-        });
+        document.getElementById('diffSelect').addEventListener('change', function() { currentDiff = this.value; start(); });
 
         function start() {
             const d = diffs[currentDiff];
@@ -87,17 +85,19 @@
             siED = 1; siES = d.speed; lastShot = 0;
             for (let r = 0; r < d.rows; r++) for (let c = 0; c < 8; c++) enemies.push({ x:c*30+30, y:r*25+20, w:25, h:20, alive:true });
             if (interval) clearInterval(interval);
+            SFX.stopMusic();
             draw();
         }
 
         function launch() {
             running = true; document.getElementById('siStart').style.display = 'none';
+            SFX.playMusic('action');
             interval = setInterval(update, 30);
         }
 
         function shoot() {
             if (!running || Date.now() - lastShot < 250) return;
-            lastShot = Date.now();
+            lastShot = Date.now(); SFX.shoot();
             bullets.push({ x:player.x+player.w/2-2, y:player.y, vy:-8 });
         }
 
@@ -107,39 +107,26 @@
             if (siRight && player.x < 300-player.w) player.x += 5;
 
             const ae = enemies.filter(e => e.alive);
-            if (ae.length === 0) {
-                clearInterval(interval); running = false;
-                localStorage.setItem('beat_' + currentDiff, '1'); updateSelect();
-                alert('🎉 Победа!'); start(); return;
-            }
+            if (ae.length === 0) { clearInterval(interval); running = false; SFX.win(); SFX.stopMusic(); localStorage.setItem('beat_' + currentDiff, '1'); updateSelect(); alert('🎉 Победа!'); start(); return; }
 
             const rm = Math.max(...ae.map(e => e.x+e.w)), lm = Math.min(...ae.map(e => e.x));
             if (rm+siES >= 300 || lm-siES <= 0) { siED *= -1; enemies.forEach(e => { if (e.alive) e.y += 6; }); }
-            enemies.forEach(e => { if (!e.alive) return; e.x += siED*siES; if (e.y+e.h >= player.y) { clearInterval(interval); running = false; alert('💀 База!'); start(); return; } });
+            enemies.forEach(e => { if (!e.alive) return; e.x += siED*siES; if (e.y+e.h >= player.y) { clearInterval(interval); running = false; SFX.death(); SFX.stopMusic(); alert('💀 База!'); start(); return; } });
 
             bullets = bullets.filter(b => b.y > 0);
             bullets.forEach(b => b.y += b.vy);
-            bullets.forEach(b => { enemies.forEach(e => { if (!e.alive) return; if (b.x>e.x && b.x<e.x+e.w && b.y>e.y && b.y<e.y+e.h) { e.alive=false; b.y=-1; score+=10; document.getElementById('siScore').textContent=score; } }); });
+            bullets.forEach(b => { enemies.forEach(e => { if (!e.alive) return; if (b.x>e.x && b.x<e.x+e.w && b.y>e.y && b.y<e.y+e.h) { e.alive=false; b.y=-1; score+=10; document.getElementById('siScore').textContent=score; SFX.explosion(); } }); });
             bullets = bullets.filter(b => b.y > 0);
 
-            if (Math.random() < diffs[currentDiff].enemyShoot && ae.length > 0) {
-                const shooter = ae[Math.floor(Math.random()*ae.length)];
-                enemyBullets.push({ x:shooter.x+shooter.w/2, y:shooter.y+shooter.h, vy:5 });
-            }
+            if (Math.random() < diffs[currentDiff].enemyShoot && ae.length > 0) { const shooter = ae[Math.floor(Math.random()*ae.length)]; enemyBullets.push({ x:shooter.x+shooter.w/2, y:shooter.y+shooter.h, vy:5 }); }
             enemyBullets = enemyBullets.filter(b => b.y < 400);
             enemyBullets.forEach(b => b.y += b.vy);
-            enemyBullets.forEach(b => { if (b.x>player.x && b.x<player.x+player.w && b.y>player.y && b.y<player.y+player.h) { lives--; document.getElementById('siLives').textContent='❤️'.repeat(Math.max(0,lives)); b.y=999; if (lives<=0) { clearInterval(interval); running = false; alert('💀 Игра окончена!'); start(); } } });
+            enemyBullets.forEach(b => { if (b.x>player.x && b.x<player.x+player.w && b.y>player.y && b.y<player.y+player.h) { lives--; document.getElementById('siLives').textContent='❤️'.repeat(Math.max(0,lives)); b.y=999; SFX.death(); if (lives<=0) { clearInterval(interval); running = false; SFX.stopMusic(); alert('💀 Игра окончена!'); start(); } } });
             enemyBullets = enemyBullets.filter(b => b.y < 400);
             draw();
         }
 
-        function draw() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle='#00ff00'; ctx.fillRect(player.x,player.y,player.w,player.h);
-            ctx.fillStyle='#ff0000'; enemies.forEach(e=>{if(e.alive)ctx.fillRect(e.x,e.y,e.w,e.h);});
-            ctx.fillStyle='#fff'; bullets.forEach(b=>ctx.fillRect(b.x,b.y,3,8));
-            ctx.fillStyle='#ff0'; enemyBullets.forEach(b=>ctx.fillRect(b.x,b.y,3,8));
-        }
+        function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#00ff00'; ctx.fillRect(player.x,player.y,player.w,player.h); ctx.fillStyle='#ff0000'; enemies.forEach(e=>{if(e.alive)ctx.fillRect(e.x,e.y,e.w,e.h);}); ctx.fillStyle='#fff'; bullets.forEach(b=>ctx.fillRect(b.x,b.y,3,8)); ctx.fillStyle='#ff0'; enemyBullets.forEach(b=>ctx.fillRect(b.x,b.y,3,8)); }
 
         document.getElementById('siStart').addEventListener('click', launch);
         document.getElementById('siShootBtn').addEventListener('click', shoot);
