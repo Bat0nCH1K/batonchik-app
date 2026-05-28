@@ -18,12 +18,13 @@
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3</h2>
+        <h2>💎 Match-3 <span style="font-size:12px;opacity:0.6;">v2.0</span></h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
     <script src="sfx.js"></script>
     <script>
+        console.log('Match-3 v2.0 загружен!');
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
         const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
