@@ -20,7 +20,7 @@
         }
         .click-btn:active { transform: scale(0.9); background: var(--accent); }
         .upgrade-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 14px; border: 2px solid var(--accent); border-radius: 12px; background: var(--card); color: var(--text); font-size: 14px; cursor: pointer; font-weight: bold; }
-        .upgrade-btn:disabled { opacity: 0.3; }
+        .upgrade-btn:disabled { opacity: 0.3; border-color: #555; }
         .secret { margin-top: 10px; font-size: 14px; color: var(--gold); font-weight: bold; display: none; }
         .secret.show { display: block; }
     </style>
@@ -30,31 +30,47 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🔴 Кликер</h2>
         <div class="score" id="score">0</div>
-        <p>Очков: <span id="clicks">0</span></p>
+        <p>Очков: <span id="clicks">0</span> | За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек</p>
         <button class="click-btn" id="clickBtn">ЖМИ</button>
-        <button class="upgrade-btn" id="upgrade1" disabled>+1 за клик (10 очков)</button>
-        <button class="upgrade-btn" id="upgrade2" disabled>Автокликер 1/сек (50 очков)</button>
+        <button class="upgrade-btn" id="up1" disabled>+1 к клику (10)</button>
+        <button class="upgrade-btn" id="up2" disabled>Автокликер +1/сек (100)</button>
+        <button class="upgrade-btn" id="up3" disabled>+5 к клику (500)</button>
+        <button class="upgrade-btn" id="up4" disabled>Автокликер +5/сек (2500)</button>
+        <button class="upgrade-btn" id="up5" disabled>+10 к клику (10 000)</button>
+        <button class="upgrade-btn" id="up6" disabled>Автокликер +10/сек (50 000)</button>
         <div class="secret" id="secretCode"></div>
     </div>
     <script>
-        let score = 0, perClick = 1, autoClicker = 0, codeShown = false;
+        let data = JSON.parse(localStorage.getItem('clicker_save') || '{"score":0,"perClick":1,"autoClicker":0,"codeShown":false}');
+        let { score, perClick, autoClicker, codeShown } = data;
+        const costs = [10, 100, 500, 2500, 10000, 50000];
+
+        function save() { localStorage.setItem('clicker_save', JSON.stringify({ score, perClick, autoClicker, codeShown })); }
 
         function updateUI() {
             document.getElementById('score').textContent = score;
             document.getElementById('clicks').textContent = score;
-            document.getElementById('upgrade1').disabled = score < 10;
-            document.getElementById('upgrade2').disabled = score < 50;
+            document.getElementById('perClick').textContent = perClick;
+            document.getElementById('autoClicker').textContent = autoClicker;
+            for (let i = 0; i < 6; i++) {
+                document.getElementById('up' + (i+1)).disabled = score < costs[i];
+            }
             if (score >= 1000000 && !codeShown) {
                 codeShown = true;
                 document.getElementById('secretCode').innerHTML = `🏆 Секретный код: <strong>CLICK-MASTER</strong>`;
                 document.getElementById('secretCode').classList.add('show');
                 localStorage.setItem('earned_CLICK-MASTER', '1');
             }
+            save();
         }
 
         document.getElementById('clickBtn').addEventListener('click', () => { score += perClick; updateUI(); });
-        document.getElementById('upgrade1').addEventListener('click', () => { if (score >= 10) { score -= 10; perClick++; updateUI(); } });
-        document.getElementById('upgrade2').addEventListener('click', () => { if (score >= 50) { score -= 50; autoClicker++; updateUI(); } });
+        document.getElementById('up1').addEventListener('click', () => { if (score >= 10) { score -= 10; perClick += 1; updateUI(); } });
+        document.getElementById('up2').addEventListener('click', () => { if (score >= 100) { score -= 100; autoClicker += 1; updateUI(); } });
+        document.getElementById('up3').addEventListener('click', () => { if (score >= 500) { score -= 500; perClick += 5; updateUI(); } });
+        document.getElementById('up4').addEventListener('click', () => { if (score >= 2500) { score -= 2500; autoClicker += 5; updateUI(); } });
+        document.getElementById('up5').addEventListener('click', () => { if (score >= 10000) { score -= 10000; perClick += 10; updateUI(); } });
+        document.getElementById('up6').addEventListener('click', () => { if (score >= 50000) { score -= 50000; autoClicker += 10; updateUI(); } });
         setInterval(() => { if (autoClicker > 0) { score += autoClicker; updateUI(); } }, 1000);
         updateUI();
     </script>
