@@ -5,15 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flappy Bird — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
+        .canvas-wrap { position: relative; display: inline-block; }
         canvas { border: 3px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 16px auto; }
-        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .start-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -21,21 +26,54 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🐦 Flappy Bird</h2>
         <div class="score">Очки: <span id="flappyScore">0</span></div>
-        <canvas id="flappyCanvas" width="300" height="400"></canvas>
+        <div class="canvas-wrap">
+            <canvas id="flappyCanvas" width="300" height="400"></canvas>
+            <div class="start-overlay" id="flappyStart">▶ Старт</div>
+        </div>
         <p style="color:var(--text-secondary); margin-top:8px;">Нажми на экран или пробел</p>
-        <button class="btn" id="restartFlappy">🔄 Заново</button>
     </div>
     <script>
         const canvas = document.getElementById('flappyCanvas'), ctx = canvas.getContext('2d');
         const G = 0.3, JP = -6, PS = 1.8, PW = 50, PG = 150;
-        let bird = { x:50, y:200, vy:0, sz:18 }, pipes = [], frame = 0, score = 0, interval = null;
+        let bird = { x:50, y:200, vy:0, sz:18 }, pipes = [], frame = 0, score = 0, interval = null, running = false;
 
-        function start() { score = 0; document.getElementById('flappyScore').textContent = '0'; bird = {x:50,y:200,vy:0,sz:18}; pipes = []; frame = 0; if (interval) clearInterval(interval); interval = setInterval(update, 20); }
-        function update() { bird.vy += G; bird.y += bird.vy; if (bird.y < 0 || bird.y > 400) { clearInterval(interval); alert('Очки: ' + score); start(); return; } if (frame % 100 === 0) { pipes.push({ x:300, y: Math.random()*(400-PG-60)+30 }); } for (let i = pipes.length-1; i >= 0; i--) { pipes[i].x -= PS; if (pipes[i].x + PW < 0) { pipes.splice(i,1); score++; document.getElementById('flappyScore').textContent = score; continue; } if (bird.x+bird.sz > pipes[i].x && bird.x-bird.sz < pipes[i].x+PW && (bird.y-bird.sz < pipes[i].y || bird.y+bird.sz > pipes[i].y+PG)) { clearInterval(interval); alert('Очки: ' + score); start(); return; } } draw(); frame++; }
-        function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#e94560'; ctx.fillRect(bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2); ctx.fillStyle = '#4caf84'; pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); }); }
+        function start() {
+            score = 0; document.getElementById('flappyScore').textContent = '0';
+            bird = { x:50, y:200, vy:0, sz:18 }; pipes = []; frame = 0; running = false;
+            document.getElementById('flappyStart').style.display = 'block';
+            if (interval) clearInterval(interval);
+            draw();
+        }
 
-        canvas.addEventListener('click', () => bird.vy = JP);
-        document.getElementById('restartFlappy').addEventListener('click', () => { clearInterval(interval); start(); });
+        function launch() {
+            running = true; document.getElementById('flappyStart').style.display = 'none';
+            interval = setInterval(update, 20);
+        }
+
+        function update() {
+            if (!running) return;
+            bird.vy += G; bird.y += bird.vy;
+            if (bird.y < 0 || bird.y > 400) { clearInterval(interval); running = false; alert('Очки: ' + score); start(); return; }
+            if (frame % 100 === 0) pipes.push({ x:300, y: Math.random()*(400-PG-60)+30 });
+            for (let i = pipes.length-1; i >= 0; i--) {
+                pipes[i].x -= PS;
+                if (pipes[i].x + PW < 0) { pipes.splice(i,1); score++; document.getElementById('flappyScore').textContent = score; continue; }
+                if (bird.x+bird.sz > pipes[i].x && bird.x-bird.sz < pipes[i].x+PW && (bird.y-bird.sz < pipes[i].y || bird.y+bird.sz > pipes[i].y+PG)) {
+                    clearInterval(interval); running = false; alert('Очки: ' + score); start(); return;
+                }
+            }
+            draw(); frame++;
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#e94560'; ctx.fillRect(bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2);
+            ctx.fillStyle = '#4caf84'; pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
+        }
+
+        document.getElementById('flappyStart').addEventListener('click', launch);
+        canvas.addEventListener('click', () => { if (running) bird.vy = JP; else launch(); });
+
         start();
     </script>
 </body>
