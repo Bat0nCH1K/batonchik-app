@@ -12,7 +12,13 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
+        .canvas-wrap { position: relative; display: inline-block; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
+        .start-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+        }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
         .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
         .ctrl:active { background: var(--accent); }
@@ -23,7 +29,10 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🧱 Тетрис</h2>
         <div class="score">Очки: <span id="tetScore">0</span></div>
-        <canvas id="tetCanvas" width="200" height="360"></canvas>
+        <div class="canvas-wrap">
+            <canvas id="tetCanvas" width="200" height="360"></canvas>
+            <div class="start-overlay" id="tetStart">▶ Старт</div>
+        </div>
         <div class="controls">
             <button class="ctrl" id="tetLeft">←</button>
             <button class="ctrl" id="tetRotate">↻</button>
@@ -35,31 +44,24 @@
         const canvas = document.getElementById('tetCanvas'), ctx = canvas.getContext('2d');
         const COLS = 10, ROWS = 18, CELL = 20;
         const SHAPES = [
-            [[1,1,1,1]], // I
-            [[1,1],[1,1]], // O
-            [[0,1,0],[1,1,1]], // T
-            [[1,0,0],[1,1,1]], // L
-            [[0,0,1],[1,1,1]], // J
-            [[0,1,1],[1,1,0]], // S
-            [[1,1,0],[0,1,1]], // Z
+            [[1,1,1,1]], [[1,1],[1,1]], [[0,1,0],[1,1,1]], [[1,0,0],[1,1,1]], [[0,0,1],[1,1,1]], [[0,1,1],[1,1,0]], [[1,1,0],[0,1,1]]
         ];
         const COLORS = ['#4a90d9','#f0c040','#8e44ad','#ff9800','#4caf84','#e94560','#1abc9c'];
-        let board = [], piece = null, score = 0, interval = null, gameOver = false;
+        let board = [], piece = null, score = 0, interval = null, gameOver = false, running = false;
 
         function start() {
             board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-            score = 0; gameOver = false;
+            score = 0; gameOver = false; running = false;
             document.getElementById('tetScore').textContent = '0';
-            spawn();
+            document.getElementById('tetStart').style.display = 'block';
             if (interval) clearInterval(interval);
-            interval = setInterval(drop, 600);
             draw();
         }
 
         function spawn() {
             const idx = Math.floor(Math.random()*SHAPES.length);
             piece = { shape: SHAPES[idx].map(r=>[...r]), color: idx, x: Math.floor((COLS-SHAPES[idx][0].length)/2), y: 0 };
-            if (!valid(piece.shape, piece.x, piece.y)) { clearInterval(interval); gameOver = true; alert('Игра окончена! Очки: '+score); start(); }
+            if (!valid(piece.shape, piece.x, piece.y)) { clearInterval(interval); gameOver = true; running = false; alert('Игра окончена! Очки: '+score); start(); }
         }
 
         function valid(shape, px, py) {
@@ -75,10 +77,9 @@
             for (let r=0; r<piece.shape.length; r++) for (let c=0; c<piece.shape[r].length; c++) {
                 if (!piece.shape[r][c]) continue;
                 const ny=piece.y+r, nx=piece.x+c;
-                if (ny<0) { clearInterval(interval); gameOver=true; alert('Игра окончена! Очки: '+score); start(); return; }
+                if (ny<0) { clearInterval(interval); gameOver=true; running=false; alert('Игра окончена! Очки: '+score); start(); return; }
                 board[ny][nx] = piece.color+1;
             }
-            // Очистка линий
             let cleared = 0;
             for (let r=ROWS-1; r>=0; r--) {
                 if (board[r].every(c=>c)) { board.splice(r,1); board.unshift(Array(COLS).fill(0)); cleared++; r++; }
@@ -87,18 +88,15 @@
             spawn(); draw();
         }
 
-        function drop() { if (gameOver) return; if (valid(piece.shape, piece.x, piece.y+1)) piece.y++; else lock(); draw(); }
-
-        function move(dir) { if (gameOver||!piece) return; if (valid(piece.shape, piece.x+dir, piece.y)) piece.x+=dir; draw(); }
-
+        function drop() { if (!running||gameOver) return; if (valid(piece.shape, piece.x, piece.y+1)) piece.y++; else lock(); draw(); }
+        function move(dir) { if (!running||gameOver||!piece) return; if (valid(piece.shape, piece.x+dir, piece.y)) piece.x+=dir; draw(); }
         function rotate() {
-            if (gameOver||!piece) return;
+            if (!running||gameOver||!piece) return;
             const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
             if (valid(rotated, piece.x, piece.y)) piece.shape = rotated;
             draw();
         }
-
-        function hardDrop() { if (gameOver||!piece) return; while (valid(piece.shape, piece.x, piece.y+1)) piece.y++; lock(); draw(); }
+        function hardDrop() { if (!running||gameOver||!piece) return; while (valid(piece.shape, piece.x, piece.y+1)) piece.y++; lock(); draw(); }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -108,6 +106,10 @@
             if (piece) { ctx.fillStyle=COLORS[piece.color]; for (let r=0;r<piece.shape.length;r++) for (let c=0;c<piece.shape[r].length;c++) if (piece.shape[r][c]) ctx.fillRect((piece.x+c)*CELL,(piece.y+r)*CELL,CELL-1,CELL-1); }
         }
 
+        document.getElementById('tetStart').addEventListener('click', () => {
+            running = true; document.getElementById('tetStart').style.display = 'none';
+            spawn(); interval = setInterval(drop, 600); draw();
+        });
         document.getElementById('tetLeft').addEventListener('click', ()=>move(-1));
         document.getElementById('tetRight').addEventListener('click', ()=>move(1));
         document.getElementById('tetRotate').addEventListener('click', rotate);
