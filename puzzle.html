@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пятнашки — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 280px; margin: 20px auto; position: relative; }
+        .tile {
+            aspect-ratio: 1; background: var(--accent); color: white;
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: bold; cursor: pointer;
+            transition: transform 0.15s ease;
+            position: relative;
+        }
+        .tile.empty { background: transparent; cursor: default; pointer-events: none; }
+        .tile:active { transform: scale(0.95); }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .start-overlay {
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; display: inline-block; margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🧩 Пятнашки</h2>
+        <div class="score">Ходов: <span id="moves">0</span></div>
+        <div class="board" id="board"></div>
+        <div class="start-overlay" id="startBtn">▶ Старт</div>
+        <button class="btn" id="shuffleBtn">🔄 Перемешать</button>
+    </div>
+    <script>
+        let board = [], empty = 15, moves = 0, gameStarted = false, animating = false;
+        const size = 4;
+
+        function start() {
+            board = Array.from({length: size*size}, (_, i) => i === size*size-1 ? 0 : i+1);
+            empty = size*size-1;
+            moves = 0;
+            gameStarted = false;
+            animating = false;
+            document.getElementById('moves').textContent = '0';
+            document.getElementById('startBtn').style.display = 'inline-block';
+            draw();
+        }
+
+        function shuffle() {
+            gameStarted = true;
+            document.getElementById('startBtn').style.display = 'none';
+            for (let i = 0; i < 100; i++) {
+                const neighbors = getNeighbors(empty);
+                const rand = neighbors[Math.floor(Math.random() * neighbors.length)];
+                swapSilent(rand);
+            }
+            moves = 0;
+            document.getElementById('moves').textContent = '0';
+            draw();
+        }
+
+        function getNeighbors(idx) {
+            const r = Math.floor(idx / size), c = idx % size;
+            const neighbors = [];
+            if (r > 0) neighbors.push(idx - size);
+            if (r < size-1) neighbors.push(idx + size);
+            if (c > 0) neighbors.push(idx - 1);
+            if (c < size-1) neighbors.push(idx + 1);
+            return neighbors;
+        }
+
+        function swapSilent(idx) {
+            [board[empty], board[idx]] = [board[idx], board[empty]];
+            empty = idx;
+        }
+
+        function swapAnimated(idx) {
+            if (animating) return;
+            animating = true;
+            const tiles = document.querySelectorAll('.tile');
+            const tileEl = tiles[idx];
+            const emptyEl = tiles[empty];
+            
+            // Направление движения
+            const er = Math.floor(empty/size), ec = empty%size;
+            const tr = Math.floor(idx/size), tc = idx%size;
+            const dx = (ec - tc) * 100 + '%';
+            const dy = (er - tr) * 100 + '%';
+            
+            tileEl.style.transition = 'transform 0.15s ease';
+            tileEl.style.transform = `translate(${dx}, ${dy})`;
+            tileEl.style.zIndex = '2';
+            
+            setTimeout(() => {
+                tileEl.style.transition = 'none';
+                tileEl.style.transform = 'none';
+                tileEl.style.zIndex = '';
+                swapSilent(idx);
+                moves++;
+                document.getElementById('moves').textContent = moves;
+                draw();
+                animating = false;
+                
+                if (checkWin() && gameStarted) {
+                    setTimeout(() => { alert('🎉 Победа! Ходов: ' + moves); start(); }, 300);
+                }
+            }, 150);
+        }
+
+        function move(idx) {
+            if (!gameStarted || animating) return;
+            const neighbors = getNeighbors(empty);
+            if (!neighbors.includes(idx)) return;
+            swapAnimated(idx);
+        }
+
+        function checkWin() {
+            for (let i = 0; i < size*size-1; i++) {
+                if (board[i] !== i+1) return false;
+            }
+            return board[size*size-1] === 0;
+        }
+
+        function draw() {
+            const el = document.getElementById('board');
+            el.innerHTML = board.map((val, i) => {
+                return `<div class="tile ${val === 0 ? 'empty' : ''}" onclick="move(${i})">${val || ''}</div>`;
+            }).join('');
+        }
+
+        document.getElementById('startBtn').addEventListener('click', shuffle);
+        document.getElementById('shuffleBtn').addEventListener('click', shuffle);
+
+        start();
+    </script>
+</body>
+</html>
