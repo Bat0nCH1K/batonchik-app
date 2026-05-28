@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пинбол — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🕹️ Пинбол</h2>
+        <div class="score">Очки: <span id="pbScore">0</span></div>
+        <canvas id="pbCanvas" width="300" height="450"></canvas>
+        <p style="color:var(--text-secondary);font-size:12px;">Удерживай левую или правую часть экрана для флипперов</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('pbCanvas'), ctx = canvas.getContext('2d');
+        let ball = { x:150, y:300, vx:2, vy:-3, r:6 };
+        let flipperL = 0, flipperR = 0;
+        let bumpers = [];
+        let score = 0, interval = null;
+        let leftDown = false, rightDown = false;
+
+        function start() {
+            score = 0; document.getElementById('pbScore').textContent = '0';
+            ball = { x:150, y:300, vx:2, vy:-3, r:6 };
+            bumpers = [];
+            for (let i=0; i<8; i++) bumpers.push({ x:40+Math.random()*220, y:60+Math.random()*180, r:14 });
+            if (interval) clearInterval(interval);
+            interval = setInterval(update, 16);
+        }
+
+        function update() {
+            // Физика
+            ball.vy += 0.15;
+            ball.x += ball.vx; ball.y += ball.vy;
+
+            // Стены
+            if (ball.x-ball.r <= 0) { ball.x=ball.r; ball.vx=Math.abs(ball.vx); }
+            if (ball.x+ball.r >= 300) { ball.x=300-ball.r; ball.vx=-Math.abs(ball.vx); }
+            if (ball.y-ball.r <= 0) { ball.y=ball.r; ball.vy=Math.abs(ball.vy); }
+
+            // Флипперы
+            if (ball.y+ball.r >= 410 && ball.y-ball.r <= 430) {
+                if (ball.x < 150 && leftDown) { ball.vy = -7; ball.vx = -3; score++; document.getElementById('pbScore').textContent=score; }
+                else if (ball.x >= 150 && rightDown) { ball.vy = -7; ball.vx = 3; score++; document.getElementById('pbScore').textContent=score; }
+            }
+
+            // Бамперы
+            bumpers.forEach(b => {
+                const dx = ball.x-b.x, dy = ball.y-b.y, dist = Math.sqrt(dx*dx+dy*dy);
+                if (dist < ball.r+b.r) {
+                    ball.vx = dx/dist*5; ball.vy = dy/dist*5;
+                    score+=10; document.getElementById('pbScore').textContent=score;
+                }
+            });
+
+            // Смерть
+            if (ball.y > 460) { clearInterval(interval); alert('💀 Мяч упал! Очки: '+score); start(); return; }
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            // Бамперы
+            ctx.fillStyle = '#ff9800';
+            bumpers.forEach(b => { ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); });
+            // Мяч
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
+            // Флипперы
+            ctx.fillStyle = leftDown ? '#e94560' : '#666';
+            ctx.fillRect(20, 420, 110, 10);
+            ctx.fillStyle = rightDown ? '#e94560' : '#666';
+            ctx.fillRect(170, 420, 110, 10);
+        }
+
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left;
+            if (x < 150) leftDown = true; else rightDown = true;
+        });
+        canvas.addEventListener('touchend', () => { leftDown = false; rightDown = false; });
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            if (e.clientX-rect.left < 150) leftDown = true; else rightDown = true;
+        });
+        canvas.addEventListener('mouseup', () => { leftDown = false; rightDown = false; });
+
+        start();
+    </script>
+</body>
+</html>
