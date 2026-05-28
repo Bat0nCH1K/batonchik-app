@@ -40,20 +40,18 @@
     </div>
     <script src="sfx.js"></script>
     <script>
-        const VERSION = 2;
+        const VERSION = 3;
         let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
         if (data.version !== VERSION) { data = {}; }
 
         let score = data.score || 0;
         let perClick = data.perClick || 1;
         let clickCost = data.clickCost || 10;
-        let clickBonus = data.clickBonus || 1;
         let autoClicker = data.autoClicker || 0;
         let autoCost = data.autoCost || 50;
-        let autoBonus = data.autoBonus || 1;
         let codeShown = data.codeShown || false;
 
-        function save() { localStorage.setItem('clicker_save', JSON.stringify({ version: VERSION, score, perClick, clickCost, clickBonus, autoClicker, autoCost, autoBonus, codeShown })); }
+        function save() { localStorage.setItem('clicker_save', JSON.stringify({ version: VERSION, score, perClick, clickCost, autoClicker, autoCost, codeShown })); }
         const ceil = (n) => Math.ceil(n);
 
         function updateUI() {
@@ -62,9 +60,9 @@
             document.getElementById('perClick').textContent = perClick;
             document.getElementById('autoClicker').textContent = autoClicker;
             document.getElementById('up1').disabled = score < clickCost;
-            document.getElementById('up1').textContent = `+${clickBonus} к клику (${clickCost})`;
+            document.getElementById('up1').textContent = `+1 к клику (${clickCost})`;
             document.getElementById('up2').disabled = score < autoCost;
-            document.getElementById('up2').textContent = `Автокликер +${autoBonus}/сек (${autoCost})`;
+            document.getElementById('up2').textContent = `Автокликер +1/сек (${autoCost})`;
             if (score >= 1000000 && !codeShown) {
                 codeShown = true;
                 document.getElementById('secretCode').innerHTML = `🏆 Титул получен: Клик-мастер!`;
@@ -77,10 +75,10 @@
 
         document.getElementById('clickBtn').addEventListener('click', () => { SFX.click(); score += perClick; updateUI(); });
         document.getElementById('up1').addEventListener('click', () => {
-            if (score >= clickCost) { score -= clickCost; perClick += clickBonus; clickCost = ceil(clickCost * 1.05); clickBonus = ceil(clickBonus * 1.05); SFX.coin(); updateUI(); }
+            if (score >= clickCost) { score -= clickCost; perClick += 1; clickCost = ceil(clickCost * 1.05); SFX.coin(); updateUI(); }
         });
         document.getElementById('up2').addEventListener('click', () => {
-            if (score >= autoCost) { score -= autoCost; autoClicker += autoBonus; autoCost = ceil(autoCost * 1.05); autoBonus = ceil(autoBonus * 1.05); SFX.coin(); updateUI(); }
+            if (score >= autoCost) { score -= autoCost; autoClicker += 1; autoCost = ceil(autoCost * 1.05); SFX.coin(); updateUI(); }
         });
         document.getElementById('resetBtn').addEventListener('click', () => {
             if (confirm('Сбросить весь прогресс?')) { localStorage.removeItem('clicker_save'); location.reload(); }
