@@ -41,24 +41,47 @@
             document.getElementById('tttBoard').innerHTML = board.map((v, i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join('');
         }
 
+        function checkWin(p, b) {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return wins.some(w => w.every(i => (b || board)[i] === p));
+        }
+
+        function findFork(player) {
+            const opponent = player === '❌' ? '⭕' : '❌';
+            for (let i = 0; i < 9; i++) {
+                if (board[i]) continue;
+                const b = [...board];
+                b[i] = player;
+                let winCount = 0;
+                const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+                for (const w of wins) {
+                    const vals = w.map(j => b[j]);
+                    if (vals.filter(v => v === player).length === 2 && vals.includes('')) winCount++;
+                }
+                if (winCount >= 2) return i;
+            }
+            return -1;
+        }
+
         function aiMove() {
-            // Простой ИИ: сначала ищем победный ход, потом блокируем, потом центр, потом случайно
             const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
             
             // Победный ход
             for (const w of wins) {
                 const vals = w.map(i => board[i]);
-                if (vals.filter(v => v === '⭕').length === 2 && vals.includes('')) {
-                    return w[vals.indexOf('')];
-                }
+                if (vals.filter(v => v === '⭕').length === 2 && vals.includes('')) return w[vals.indexOf('')];
             }
             // Блокировка
             for (const w of wins) {
                 const vals = w.map(i => board[i]);
-                if (vals.filter(v => v === '❌').length === 2 && vals.includes('')) {
-                    return w[vals.indexOf('')];
-                }
+                if (vals.filter(v => v === '❌').length === 2 && vals.includes('')) return w[vals.indexOf('')];
             }
+            // Блокировка вилки противника
+            const forkBlock = findFork('❌');
+            if (forkBlock !== -1) return forkBlock;
+            // Создание своей вилки
+            const forkCreate = findFork('⭕');
+            if (forkCreate !== -1) return forkCreate;
             // Центр
             if (!board[4]) return 4;
             // Углы
@@ -72,22 +95,16 @@
         function move(i) {
             if (board[i] || gameOver) return;
             board[i] = '❌'; draw();
-            if (check('❌')) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
+            if (checkWin('❌')) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
             if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
             
-            // Ход ИИ (мгновенный)
             const ai = aiMove();
             board[ai] = '⭕';
             draw();
             
-            if (check('⭕')) { document.getElementById('tttFeedback').textContent = 'Нейросеть победила!'; gameOver = true; return; }
+            if (checkWin('⭕')) { document.getElementById('tttFeedback').textContent = 'Нейросеть победила!'; gameOver = true; return; }
             if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
             document.getElementById('tttFeedback').textContent = 'Твой ход';
-        }
-
-        function check(p) {
-            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-            return wins.some(w => w.every(i => board[i] === p));
         }
 
         document.getElementById('resetTTT').addEventListener('click', start);
