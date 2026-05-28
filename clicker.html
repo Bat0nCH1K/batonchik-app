@@ -37,8 +37,13 @@
         <div class="secret" id="secretCode"></div>
     </div>
     <script>
-        let data = JSON.parse(localStorage.getItem('clicker_save') || '{"score":0,"perClick":1,"clickCost":10,"autoClicker":0,"autoCost":50,"codeShown":false}');
-        let { score, perClick, clickCost, autoClicker, autoCost, codeShown } = data;
+        let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
+        let score = data.score || 0;
+        let perClick = data.perClick || 1;
+        let clickCost = data.clickCost || 10;
+        let autoClicker = data.autoClicker || 0;
+        let autoCost = data.autoCost || 50;
+        let codeShown = data.codeShown || false;
 
         function save() { localStorage.setItem('clicker_save', JSON.stringify({ score, perClick, clickCost, autoClicker, autoCost, codeShown })); }
 
@@ -53,7 +58,7 @@
             document.getElementById('up2').textContent = `Автокликер +1/сек (${autoCost})`;
             if (score >= 1000000 && !codeShown) {
                 codeShown = true;
-                document.getElementById('secretCode').innerHTML = `🏆 Секретный код: <strong>CLICK-MASTER</strong>`;
+                document.getElementById('secretCode').innerHTML = `🏆 Титул получен: Клик-мастер!`;
                 document.getElementById('secretCode').classList.add('show');
                 localStorage.setItem('earned_CLICK-MASTER', '1');
             }
