@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Титулы — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --gold: #f0c040; --radius: 14px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--accent); background: var(--card); color: var(--text); font-size: 16px; }
+        .btn { padding: 12px 20px; border-radius: 10px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn:active { opacity: 0.8; }
+        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
+        .titles-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; text-align: left; }
+        .title-item { background: var(--card); padding: 14px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .title-item.locked { opacity: 0.5; }
+        .title-name { font-weight: bold; }
+        .title-status { font-size: 12px; color: var(--gold); }
+        .stats { margin-top: 20px; color: var(--text-secondary); font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🏆 Титулы</h2>
+        <p style="color:var(--text-secondary);margin-bottom:16px;">Выполни достижения, чтобы получить титул</p>
+
+        <h3 style="margin-top:24px;">Доступные титулы:</h3>
+        <div class="titles-list" id="titlesList"></div>
+        
+        <div class="stats" id="stats"></div>
+    </div>
+    <script>
+        const TITLES = [
+            { id: 'CLICK-MASTER', name: 'Клик-мастер', emoji: '🔴', desc: 'Набрать 1 000 000 очков в Кликере', check: () => localStorage.getItem('earned_CLICK-MASTER') === '1' },
+            { id: 'SNAKE-KING', name: 'Змеиный король', emoji: '🐍', desc: 'Набрать 1000 очков в Змейке', check: () => localStorage.getItem('earned_SNAKE-KING') === '1' },
+            { id: 'INVADER-HERO', name: 'Герой галактики', emoji: '👾', desc: 'Победить на Ультрахардкоре в Space Invaders', check: () => localStorage.getItem('earned_INVADER-HERO') === '1' },
+            { id: 'TICKET-LEGEND', name: 'Невозможный', emoji: '👑', desc: 'Победить ИИ в крестиках-ноликах', check: () => localStorage.getItem('earned_TICKET-LEGEND') === '1' },
+        ];
+
+        function render() {
+            const list = document.getElementById('titlesList');
+            let owned = 0;
+            list.innerHTML = TITLES.map(title => {
+                const has = title.check();
+                if (has) owned++;
+                return `<div class="title-item ${has ? '' : 'locked'}">
+                    <div>
+                        <span class="title-name">${title.emoji} ${title.name}</span>
+                        <div style="font-size:12px;color:var(--text-secondary);">${title.desc}</div>
+                    </div>
+                    <span class="title-status">${has ? '✅ Получен' : '🔒 Закрыт'}</span>
+                </div>`;
+            }).join('');
+            document.getElementById('stats').textContent = `Получено: ${owned} из ${TITLES.length}`;
+        }
+
+        render();
+    </script>
+</body>
+</html>
