@@ -25,14 +25,54 @@
         <div class="board" id="msBoard"></div>
         <button class="btn" id="resetMS">🔄 Новая игра</button>
     </div>
+    <script src="sfx.js"></script>
     <script>
         let msBoard = [];
-        function init() { msBoard = Array(8).fill().map(() => Array(8).fill({ mine:false, revealed:false, flag:false, count:0 })); for (let i = 0; i < 10; i++) { let r,c; do { r = Math.floor(Math.random()*8); c = Math.floor(Math.random()*8); } while (msBoard[r][c].mine); msBoard[r][c] = { ...msBoard[r][c], mine:true }; } for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { if (msBoard[r][c].mine) continue; let cnt = 0; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && msBoard[nr][nc].mine) cnt++; } msBoard[r][c] = { ...msBoard[r][c], count:cnt }; } draw(); }
-        function draw() { const b = document.getElementById('msBoard'); b.innerHTML = msBoard.map((row,r) => row.map((cell,c) => { let cnt = '', cls = 'cell'; if (cell.revealed) { cls += ' revealed'; cnt = cell.mine ? '💣' : cell.count || ''; } else if (cell.flag) { cls += ' flag'; cnt = '🚩'; } return `<div class="${cls}" onclick="reveal(${r},${c})" oncontextmenu="event.preventDefault();flag(${r},${c})">${cnt}</div>`; }).join('')).join(''); }
-        function reveal(r,c) { if (msBoard[r][c].revealed || msBoard[r][c].flag) return; msBoard[r][c] = { ...msBoard[r][c], revealed:true }; if (msBoard[r][c].mine) { alert('💥 Мина!'); init(); return; } if (msBoard[r][c].count === 0) { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && !msBoard[nr][nc].revealed) reveal(nr,nc); } } draw(); if (msBoard.every(row => row.every(cell => cell.revealed || cell.mine))) { alert('🎉 Победа!'); init(); } }
-        function flag(r,c) { if (!msBoard[r][c].revealed) { msBoard[r][c] = { ...msBoard[r][c], flag:!msBoard[r][c].flag }; draw(); } }
-        document.getElementById('resetMS').addEventListener('click', init);
-        init();
+
+        function initMS() {
+            msBoard = Array(8).fill().map(() => Array(8).fill({ mine: false, revealed: false, flag: false, count: 0 }));
+            for (let i = 0; i < 10; i++) { let r, c; do { r = Math.floor(Math.random()*8); c = Math.floor(Math.random()*8); } while (msBoard[r][c].mine); msBoard[r][c] = { ...msBoard[r][c], mine: true }; }
+            for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+                if (msBoard[r][c].mine) continue;
+                let cnt = 0;
+                for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && msBoard[nr][nc].mine) cnt++; }
+                msBoard[r][c] = { ...msBoard[r][c], count: cnt };
+            }
+            drawMS();
+        }
+
+        function drawMS() {
+            const board = document.getElementById('msBoard');
+            board.innerHTML = msBoard.map((row, r) => row.map((cell, c) => {
+                let content = '', cls = 'cell';
+                if (cell.revealed) { cls += ' revealed'; content = cell.mine ? '💣' : cell.count || ''; }
+                else if (cell.flag) { cls += ' flag'; content = '🚩'; }
+                return `<div class="${cls}" onclick="revealMS(${r},${c})" oncontextmenu="event.preventDefault();flagMS(${r},${c})">${content}</div>`;
+            }).join('')).join('');
+        }
+
+        function revealMS(r, c) {
+            if (msBoard[r][c].revealed || msBoard[r][c].flag) return;
+            msBoard[r][c] = { ...msBoard[r][c], revealed: true };
+            if (msBoard[r][c].mine) { SFX.death(); alert('💥 Мина!'); initMS(); return; }
+            SFX.click();
+            if (msBoard[r][c].count === 0) { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && !msBoard[nr][nc].revealed) revealMS(nr, nc); } }
+            drawMS();
+            if (msBoard.every(row => row.every(cell => cell.revealed || cell.mine))) { SFX.win(); alert('🎉 Победа!'); initMS(); }
+        }
+
+        function flagMS(r, c) {
+            if (msBoard[r][c].revealed) return;
+            msBoard[r][c] = { ...msBoard[r][c], flag: !msBoard[r][c].flag };
+            SFX.click();
+            drawMS();
+        }
+
+        window.revealMS = revealMS;
+        window.flagMS = flagMS;
+
+        document.getElementById('resetMS').addEventListener('click', initMS);
+        initMS();
     </script>
 </body>
 </html>
