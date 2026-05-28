@@ -13,6 +13,7 @@
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -21,52 +22,72 @@
         <h2>🕹️ Пинбол</h2>
         <div class="score">Очки: <span id="pbScore">0</span></div>
         <canvas id="pbCanvas" width="300" height="450"></canvas>
-        <p style="color:var(--text-secondary);font-size:12px;">Удерживай левую или правую часть экрана для флипперов</p>
+        <button class="btn" id="startPB">▶ Старт</button>
+        <p style="color:var(--text-secondary);font-size:12px;">Кнопки — флипперы. Мяч запускается пружиной.</p>
     </div>
     <script>
         const canvas = document.getElementById('pbCanvas'), ctx = canvas.getContext('2d');
-        let ball = { x:150, y:300, vx:2, vy:-3, r:6 };
-        let flipperL = 0, flipperR = 0;
+        let ball = { x:150, y:400, vx:0, vy:0, r:7 };
+        let flipperLAngle = 0.3, flipperRAngle = -0.3;
         let bumpers = [];
-        let score = 0, interval = null;
+        let score = 0, interval = null, running = false, launched = false;
         let leftDown = false, rightDown = false;
+        let springPower = 0;
+
+        const fixedBumpers = [
+            {x:80,y:80,r:18},{x:220,y:80,r:18},{x:150,y:140,r:22},
+            {x:60,y:200,r:16},{x:240,y:200,r:16},{x:150,y:260,r:20},
+            {x:100,y:320,r:16},{x:200,y:320,r:16}
+        ];
 
         function start() {
             score = 0; document.getElementById('pbScore').textContent = '0';
-            ball = { x:150, y:300, vx:2, vy:-3, r:6 };
-            bumpers = [];
-            for (let i=0; i<8; i++) bumpers.push({ x:40+Math.random()*220, y:60+Math.random()*180, r:14 });
+            ball = { x:150, y:400, vx:0, vy:0, r:7 };
+            bumpers = [...fixedBumpers];
+            running = false; launched = false; springPower = 0;
+            document.getElementById('startPB').style.display = 'block';
+            draw();
+        }
+
+        function launch() {
+            if (running) return;
+            running = true; launched = true;
+            document.getElementById('startPB').style.display = 'none';
+            ball.vx = (Math.random()-0.5)*2;
+            ball.vy = -8 - springPower*0.3;
+            springPower = 0;
             if (interval) clearInterval(interval);
             interval = setInterval(update, 16);
         }
 
         function update() {
-            // Физика
-            ball.vy += 0.15;
+            if (!running) return;
+            ball.vy += 0.2;
             ball.x += ball.vx; ball.y += ball.vy;
 
-            // Стены
             if (ball.x-ball.r <= 0) { ball.x=ball.r; ball.vx=Math.abs(ball.vx); }
             if (ball.x+ball.r >= 300) { ball.x=300-ball.r; ball.vx=-Math.abs(ball.vx); }
             if (ball.y-ball.r <= 0) { ball.y=ball.r; ball.vy=Math.abs(ball.vy); }
 
-            // Флипперы
+            // Флипперы — отбрасывают мяч
             if (ball.y+ball.r >= 410 && ball.y-ball.r <= 430) {
-                if (ball.x < 150 && leftDown) { ball.vy = -7; ball.vx = -3; score++; document.getElementById('pbScore').textContent=score; }
-                else if (ball.x >= 150 && rightDown) { ball.vy = -7; ball.vx = 3; score++; document.getElementById('pbScore').textContent=score; }
+                if (ball.x < 150 && leftDown) { ball.vy = -9; ball.vx = -5; score+=5; document.getElementById('pbScore').textContent=score; }
+                else if (ball.x >= 150 && rightDown) { ball.vy = -9; ball.vx = 5; score+=5; document.getElementById('pbScore').textContent=score; }
             }
 
             // Бамперы
             bumpers.forEach(b => {
                 const dx = ball.x-b.x, dy = ball.y-b.y, dist = Math.sqrt(dx*dx+dy*dy);
                 if (dist < ball.r+b.r) {
-                    ball.vx = dx/dist*5; ball.vy = dy/dist*5;
-                    score+=10; document.getElementById('pbScore').textContent=score;
+                    const nx = dx/dist, ny = dy/dist;
+                    ball.vx = nx*7; ball.vy = ny*7;
+                    ball.x += nx*(ball.r+b.r-dist);
+                    ball.y += ny*(ball.r+b.r-dist);
+                    score+=15; document.getElementById('pbScore').textContent=score;
                 }
             });
 
-            // Смерть
-            if (ball.y > 460) { clearInterval(interval); alert('💀 Мяч упал! Очки: '+score); start(); return; }
+            if (ball.y > 470) { clearInterval(interval); running=false; launched=false; alert('💀 Мяч упал! Очки: '+score); start(); return; }
             draw();
         }
 
@@ -79,9 +100,12 @@
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
             // Флипперы
             ctx.fillStyle = leftDown ? '#e94560' : '#666';
-            ctx.fillRect(20, 420, 110, 10);
+            ctx.save(); ctx.translate(60, 420); ctx.rotate(leftDown ? -0.5 : 0.3); ctx.fillRect(-50, -5, 100, 10); ctx.restore();
             ctx.fillStyle = rightDown ? '#e94560' : '#666';
-            ctx.fillRect(170, 420, 110, 10);
+            ctx.save(); ctx.translate(240, 420); ctx.rotate(rightDown ? 0.5 : -0.3); ctx.fillRect(-50, -5, 100, 10); ctx.restore();
+            // Пружина
+            ctx.fillStyle = '#aaa';
+            ctx.fillRect(145, 440-springPower, 10, 20+springPower);
         }
 
         canvas.addEventListener('touchstart', e => {
@@ -96,6 +120,11 @@
             if (e.clientX-rect.left < 150) leftDown = true; else rightDown = true;
         });
         canvas.addEventListener('mouseup', () => { leftDown = false; rightDown = false; });
+
+        // Запуск по пробелу или кнопке Старт
+        document.getElementById('startPB').addEventListener('click', () => {
+            if (!launched) { springPower = Math.min(60, springPower+15); draw(); setTimeout(launch, 300); }
+        });
 
         start();
     </script>
