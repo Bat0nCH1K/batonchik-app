@@ -3,120 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ИИ-Викторина — BatonCHIK Games</title>
+    <title>Крестики-нолики — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --green: #4caf84; --text: #fff; --text-secondary: #b0b0b0; --radius: 14px; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
-        h2 { font-size: 20px; margin-bottom: 16px; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
-        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
-        .btn:disabled { opacity: 0.4; }
-        .quiz-card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
-        .question-text { font-size: 17px; margin-bottom: 16px; line-height: 1.4; }
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .option-btn { background: #0f3460; color: white; padding: 14px; border: 2px solid #4a90d9; border-radius: var(--radius); font-size: 15px; cursor: pointer; font-weight: bold; }
-        .option-btn.correct { background: var(--green); border-color: var(--green); }
-        .option-btn.wrong { background: var(--accent); border-color: var(--accent); }
+        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 240px; margin: 16px auto; }
+        .cell { width: 76px; height: 76px; background: var(--card); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; cursor: pointer; }
+        .cell:active { background: var(--accent); }
         .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
-        .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>🧠 ИИ-Викторина</h2>
-        <button class="btn" id="newQuestionBtn">🎲 Новый вопрос</button>
-        <div class="quiz-card" id="quizCard" style="display:none;">
-            <div class="question-text" id="questionText"></div>
-            <div class="options-grid" id="optionsGrid"></div>
-            <div class="feedback" id="feedback"></div>
-        </div>
-        <div class="stats" id="stats">Правильных: 0 | Всего: 0</div>
+        <h2>❌ Крестики-нолики</h2>
+        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | Нейросеть: ⭕</p>
+        <div class="board" id="tttBoard"></div>
+        <p class="feedback" id="tttFeedback">Твой ход</p>
+        <button class="btn" id="resetTTT">🔄 Новая игра</button>
     </div>
     <script>
-        let correct = 0, total = 0, answered = false, question = null;
+        let board = [], gameOver = false;
 
-        document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
+        function start() {
+            board = Array(9).fill('');
+            gameOver = false;
+            document.getElementById('tttFeedback').textContent = 'Твой ход';
+            draw();
+        }
 
-        async function getQuestion() {
-            const btn = document.getElementById('newQuestionBtn');
-            const card = document.getElementById('quizCard');
+        function draw() {
+            document.getElementById('tttBoard').innerHTML = board.map((v, i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join('');
+        }
 
-            btn.disabled = true;
-            btn.textContent = '⏳';
-            card.style.display = 'block';
-            document.getElementById('questionText').textContent = 'Генерирую вопрос...';
-            document.getElementById('optionsGrid').innerHTML = '';
-            document.getElementById('feedback').textContent = '';
-            answered = false;
+        function checkWin(p, b) {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return wins.some(w => w.every(i => (b || board)[i] === p));
+        }
 
-            try {
-                const resp = await fetch('https://text.pollinations.ai/openai', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: 'openai',
-                        messages: [{ role: 'user', content: 'Выдай ТОЛЬКО JSON: {"q":"вопрос викторины на русском?","o":["а","б","в","г"],"c":0}' }],
-                        temperature: 1.2
-                    })
-                });
-
-                const data = await resp.json();
-                const raw = data.choices[0].message.content.trim();
-                const match = raw.match(/\{[^}]+\}/) || raw.match(/\{[\s\S]*\}/);
-                if (!match) throw new Error('No JSON');
-                
-                const q = JSON.parse(match[0]);
-                question = {
-                    question: q.question || q.q,
-                    options: q.options || q.o,
-                    correctIndex: q.correctIndex !== undefined ? q.correctIndex : q.c
-                };
-
-                if (!question.question || !question.options || question.options.length !== 4 || question.correctIndex === undefined) {
-                    throw new Error('Invalid data');
+        function findFork(player) {
+            for (let i = 0; i < 9; i++) {
+                if (board[i]) continue;
+                const b = [...board];
+                b[i] = player;
+                let winCount = 0;
+                const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+                for (const w of wins) {
+                    const vals = w.map(j => b[j]);
+                    if (vals.filter(v => v === player).length === 2 && vals.includes('')) winCount++;
                 }
-
-            } catch (e) {
-                document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
-                btn.disabled = false;
-                btn.textContent = '🎲';
-                return;
+                if (winCount >= 2) return i;
             }
-
-            document.getElementById('questionText').textContent = question.question;
-            document.getElementById('optionsGrid').innerHTML = question.options.map((o, i) =>
-                `<button class="option-btn" data-idx="${i}">${o}</button>`
-            ).join('');
-            document.querySelectorAll('.option-btn').forEach(b => {
-                b.addEventListener('click', function() { check(parseInt(this.dataset.idx), this); });
-            });
-
-            btn.disabled = false;
-            btn.textContent = '🎲';
+            return -1;
         }
 
-        function check(i, btn) {
-            if (answered || !question) return;
-            answered = true;
-            total++;
-            const allBtns = document.querySelectorAll('.option-btn');
-            allBtns.forEach(b => b.disabled = true);
-            if (i === question.correctIndex) {
-                btn.classList.add('correct');
-                document.getElementById('feedback').textContent = '✅ Правильно!';
-                correct++;
-            } else {
-                btn.classList.add('wrong');
-                allBtns[question.correctIndex].classList.add('correct');
-                document.getElementById('feedback').textContent = '❌ Неправильно!';
+        function aiMove() {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            
+            // Победный ход
+            for (const w of wins) {
+                const vals = w.map(i => board[i]);
+                if (vals.filter(v => v === '⭕').length === 2 && vals.includes('')) return w[vals.indexOf('')];
             }
-            document.getElementById('stats').textContent = `Правильных: ${correct} | Всего: ${total}`;
+            // Блокировка прямой угрозы
+            for (const w of wins) {
+                const vals = w.map(i => board[i]);
+                if (vals.filter(v => v === '❌').length === 2 && vals.includes('')) return w[vals.indexOf('')];
+            }
+            // Блокировка вилки противника
+            const forkBlock = findFork('❌');
+            if (forkBlock !== -1) return forkBlock;
+            // Создание своей вилки
+            const forkCreate = findFork('⭕');
+            if (forkCreate !== -1) return forkCreate;
+            
+            // Особый случай: если противник в центре и углу — займи противоположный угол
+            if (board[4] === '❌' && board[0] === '❌' && !board[8]) return 8;
+            if (board[4] === '❌' && board[2] === '❌' && !board[6]) return 6;
+            if (board[4] === '❌' && board[6] === '❌' && !board[2]) return 2;
+            if (board[4] === '❌' && board[8] === '❌' && !board[0]) return 0;
+            
+            // Если противник в противоположных углах — займи бок
+            if (board[0] === '❌' && board[8] === '❌' || board[2] === '❌' && board[6] === '❌') {
+                const sides = [1,3,5,7].filter(i => !board[i]);
+                if (sides.length) return sides[Math.floor(Math.random()*sides.length)];
+            }
+            
+            // Центр
+            if (!board[4]) return 4;
+            // Углы
+            const corners = [0,2,6,8].filter(i => !board[i]);
+            if (corners.length) return corners[Math.floor(Math.random()*corners.length)];
+            // Любая
+            const empty = board.map((v,i) => v ? -1 : i).filter(v => v >= 0);
+            return empty[Math.floor(Math.random()*empty.length)];
         }
 
-        getQuestion();
+        function move(i) {
+            if (board[i] || gameOver) return;
+            board[i] = '❌'; draw();
+            if (checkWin('❌')) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
+            if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
+            
+            const ai = aiMove();
+            board[ai] = '⭕';
+            draw();
+            
+            if (checkWin('⭕')) { document.getElementById('tttFeedback').textContent = 'Нейросеть победила!'; gameOver = true; return; }
+            if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
+            document.getElementById('tttFeedback').textContent = 'Твой ход';
+        }
+
+        document.getElementById('resetTTT').addEventListener('click', start);
+        start();
     </script>
 </body>
 </html>
