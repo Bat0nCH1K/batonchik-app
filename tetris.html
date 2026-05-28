@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тетрис — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl:active { background: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🧱 Тетрис</h2>
+        <div class="score">Очки: <span id="tetScore">0</span></div>
+        <canvas id="tetCanvas" width="200" height="360"></canvas>
+        <div class="controls">
+            <button class="ctrl" id="tetLeft">←</button>
+            <button class="ctrl" id="tetRotate">↻</button>
+            <button class="ctrl" id="tetRight">→</button>
+            <button class="ctrl" id="tetDown">↓</button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('tetCanvas'), ctx = canvas.getContext('2d');
+        const COLS = 10, ROWS = 18, CELL = 20;
+        const SHAPES = [
+            [[1,1,1,1]], // I
+            [[1,1],[1,1]], // O
+            [[0,1,0],[1,1,1]], // T
+            [[1,0,0],[1,1,1]], // L
+            [[0,0,1],[1,1,1]], // J
+            [[0,1,1],[1,1,0]], // S
+            [[1,1,0],[0,1,1]], // Z
+        ];
+        const COLORS = ['#4a90d9','#f0c040','#8e44ad','#ff9800','#4caf84','#e94560','#1abc9c'];
+        let board = [], piece = null, score = 0, interval = null, gameOver = false;
+
+        function start() {
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0; gameOver = false;
+            document.getElementById('tetScore').textContent = '0';
+            spawn();
+            if (interval) clearInterval(interval);
+            interval = setInterval(drop, 600);
+            draw();
+        }
+
+        function spawn() {
+            const idx = Math.floor(Math.random()*SHAPES.length);
+            piece = { shape: SHAPES[idx].map(r=>[...r]), color: idx, x: Math.floor((COLS-SHAPES[idx][0].length)/2), y: 0 };
+            if (!valid(piece.shape, piece.x, piece.y)) { clearInterval(interval); gameOver = true; alert('Игра окончена! Очки: '+score); start(); }
+        }
+
+        function valid(shape, px, py) {
+            for (let r=0; r<shape.length; r++) for (let c=0; c<shape[r].length; c++) {
+                if (!shape[r][c]) continue;
+                const nx=px+c, ny=py+r;
+                if (nx<0||nx>=COLS||ny>=ROWS||(ny>=0&&board[ny][nx])) return false;
+            }
+            return true;
+        }
+
+        function lock() {
+            for (let r=0; r<piece.shape.length; r++) for (let c=0; c<piece.shape[r].length; c++) {
+                if (!piece.shape[r][c]) continue;
+                const ny=piece.y+r, nx=piece.x+c;
+                if (ny<0) { clearInterval(interval); gameOver=true; alert('Игра окончена! Очки: '+score); start(); return; }
+                board[ny][nx] = piece.color+1;
+            }
+            // Очистка линий
+            let cleared = 0;
+            for (let r=ROWS-1; r>=0; r--) {
+                if (board[r].every(c=>c)) { board.splice(r,1); board.unshift(Array(COLS).fill(0)); cleared++; r++; }
+            }
+            if (cleared) { score += cleared*100; document.getElementById('tetScore').textContent = score; }
+            spawn(); draw();
+        }
+
+        function drop() { if (gameOver) return; if (valid(piece.shape, piece.x, piece.y+1)) piece.y++; else lock(); draw(); }
+
+        function move(dir) { if (gameOver||!piece) return; if (valid(piece.shape, piece.x+dir, piece.y)) piece.x+=dir; draw(); }
+
+        function rotate() {
+            if (gameOver||!piece) return;
+            const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
+            if (valid(rotated, piece.x, piece.y)) piece.shape = rotated;
+            draw();
+        }
+
+        function hardDrop() { if (gameOver||!piece) return; while (valid(piece.shape, piece.x, piece.y+1)) piece.y++; lock(); draw(); }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
+                if (board[r][c]) { ctx.fillStyle=COLORS[board[r][c]-1]; ctx.fillRect(c*CELL,r*CELL,CELL-1,CELL-1); }
+            }
+            if (piece) { ctx.fillStyle=COLORS[piece.color]; for (let r=0;r<piece.shape.length;r++) for (let c=0;c<piece.shape[r].length;c++) if (piece.shape[r][c]) ctx.fillRect((piece.x+c)*CELL,(piece.y+r)*CELL,CELL-1,CELL-1); }
+        }
+
+        document.getElementById('tetLeft').addEventListener('click', ()=>move(-1));
+        document.getElementById('tetRight').addEventListener('click', ()=>move(1));
+        document.getElementById('tetRotate').addEventListener('click', rotate);
+        document.getElementById('tetDown').addEventListener('click', hardDrop);
+
+        start();
+    </script>
+</body>
+</html>
