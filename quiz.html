@@ -11,14 +11,10 @@
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 16px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
-        .settings { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; }
-        select { padding: 10px 14px; border-radius: 12px; font-size: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-family: inherit; }
-        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
         .btn:disabled { opacity: 0.4; }
         .quiz-card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-top: 16px; }
         .question-text { font-size: 17px; margin-bottom: 16px; line-height: 1.4; }
-        .difficulty-badge { display: inline-block; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 12px; }
-        .difficulty-Лёгкий { background: #4caf84; } .difficulty-Средний { background: #ff9800; } .difficulty-Сложный { background: #e94560; }
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .option-btn { background: #0f3460; color: white; padding: 14px; border: 2px solid #4a90d9; border-radius: var(--radius); font-size: 15px; cursor: pointer; font-weight: bold; }
         .option-btn.correct { background: var(--green); border-color: var(--green); }
@@ -31,24 +27,8 @@
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
         <h2>🧠 ИИ-Викторина</h2>
-        <div class="settings">
-            <select id="topicSelect">
-                <option value="общие знания">🌍 Общие знания</option>
-                <option value="история">📜 История</option>
-                <option value="наука">🔬 Наука</option>
-                <option value="кино">🎬 Кино</option>
-                <option value="география">🗺 География</option>
-                <option value="спорт">⚽ Спорт</option>
-            </select>
-            <select id="difficultySelect">
-                <option value="Лёгкий">💚 Лёгкий</option>
-                <option value="Средний">🧡 Средний</option>
-                <option value="Сложный">❤️ Сложный</option>
-            </select>
-            <button class="btn" id="newQuestionBtn">🎲 Новый вопрос</button>
-        </div>
+        <button class="btn" id="newQuestionBtn">🎲 Новый вопрос</button>
         <div class="quiz-card" id="quizCard" style="display:none;">
-            <div class="difficulty-badge" id="difficultyBadge"></div>
             <div class="question-text" id="questionText"></div>
             <div class="options-grid" id="optionsGrid"></div>
             <div class="feedback" id="feedback"></div>
@@ -61,8 +41,6 @@
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
 
         async function getQuestion() {
-            const topic = document.getElementById('topicSelect').value;
-            const diff = document.getElementById('difficultySelect').value;
             const btn = document.getElementById('newQuestionBtn');
             const card = document.getElementById('quizCard');
 
@@ -74,9 +52,8 @@
             document.getElementById('feedback').textContent = '';
             answered = false;
 
-            const prompt = `Ты — JSON-робот. Твоя единственная задача — выводить ТОЛЬКО валидный JSON, без текста до или после.
-Придумай вопрос викторины на русском. Тема: ${topic}. Сложность: ${diff}.
-Формат строго: {"q":"вопрос?","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}`;
+            const prompt = `Ты — JSON-робот. Выводи ТОЛЬКО валидный JSON, без текста до или после.
+{"q":"случайный вопрос викторины на русском?","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}`;
 
             try {
                 const resp = await fetch('https://text.pollinations.ai/openai', {
@@ -114,8 +91,6 @@
             }
 
             document.getElementById('questionText').textContent = question.question;
-            document.getElementById('difficultyBadge').textContent = diff;
-            document.getElementById('difficultyBadge').className = `difficulty-badge difficulty-${diff}`;
             document.getElementById('optionsGrid').innerHTML = question.options.map((o, i) =>
                 `<button class="option-btn" data-idx="${i}">${o}</button>`
             ).join('');
