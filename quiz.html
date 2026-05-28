@@ -74,10 +74,9 @@
             document.getElementById('feedback').textContent = '';
             answered = false;
 
-            const prompt = `Придумай один вопрос для викторины на русском языке. Тема: ${topic}. Сложность: ${diff}. 
-Ответь ТОЛЬКО этой строкой JSON, без пояснений:
-{"q":"вопрос","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}
-Где "c" — номер правильного ответа (0, 1, 2 или 3).`;
+            const prompt = `Ты — JSON-робот. Твоя единственная задача — выводить ТОЛЬКО валидный JSON, без текста до или после.
+Придумай вопрос викторины на русском. Тема: ${topic}. Сложность: ${diff}.
+Формат строго: {"q":"вопрос?","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}`;
 
             try {
                 const resp = await fetch('https://text.pollinations.ai/openai', {
@@ -86,7 +85,7 @@
                     body: JSON.stringify({
                         model: 'gemini',
                         messages: [{ role: 'user', content: prompt }],
-                        temperature: 1.0
+                        temperature: 0.8
                     })
                 });
 
