@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Space Invaders — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -14,7 +14,7 @@
         .info { display: flex; justify-content: center; gap: 30px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; }
         .ctrl:active { background: var(--accent); }
     </style>
 </head>
@@ -25,16 +25,17 @@
         <div class="info"><span>Очки: <span id="siScore">0</span></span><span>Жизни: <span id="siLives">3</span></span></div>
         <canvas id="siCanvas" width="300" height="400"></canvas>
         <div class="controls">
+            <button class="ctrl" id="siLeftBtn">←</button>
             <button class="ctrl" id="siShootBtn" style="width:80px;">ОГОНЬ</button>
+            <button class="ctrl" id="siRightBtn">→</button>
         </div>
-        <p style="color:var(--text-secondary);font-size:12px;margin-top:6px;">Перетаскивай корабль пальцем</p>
     </div>
     <script>
         const canvas = document.getElementById('siCanvas'), ctx = canvas.getContext('2d');
         let player = { x:150, y:350, w:30, h:20 }, bullets = [], enemies = [], enemyBullets = [];
         let score = 0, lives = 3, interval = null;
         let siED = 1, siES = 1;
-        let lastShot = 0, shootCooldown = 300; // мс между выстрелами
+        let siLeft = false, siRight = false, lastShot = 0;
 
         function start() {
             score = 0; lives = 3;
@@ -49,12 +50,15 @@
 
         function shoot() {
             const now = Date.now();
-            if (now - lastShot < shootCooldown) return;
+            if (now - lastShot < 250) return;
             lastShot = now;
             bullets.push({ x:player.x+player.w/2-2, y:player.y, vy:-8 });
         }
 
         function update() {
+            if (siLeft && player.x > 0) player.x -= 5;
+            if (siRight && player.x < 300-player.w) player.x += 5;
+
             const ae = enemies.filter(e => e.alive);
             if (ae.length === 0) { clearInterval(interval); alert('🎉 Победа! Очки: ' + score); start(); return; }
 
@@ -62,13 +66,11 @@
             if (rm+siES >= 300 || lm-siES <= 0) { siED *= -1; enemies.forEach(e => { if (e.alive) e.y += 8; }); }
             enemies.forEach(e => { if (!e.alive) return; e.x += siED*siES; if (e.y+e.h >= player.y) { clearInterval(interval); alert('💀 Враги достигли базы! Очки: ' + score); start(); return; } });
 
-            // Пули игрока
             bullets = bullets.filter(b => b.y > 0);
             bullets.forEach(b => b.y += b.vy);
             bullets.forEach(b => { enemies.forEach(e => { if (!e.alive) return; if (b.x>e.x && b.x<e.x+e.w && b.y>e.y && b.y<e.y+e.h) { e.alive=false; b.y=-1; score+=10; document.getElementById('siScore').textContent=score; } }); });
             bullets = bullets.filter(b => b.y > 0);
 
-            // Пули врагов (чаще)
             if (Math.random() < 0.03 && ae.length > 0) {
                 const shooter = ae[Math.floor(Math.random()*ae.length)];
                 enemyBullets.push({ x:shooter.x+shooter.w/2, y:shooter.y+shooter.h, vy:5 });
@@ -90,8 +92,12 @@
         }
 
         document.getElementById('siShootBtn').addEventListener('click', shoot);
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); player.x = Math.max(0, Math.min(300-player.w, e.touches[0].clientX-rect.left-player.w/2)); });
-        canvas.addEventListener('mousemove', e => { const rect = canvas.getBoundingClientRect(); player.x = Math.max(0, Math.min(300-player.w, e.clientX-rect.left-player.w/2)); });
+        document.getElementById('siLeftBtn').addEventListener('pointerdown', () => siLeft = true);
+        document.getElementById('siLeftBtn').addEventListener('pointerup', () => siLeft = false);
+        document.getElementById('siLeftBtn').addEventListener('pointerleave', () => siLeft = false);
+        document.getElementById('siRightBtn').addEventListener('pointerdown', () => siRight = true);
+        document.getElementById('siRightBtn').addEventListener('pointerup', () => siRight = false);
+        document.getElementById('siRightBtn').addEventListener('pointerleave', () => siRight = false);
 
         start();
     </script>
