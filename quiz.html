@@ -52,23 +52,19 @@
             document.getElementById('feedback').textContent = '';
             answered = false;
 
-            const prompt = `Ты — JSON-робот. Выводи ТОЛЬКО валидный JSON, без текста до или после.
-{"q":"случайный вопрос викторины на русском?","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}`;
-
             try {
                 const resp = await fetch('https://text.pollinations.ai/openai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: 'gemini',
-                        messages: [{ role: 'user', content: prompt }],
-                        temperature: 0.8
+                        model: 'openai',
+                        messages: [{ role: 'user', content: 'Выдай ТОЛЬКО JSON: {"q":"вопрос викторины на русском?","o":["а","б","в","г"],"c":0}' }],
+                        temperature: 1.2
                     })
                 });
 
                 const data = await resp.json();
                 const raw = data.choices[0].message.content.trim();
-                
                 const match = raw.match(/\{[^}]+\}/) || raw.match(/\{[\s\S]*\}/);
                 if (!match) throw new Error('No JSON');
                 
