@@ -22,13 +22,14 @@
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
         <h2>❌ Крестики-нолики</h2>
-        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | Нейросеть: ⭕</p>
+        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | ИИ: ⭕</p>
         <div class="board" id="tttBoard"></div>
         <p class="feedback" id="tttFeedback">Твой ход</p>
         <button class="btn" id="resetTTT">🔄 Новая игра</button>
     </div>
     <script>
         let board = [], gameOver = false;
+        const HUMAN = '❌', AI = '⭕';
 
         function start() {
             board = Array(9).fill('');
@@ -38,60 +39,49 @@
         }
 
         function draw() {
-            document.getElementById('tttBoard').innerHTML = board.map((v, i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join('');
+            document.getElementById('tttBoard').innerHTML = board.map((v, i) => 
+                `<div class="cell" onclick="move(${i})">${v}</div>`
+            ).join('');
         }
 
-        function checkWin(p) {
+        function checkWin(p, b) {
             const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-            return wins.some(w => w.every(i => board[i] === p));
+            return wins.some(w => w.every(i => (b || board)[i] === p));
         }
 
-        function aiMove() {
-            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-            
-            // Победный ход
-            for (const w of wins) {
-                const vals = w.map(i => board[i]);
-                if (vals.filter(v => v === '⭕').length === 2 && vals.includes('')) return w[vals.indexOf('')];
+        function getEmpty(b) {
+            return b.map((v, i) => v === '' ? i : -1).filter(v => v >= 0);
+        }
+
+        function minimax(b, isMaximizing) {
+            if (checkWin(AI, b)) return 10;
+            if (checkWin(HUMAN, b)) return -10;
+            const empty = getEmpty(b);
+            if (empty.length === 0) return 0;
+            if (isMaximizing) {
+                let best = -Infinity;
+                for (const i of empty) { b[i] = AI; best = Math.max(best, minimax(b, false)); b[i] = ''; }
+                return best;
+            } else {
+                let best = Infinity;
+                for (const i of empty) { b[i] = HUMAN; best = Math.min(best, minimax(b, true)); b[i] = ''; }
+                return best;
             }
-            // Блокировка прямой угрозы
-            for (const w of wins) {
-                const vals = w.map(i => board[i]);
-                if (vals.filter(v => v === '❌').length === 2 && vals.includes('')) return w[vals.indexOf('')];
-            }
-            
-            // Жёсткая защита от вилки: если X в центре и в углу — О ставится в бок
-            if (board[4] === '❌') {
-                if (board[0] === '❌' || board[2] === '❌' || board[6] === '❌' || board[8] === '❌') {
-                    const sides = [1,3,5,7].filter(i => !board[i]);
-                    if (sides.length > 0) return sides[0];
-                }
-            }
-            
-            // Если X не в центре, занимаем центр
-            if (!board[4]) return 4;
-            
-            // Углы
-            const corners = [0,2,6,8].filter(i => !board[i]);
-            if (corners.length) return corners[Math.floor(Math.random()*corners.length)];
-            // Любая
-            const empty = board.map((v,i) => v ? -1 : i).filter(v => v >= 0);
-            return empty[Math.floor(Math.random()*empty.length)];
+        }
+
+        function bestMove() {
+            let bestScore = -Infinity, move = 0;
+            for (const i of getEmpty(board)) { board[i] = AI; const score = minimax(board, false); board[i] = ''; if (score > bestScore) { bestScore = score; move = i; } }
+            return move;
         }
 
         function move(i) {
             if (board[i] || gameOver) return;
-            board[i] = '❌'; draw();
-            if (checkWin('❌')) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
-            if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
-            
-            const ai = aiMove();
-            board[ai] = '⭕';
-            draw();
-            
-            if (checkWin('⭕')) { document.getElementById('tttFeedback').textContent = 'Нейросеть победила!'; gameOver = true; return; }
-            if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
-            document.getElementById('tttFeedback').textContent = 'Твой ход';
+            board[i] = HUMAN; draw();
+            if (checkWin(HUMAN)) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
+            if (getEmpty(board).length === 0) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
+            document.getElementById('tttFeedback').textContent = 'ИИ думает...';
+            setTimeout(() => { board[bestMove()] = AI; draw(); if (checkWin(AI)) { document.getElementById('tttFeedback').textContent = 'ИИ победил!'; gameOver = true; } else if (getEmpty(board).length === 0) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; } else { document.getElementById('tttFeedback').textContent = 'Твой ход'; } }, 200);
         }
 
         document.getElementById('resetTTT').addEventListener('click', start);
