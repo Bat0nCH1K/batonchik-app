@@ -75,38 +75,36 @@
             answered = false;
 
             const prompt = `Придумай один вопрос для викторины на русском языке. Тема: ${topic}. Сложность: ${diff}. 
-Ответь только JSON, без лишнего текста:
-{"question":"вопрос","options":["ответ1","ответ2","ответ3","ответ4"],"correctIndex":0}`;
+Ответь ТОЛЬКО этой строкой JSON, без пояснений:
+{"q":"вопрос","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}
+Где "c" — номер правильного ответа (0, 1, 2 или 3).`;
 
             try {
                 const resp = await fetch('https://text.pollinations.ai/openai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        model: 'openai-large',
+                        model: 'gemini',
                         messages: [{ role: 'user', content: prompt }],
-                        temperature: 0.9
+                        temperature: 1.0
                     })
                 });
 
                 const data = await resp.json();
                 const raw = data.choices[0].message.content.trim();
                 
-                const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                if (!jsonMatch) {
-                    document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
-                    btn.disabled = false;
-                    btn.textContent = '🎲';
-                    return;
-                }
+                const match = raw.match(/\{[^}]+\}/) || raw.match(/\{[\s\S]*\}/);
+                if (!match) throw new Error('No JSON');
                 
-                question = JSON.parse(jsonMatch[0]);
+                const q = JSON.parse(match[0]);
+                question = {
+                    question: q.question || q.q,
+                    options: q.options || q.o,
+                    correctIndex: q.correctIndex !== undefined ? q.correctIndex : q.c
+                };
 
-                if (!question.question || !question.options || question.options.length !== 4) {
-                    document.getElementById('questionText').textContent = '😵 Ошибка. Нажми кнопку ещё раз.';
-                    btn.disabled = false;
-                    btn.textContent = '🎲';
-                    return;
+                if (!question.question || !question.options || question.options.length !== 4 || question.correctIndex === undefined) {
+                    throw new Error('Invalid data');
                 }
 
             } catch (e) {
