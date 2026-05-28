@@ -5,19 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Space Invaders — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --gold: #f0c040; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .info { display: flex; justify-content: center; gap: 30px; margin: 10px 0; }
+        .canvas-wrap { position: relative; display: inline-block; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
+        .start-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+        }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
         .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
         .ctrl:active { background: var(--accent); }
-        .secret { margin-top: 10px; font-size: 14px; color: var(--gold); font-weight: bold; display: none; }
-        .secret.show { display: block; }
         .diff-select { margin-bottom: 10px; }
         .diff-select select { padding: 8px 14px; border-radius: 8px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-family: inherit; }
     </style>
@@ -35,20 +39,22 @@
             </select>
         </div>
         <div class="info"><span>Очки: <span id="siScore">0</span></span><span>Жизни: <span id="siLives">❤️❤️❤️</span></span></div>
-        <canvas id="siCanvas" width="300" height="400"></canvas>
+        <div class="canvas-wrap">
+            <canvas id="siCanvas" width="300" height="400"></canvas>
+            <div class="start-overlay" id="siStart">▶ Старт</div>
+        </div>
         <div class="controls">
             <button class="ctrl" id="siLeftBtn">←</button>
             <button class="ctrl" id="siShootBtn" style="width:80px;">ОГОНЬ</button>
             <button class="ctrl" id="siRightBtn">→</button>
         </div>
-        <div class="secret" id="secretCode"></div>
     </div>
     <script>
         const canvas = document.getElementById('siCanvas'), ctx = canvas.getContext('2d');
         let player = { x:150, y:350, w:30, h:20 }, bullets = [], enemies = [], enemyBullets = [];
         let score = 0, lives = 3, interval = null;
         let siED = 1, siES = 1;
-        let siLeft = false, siRight = false, lastShot = 0;
+        let siLeft = false, siRight = false, lastShot = 0, running = false;
         let currentDiff = 'easy';
 
         const diffs = {
@@ -73,45 +79,43 @@
 
         function start() {
             const d = diffs[currentDiff];
-            score = 0; lives = d.lives;
+            score = 0; lives = d.lives; running = false;
             document.getElementById('siScore').textContent = '0';
             document.getElementById('siLives').textContent = '❤️'.repeat(d.lives);
-            document.getElementById('secretCode').classList.remove('show');
+            document.getElementById('siStart').style.display = 'block';
             player.x = 150; bullets = []; enemies = []; enemyBullets = [];
             siED = 1; siES = d.speed; lastShot = 0;
             for (let r = 0; r < d.rows; r++) for (let c = 0; c < 8; c++) enemies.push({ x:c*30+30, y:r*25+20, w:25, h:20, alive:true });
             if (interval) clearInterval(interval);
+            draw();
+        }
+
+        function launch() {
+            running = true; document.getElementById('siStart').style.display = 'none';
             interval = setInterval(update, 30);
         }
 
         function shoot() {
-            if (Date.now() - lastShot < 250) return;
+            if (!running || Date.now() - lastShot < 250) return;
             lastShot = Date.now();
             bullets.push({ x:player.x+player.w/2-2, y:player.y, vy:-8 });
         }
 
         function update() {
+            if (!running) return;
             if (siLeft && player.x > 0) player.x -= 5;
             if (siRight && player.x < 300-player.w) player.x += 5;
 
             const ae = enemies.filter(e => e.alive);
             if (ae.length === 0) {
-                clearInterval(interval);
-                localStorage.setItem('beat_' + currentDiff, '1');
-                updateSelect();
-                if (currentDiff === 'ultra') {
-                    document.getElementById('secretCode').innerHTML = `🏆 Секретный код: <strong>INVADER-HERO</strong>`;
-                    document.getElementById('secretCode').classList.add('show');
-                    localStorage.setItem('earned_INVADER-HERO', '1');
-                }
-                alert('🎉 Победа!');
-                start();
-                return;
+                clearInterval(interval); running = false;
+                localStorage.setItem('beat_' + currentDiff, '1'); updateSelect();
+                alert('🎉 Победа!'); start(); return;
             }
 
             const rm = Math.max(...ae.map(e => e.x+e.w)), lm = Math.min(...ae.map(e => e.x));
             if (rm+siES >= 300 || lm-siES <= 0) { siED *= -1; enemies.forEach(e => { if (e.alive) e.y += 6; }); }
-            enemies.forEach(e => { if (!e.alive) return; e.x += siED*siES; if (e.y+e.h >= player.y) { clearInterval(interval); alert('💀 База!'); start(); return; } });
+            enemies.forEach(e => { if (!e.alive) return; e.x += siED*siES; if (e.y+e.h >= player.y) { clearInterval(interval); running = false; alert('💀 База!'); start(); return; } });
 
             bullets = bullets.filter(b => b.y > 0);
             bullets.forEach(b => b.y += b.vy);
@@ -124,7 +128,7 @@
             }
             enemyBullets = enemyBullets.filter(b => b.y < 400);
             enemyBullets.forEach(b => b.y += b.vy);
-            enemyBullets.forEach(b => { if (b.x>player.x && b.x<player.x+player.w && b.y>player.y && b.y<player.y+player.h) { lives--; document.getElementById('siLives').textContent='❤️'.repeat(Math.max(0,lives)); b.y=999; if (lives<=0) { clearInterval(interval); alert('💀 Игра окончена!'); start(); } } });
+            enemyBullets.forEach(b => { if (b.x>player.x && b.x<player.x+player.w && b.y>player.y && b.y<player.y+player.h) { lives--; document.getElementById('siLives').textContent='❤️'.repeat(Math.max(0,lives)); b.y=999; if (lives<=0) { clearInterval(interval); running = false; alert('💀 Игра окончена!'); start(); } } });
             enemyBullets = enemyBullets.filter(b => b.y < 400);
             draw();
         }
@@ -137,13 +141,12 @@
             ctx.fillStyle='#ff0'; enemyBullets.forEach(b=>ctx.fillRect(b.x,b.y,3,8));
         }
 
+        document.getElementById('siStart').addEventListener('click', launch);
         document.getElementById('siShootBtn').addEventListener('click', shoot);
         document.getElementById('siLeftBtn').addEventListener('pointerdown', () => siLeft = true);
         document.getElementById('siLeftBtn').addEventListener('pointerup', () => siLeft = false);
-        document.getElementById('siLeftBtn').addEventListener('pointerleave', () => siLeft = false);
         document.getElementById('siRightBtn').addEventListener('pointerdown', () => siRight = true);
         document.getElementById('siRightBtn').addEventListener('pointerup', () => siRight = false);
-        document.getElementById('siRightBtn').addEventListener('pointerleave', () => siRight = false);
 
         updateSelect();
         start();
