@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Крестики-нолики — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --gold: #f0c040; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -15,8 +15,6 @@
         .cell { width: 76px; height: 76px; background: var(--card); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; cursor: pointer; }
         .cell:active { background: var(--accent); }
         .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
-        .secret { margin-top: 10px; font-size: 14px; color: var(--gold); font-weight: bold; display: none; }
-        .secret.show { display: block; }
         .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
@@ -27,21 +25,16 @@
         <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | ИИ: ⭕</p>
         <div class="board" id="tttBoard"></div>
         <p class="feedback" id="tttFeedback">Твой ход</p>
-        <div class="secret" id="secretCode"></div>
         <button class="btn" id="resetTTT">🔄 Новая игра</button>
     </div>
     <script>
         let board, gameOver;
-        const HU = '❌', AI = '❌';
-
-        // Секретный промокод (зашифрован в base64)
-        const SECRET = atob('VElDS0VULUxFR0VORA=='); // TICKET-LEGEND
+        const HU = '⭕', AI = '❌';
 
         function start() {
             board = Array(9).fill('');
             gameOver = false;
             document.getElementById('tttFeedback').textContent = 'Твой ход';
-            document.getElementById('secretCode').classList.remove('show');
             draw();
         }
 
@@ -79,15 +72,8 @@
         function move(i) {
             if (board[i] !== '' || gameOver) return;
             board[i] = HU; draw();
-            if (win(HU)) {
-                document.getElementById('tttFeedback').textContent = 'Ты победил! 🎉';
-                document.getElementById('secretCode').innerHTML = `🏆 Секретный код: <strong>${SECRET}</strong> — сохрани его!`;
-                document.getElementById('secretCode').classList.add('show');
-                gameOver = true;
-                return;
-            }
+            if (win(HU)) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
             if (board.every(v => v !== '')) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
-            
             board[bestMove()] = AI; draw();
             if (win(AI)) { document.getElementById('tttFeedback').textContent = 'ИИ победил!'; gameOver = true; return; }
             if (board.every(v => v !== '')) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; }
