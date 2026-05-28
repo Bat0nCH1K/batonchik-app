@@ -76,10 +76,24 @@
             if (ball.x+ball.r >= 300) { ball.x=300-ball.r; ball.vx=-Math.abs(ball.vx); }
             if (ball.y-ball.r <= 0) { ball.y=ball.r; ball.vy=Math.abs(ball.vy); }
 
-            // Флипперы
-            if (ball.vy > 0 && ball.y+ball.r >= 410 && ball.y-ball.r <= 425) {
-                if (leftDown && ball.x < 160) { ball.vy = -8; ball.vx = -4; score+=5; document.getElementById('pbScore').textContent=score; }
-                if (rightDown && ball.x > 140) { ball.vy = -8; ball.vx = 4; score+=5; document.getElementById('pbScore').textContent=score; }
+            // Флипперы — всегда отталкивают, при нажатии сильнее
+            if (ball.vy > 0 && ball.y+ball.r >= 405 && ball.y-ball.r <= 425) {
+                // Левый флиппер
+                if (ball.x < 160 && ball.x > 10) {
+                    ball.vy = leftDown ? -9 : -4;
+                    ball.vx = leftDown ? -5 : -1;
+                    if (!leftDown) ball.y = 400; // вытолкнуть выше
+                    score += leftDown ? 5 : 1;
+                    document.getElementById('pbScore').textContent = score;
+                }
+                // Правый флиппер
+                if (ball.x > 140 && ball.x < 290) {
+                    ball.vy = rightDown ? -9 : -4;
+                    ball.vx = rightDown ? 5 : 1;
+                    if (!rightDown) ball.y = 400;
+                    score += rightDown ? 5 : 1;
+                    document.getElementById('pbScore').textContent = score;
+                }
             }
 
             // Бамперы
@@ -106,15 +120,15 @@
             // Мяч
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
             // Левый флиппер
-            ctx.fillStyle = leftDown ? '#e94560' : '#666';
-            ctx.save(); ctx.translate(70, 415); ctx.rotate(leftDown ? -0.4 : 0.2); ctx.fillRect(-60, -6, 120, 12); ctx.restore();
+            ctx.fillStyle = leftDown ? '#e94560' : '#888';
+            ctx.fillRect(10, 410, 130, 12);
             // Правый флиппер
-            ctx.fillStyle = rightDown ? '#e94560' : '#666';
-            ctx.save(); ctx.translate(230, 415); ctx.rotate(rightDown ? 0.4 : -0.2); ctx.fillRect(-60, -6, 120, 12); ctx.restore();
-            // Стенки по бокам от флипперов
+            ctx.fillStyle = rightDown ? '#e94560' : '#888';
+            ctx.fillRect(160, 410, 130, 12);
+            // Стенки по бокам
             ctx.fillStyle = '#0a0a1a';
-            ctx.fillRect(0, 408, 15, 20);
-            ctx.fillRect(285, 408, 15, 20);
+            ctx.fillRect(0, 405, 10, 20);
+            ctx.fillRect(290, 405, 10, 20);
         }
 
         document.getElementById('pbStart').addEventListener('click', launch);
