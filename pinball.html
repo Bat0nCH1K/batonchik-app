@@ -40,12 +40,11 @@
     </div>
     <script>
         const canvas = document.getElementById('pbCanvas'), ctx = canvas.getContext('2d');
-        let ball = { x:150, y:300, vx:0, vy:0, r:9 };
-        let bumpers = [];
+        let ball = { x:150, y:30, vx:0, vy:0, r:9 };
         let score = 0, interval = null, running = false;
         let leftDown = false, rightDown = false;
 
-        const fixedBumpers = [
+        const bumpers = [
             {x:80,y:70,r:18},{x:220,y:70,r:18},{x:150,y:130,r:22},
             {x:60,y:190,r:16},{x:240,y:190,r:16},{x:150,y:250,r:20},
             {x:100,y:310,r:16},{x:200,y:310,r:16}
@@ -53,46 +52,34 @@
 
         function start() {
             score = 0; document.getElementById('pbScore').textContent = '0';
-            ball = { x:150, y:300, vx:0, vy:0, r:9 };
-            bumpers = [...fixedBumpers];
+            ball = { x:150, y:30, vx:0, vy:0, r:9 };
             running = false;
             document.getElementById('pbStart').style.display = 'block';
+            if (interval) clearInterval(interval);
             draw();
         }
 
         function launch() {
             running = true;
             document.getElementById('pbStart').style.display = 'none';
-            ball.vx = (Math.random()-0.5)*3;
-            ball.vy = -10;
-            if (interval) clearInterval(interval);
+            ball.vx = (Math.random()-0.5)*2;
+            ball.vy = 2;
             interval = setInterval(update, 16);
         }
 
         function update() {
             if (!running) return;
-            ball.vy += 0.18;
+            ball.vy += 0.15;
             ball.x += ball.vx; ball.y += ball.vy;
 
             if (ball.x-ball.r <= 0) { ball.x=ball.r; ball.vx=Math.abs(ball.vx); }
             if (ball.x+ball.r >= 300) { ball.x=300-ball.r; ball.vx=-Math.abs(ball.vx); }
             if (ball.y-ball.r <= 0) { ball.y=ball.r; ball.vy=Math.abs(ball.vy); }
 
-            // Флипперы — обе могут работать одновременно
-            const flipperY = 410, flipperH = 12, flipperW = 100;
-            if (ball.vy > 0 && ball.y+ball.r >= flipperY && ball.y-ball.r <= flipperY+flipperH) {
-                const leftFlipper = { x1:10, y1:flipperY, x2:10+flipperW, y2:flipperY };
-                const rightFlipper = { x1:190, y1:flipperY, x2:190+flipperW, y2:flipperY };
-                if (leftDown && ball.x+ball.r > 10 && ball.x-ball.r < 10+flipperW+20) {
-                    ball.vy = -Math.abs(ball.vy) - 4;
-                    ball.vx += (ball.x < 60 ? -3 : 0);
-                    score += 5; document.getElementById('pbScore').textContent = score;
-                }
-                if (rightDown && ball.x+ball.r > 180 && ball.x-ball.r < 190+flipperW+20) {
-                    ball.vy = -Math.abs(ball.vy) - 4;
-                    ball.vx += (ball.x > 240 ? 3 : 0);
-                    score += 5; document.getElementById('pbScore').textContent = score;
-                }
+            // Флипперы
+            if (ball.vy > 0 && ball.y+ball.r >= 410 && ball.y-ball.r <= 425) {
+                if (leftDown && ball.x < 160) { ball.vy = -8; ball.vx = -4; score+=5; document.getElementById('pbScore').textContent=score; }
+                if (rightDown && ball.x > 140) { ball.vy = -8; ball.vx = 4; score+=5; document.getElementById('pbScore').textContent=score; }
             }
 
             // Бамперы
@@ -100,7 +87,7 @@
                 const dx = ball.x-b.x, dy = ball.y-b.y, dist = Math.sqrt(dx*dx+dy*dy);
                 if (dist < ball.r+b.r) {
                     const nx = dx/dist, ny = dy/dist;
-                    ball.vx = nx*7; ball.vy = ny*7;
+                    ball.vx = nx*6; ball.vy = ny*6;
                     ball.x += nx*(ball.r+b.r-dist);
                     ball.y += ny*(ball.r+b.r-dist);
                     score+=15; document.getElementById('pbScore').textContent=score;
@@ -120,17 +107,14 @@
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
             // Левый флиппер
             ctx.fillStyle = leftDown ? '#e94560' : '#666';
-            ctx.fillRect(10, 410, 100, 12);
+            ctx.save(); ctx.translate(70, 415); ctx.rotate(leftDown ? -0.4 : 0.2); ctx.fillRect(-60, -6, 120, 12); ctx.restore();
             // Правый флиппер
             ctx.fillStyle = rightDown ? '#e94560' : '#666';
-            ctx.fillRect(190, 410, 100, 12);
-            // Закрыть проходы
+            ctx.save(); ctx.translate(230, 415); ctx.rotate(rightDown ? 0.4 : -0.2); ctx.fillRect(-60, -6, 120, 12); ctx.restore();
+            // Стенки по бокам от флипперов
             ctx.fillStyle = '#0a0a1a';
-            ctx.fillRect(0, 408, 10, 16);
-            ctx.fillRect(290, 408, 10, 16);
-            // Пружина
-            ctx.fillStyle = '#aaa';
-            ctx.fillRect(145, 430, 10, 20);
+            ctx.fillRect(0, 408, 15, 20);
+            ctx.fillRect(285, 408, 15, 20);
         }
 
         document.getElementById('pbStart').addEventListener('click', launch);
