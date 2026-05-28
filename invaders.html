@@ -62,7 +62,7 @@
             easy:   { rows: 3, speed: 1,   enemyShoot: 0.02, lives: 3 },
             medium: { rows: 4, speed: 1.8, enemyShoot: 0.04, lives: 2 },
             hard:   { rows: 5, speed: 2.5, enemyShoot: 0.06, lives: 1 },
-            ultra:  { rows: 6, speed: 3.5, enemyShoot: 0.10, lives: 7 }
+            ultra:  { rows: 6, speed: 3.5, enemyShoot: 0.10, lives: 1 }
         };
 
         function updateSelect() {
@@ -107,7 +107,15 @@
             if (siRight && player.x < 300-player.w) player.x += 5;
 
             const ae = enemies.filter(e => e.alive);
-            if (ae.length === 0) { clearInterval(interval); running = false; SFX.win(); SFX.stopMusic(); localStorage.setItem('beat_' + currentDiff, '1'); updateSelect(); alert('🎉 Победа!'); start(); return; }
+            if (ae.length === 0) {
+                clearInterval(interval); running = false; SFX.win(); SFX.stopMusic();
+                localStorage.setItem('beat_' + currentDiff, '1'); updateSelect();
+                if (currentDiff === 'ultra') {
+                    localStorage.setItem('earned_INVADER-HERO', '1');
+                    alert('🏆 Титул получен: Герой галактики!');
+                }
+                alert('🎉 Победа!'); start(); return;
+            }
 
             const rm = Math.max(...ae.map(e => e.x+e.w)), lm = Math.min(...ae.map(e => e.x));
             if (rm+siES >= 300 || lm-siES <= 0) { siED *= -1; enemies.forEach(e => { if (e.alive) e.y += 6; }); }
