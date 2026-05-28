@@ -12,8 +12,16 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
+        .canvas-wrap { position: relative; display: inline-block; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
-        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .start-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+        }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl:active { background: var(--accent); }
     </style>
 </head>
 <body>
@@ -21,58 +29,70 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🕹️ Пинбол</h2>
         <div class="score">Очки: <span id="pbScore">0</span></div>
-        <canvas id="pbCanvas" width="300" height="450"></canvas>
-        <button class="btn" id="startPB">▶ Старт</button>
-        <p style="color:var(--text-secondary);font-size:12px;">Кнопки — флипперы. Мяч запускается пружиной.</p>
+        <div class="canvas-wrap">
+            <canvas id="pbCanvas" width="300" height="450"></canvas>
+            <div class="start-overlay" id="pbStart">▶ Старт</div>
+        </div>
+        <div class="controls">
+            <button class="ctrl" id="pbLeft">◀</button>
+            <button class="ctrl" id="pbRight">▶</button>
+        </div>
     </div>
     <script>
         const canvas = document.getElementById('pbCanvas'), ctx = canvas.getContext('2d');
-        let ball = { x:150, y:400, vx:0, vy:0, r:7 };
-        let flipperLAngle = 0.3, flipperRAngle = -0.3;
+        let ball = { x:150, y:300, vx:0, vy:0, r:9 };
         let bumpers = [];
-        let score = 0, interval = null, running = false, launched = false;
+        let score = 0, interval = null, running = false;
         let leftDown = false, rightDown = false;
-        let springPower = 0;
 
         const fixedBumpers = [
-            {x:80,y:80,r:18},{x:220,y:80,r:18},{x:150,y:140,r:22},
-            {x:60,y:200,r:16},{x:240,y:200,r:16},{x:150,y:260,r:20},
-            {x:100,y:320,r:16},{x:200,y:320,r:16}
+            {x:80,y:70,r:18},{x:220,y:70,r:18},{x:150,y:130,r:22},
+            {x:60,y:190,r:16},{x:240,y:190,r:16},{x:150,y:250,r:20},
+            {x:100,y:310,r:16},{x:200,y:310,r:16}
         ];
 
         function start() {
             score = 0; document.getElementById('pbScore').textContent = '0';
-            ball = { x:150, y:400, vx:0, vy:0, r:7 };
+            ball = { x:150, y:300, vx:0, vy:0, r:9 };
             bumpers = [...fixedBumpers];
-            running = false; launched = false; springPower = 0;
-            document.getElementById('startPB').style.display = 'block';
+            running = false;
+            document.getElementById('pbStart').style.display = 'block';
             draw();
         }
 
         function launch() {
-            if (running) return;
-            running = true; launched = true;
-            document.getElementById('startPB').style.display = 'none';
-            ball.vx = (Math.random()-0.5)*2;
-            ball.vy = -8 - springPower*0.3;
-            springPower = 0;
+            running = true;
+            document.getElementById('pbStart').style.display = 'none';
+            ball.vx = (Math.random()-0.5)*3;
+            ball.vy = -10;
             if (interval) clearInterval(interval);
             interval = setInterval(update, 16);
         }
 
         function update() {
             if (!running) return;
-            ball.vy += 0.2;
+            ball.vy += 0.18;
             ball.x += ball.vx; ball.y += ball.vy;
 
             if (ball.x-ball.r <= 0) { ball.x=ball.r; ball.vx=Math.abs(ball.vx); }
             if (ball.x+ball.r >= 300) { ball.x=300-ball.r; ball.vx=-Math.abs(ball.vx); }
             if (ball.y-ball.r <= 0) { ball.y=ball.r; ball.vy=Math.abs(ball.vy); }
 
-            // Флипперы — отбрасывают мяч
-            if (ball.y+ball.r >= 410 && ball.y-ball.r <= 430) {
-                if (ball.x < 150 && leftDown) { ball.vy = -9; ball.vx = -5; score+=5; document.getElementById('pbScore').textContent=score; }
-                else if (ball.x >= 150 && rightDown) { ball.vy = -9; ball.vx = 5; score+=5; document.getElementById('pbScore').textContent=score; }
+            // Флипперы — обе могут работать одновременно
+            const flipperY = 410, flipperH = 12, flipperW = 100;
+            if (ball.vy > 0 && ball.y+ball.r >= flipperY && ball.y-ball.r <= flipperY+flipperH) {
+                const leftFlipper = { x1:10, y1:flipperY, x2:10+flipperW, y2:flipperY };
+                const rightFlipper = { x1:190, y1:flipperY, x2:190+flipperW, y2:flipperY };
+                if (leftDown && ball.x+ball.r > 10 && ball.x-ball.r < 10+flipperW+20) {
+                    ball.vy = -Math.abs(ball.vy) - 4;
+                    ball.vx += (ball.x < 60 ? -3 : 0);
+                    score += 5; document.getElementById('pbScore').textContent = score;
+                }
+                if (rightDown && ball.x+ball.r > 180 && ball.x-ball.r < 190+flipperW+20) {
+                    ball.vy = -Math.abs(ball.vy) - 4;
+                    ball.vx += (ball.x > 240 ? 3 : 0);
+                    score += 5; document.getElementById('pbScore').textContent = score;
+                }
             }
 
             // Бамперы
@@ -87,7 +107,7 @@
                 }
             });
 
-            if (ball.y > 470) { clearInterval(interval); running=false; launched=false; alert('💀 Мяч упал! Очки: '+score); start(); return; }
+            if (ball.y > 470) { clearInterval(interval); running=false; alert('💀 Мяч упал! Очки: '+score); start(); return; }
             draw();
         }
 
@@ -98,33 +118,26 @@
             bumpers.forEach(b => { ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); });
             // Мяч
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
-            // Флипперы
+            // Левый флиппер
             ctx.fillStyle = leftDown ? '#e94560' : '#666';
-            ctx.save(); ctx.translate(60, 420); ctx.rotate(leftDown ? -0.5 : 0.3); ctx.fillRect(-50, -5, 100, 10); ctx.restore();
+            ctx.fillRect(10, 410, 100, 12);
+            // Правый флиппер
             ctx.fillStyle = rightDown ? '#e94560' : '#666';
-            ctx.save(); ctx.translate(240, 420); ctx.rotate(rightDown ? 0.5 : -0.3); ctx.fillRect(-50, -5, 100, 10); ctx.restore();
+            ctx.fillRect(190, 410, 100, 12);
+            // Закрыть проходы
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 408, 10, 16);
+            ctx.fillRect(290, 408, 10, 16);
             // Пружина
             ctx.fillStyle = '#aaa';
-            ctx.fillRect(145, 440-springPower, 10, 20+springPower);
+            ctx.fillRect(145, 430, 10, 20);
         }
 
-        canvas.addEventListener('touchstart', e => {
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const x = e.touches[0].clientX - rect.left;
-            if (x < 150) leftDown = true; else rightDown = true;
-        });
-        canvas.addEventListener('touchend', () => { leftDown = false; rightDown = false; });
-        canvas.addEventListener('mousedown', e => {
-            const rect = canvas.getBoundingClientRect();
-            if (e.clientX-rect.left < 150) leftDown = true; else rightDown = true;
-        });
-        canvas.addEventListener('mouseup', () => { leftDown = false; rightDown = false; });
-
-        // Запуск по пробелу или кнопке Старт
-        document.getElementById('startPB').addEventListener('click', () => {
-            if (!launched) { springPower = Math.min(60, springPower+15); draw(); setTimeout(launch, 300); }
-        });
+        document.getElementById('pbStart').addEventListener('click', launch);
+        document.getElementById('pbLeft').addEventListener('pointerdown', () => leftDown = true);
+        document.getElementById('pbLeft').addEventListener('pointerup', () => leftDown = false);
+        document.getElementById('pbRight').addEventListener('pointerdown', () => rightDown = true);
+        document.getElementById('pbRight').addEventListener('pointerup', () => rightDown = false);
 
         start();
     </script>
