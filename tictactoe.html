@@ -38,39 +38,48 @@
         }
 
         function draw() {
-            const el = document.getElementById('tttBoard');
-            el.innerHTML = board.map((v, i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join('');
+            document.getElementById('tttBoard').innerHTML = board.map((v, i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join('');
         }
 
-        async function move(i) {
+        function aiMove() {
+            // Простой ИИ: сначала ищем победный ход, потом блокируем, потом центр, потом случайно
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            
+            // Победный ход
+            for (const w of wins) {
+                const vals = w.map(i => board[i]);
+                if (vals.filter(v => v === '⭕').length === 2 && vals.includes('')) {
+                    return w[vals.indexOf('')];
+                }
+            }
+            // Блокировка
+            for (const w of wins) {
+                const vals = w.map(i => board[i]);
+                if (vals.filter(v => v === '❌').length === 2 && vals.includes('')) {
+                    return w[vals.indexOf('')];
+                }
+            }
+            // Центр
+            if (!board[4]) return 4;
+            // Углы
+            const corners = [0,2,6,8].filter(i => !board[i]);
+            if (corners.length) return corners[Math.floor(Math.random()*corners.length)];
+            // Любая
+            const empty = board.map((v,i) => v ? -1 : i).filter(v => v >= 0);
+            return empty[Math.floor(Math.random()*empty.length)];
+        }
+
+        function move(i) {
             if (board[i] || gameOver) return;
             board[i] = '❌'; draw();
             if (check('❌')) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
             if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
-            document.getElementById('tttFeedback').textContent = 'Нейросеть думает...';
             
-            try {
-                const resp = await fetch('https://text.pollinations.ai/openai', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: 'openai',
-                        messages: [{ role: 'user', content: `Игра в крестики-нолики. Ты за ⭕. Поле (0-8): ${JSON.stringify(board)}. Сделай лучший ход. Ответь только числом от 0 до 8.` }],
-                        temperature: 0.3
-                    })
-                });
-                const data = await resp.json();
-                const raw = data.choices[0].message.content.trim();
-                const m = parseInt(raw.match(/\d/)?.[0] ?? -1);
-                
-                if (m >= 0 && m <= 8 && !board[m]) board[m] = '⭕';
-                else { const empty = board.map((v,i) => v ? -1 : i).filter(v => v >= 0); board[empty[Math.floor(Math.random()*empty.length)]] = '⭕'; }
-            } catch (e) {
-                const empty = board.map((v,i) => v ? -1 : i).filter(v => v >= 0);
-                board[empty[Math.floor(Math.random()*empty.length)]] = '⭕';
-            }
-            
+            // Ход ИИ (мгновенный)
+            const ai = aiMove();
+            board[ai] = '⭕';
             draw();
+            
             if (check('⭕')) { document.getElementById('tttFeedback').textContent = 'Нейросеть победила!'; gameOver = true; return; }
             if (board.every(v => v)) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
             document.getElementById('tttFeedback').textContent = 'Твой ход';
