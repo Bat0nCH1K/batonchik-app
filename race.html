@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гонки — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --gold: #f0c040; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back">← Назад</a>
+        <h2>🏎️ Гонки</h2>
+        <div class="score">Очки: <span id="raceScore">0</span></div>
+        <canvas id="raceCanvas" width="300" height="400"></canvas>
+        <p style="color:var(--text-secondary);font-size:12px;">Уворачивайся от машин. Двигай пальцем или мышкой.</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('raceCanvas'), ctx = canvas.getContext('2d');
+        let player = { x:130, y:340, w:40, h:50 }, obstacles = [], score = 0, interval = null, gameOver = false;
+
+        function start() {
+            score = 0; obstacles = []; gameOver = false;
+            document.getElementById('raceScore').textContent = '0';
+            player.x = 130;
+            if (interval) clearInterval(interval);
+            interval = setInterval(update, 30);
+        }
+
+        function spawn() {
+            const x = Math.random() * (300 - 40);
+            obstacles.push({ x, y: -60, w: 40, h: 60 });
+        }
+
+        function update() {
+            if (gameOver) return;
+            score++; document.getElementById('raceScore').textContent = score;
+            if (score % 40 === 0) spawn();
+
+            obstacles = obstacles.filter(o => o.y < 420);
+            obstacles.forEach(o => o.y += 4);
+
+            for (const o of obstacles) {
+                if (player.x < o.x+o.w && player.x+player.w > o.x && player.y < o.y+o.h && player.y+player.h > o.y) {
+                    clearInterval(interval); gameOver = true;
+                    alert('💥 Разбился! Очки: ' + score); start(); return;
+                }
+            }
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            // Дорога
+            ctx.fillStyle = '#333';
+            for (let i=0; i<400; i+=40) ctx.fillRect(148, (i+frame%40)%400-40, 4, 30);
+            // Игрок
+            ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
+            // Препятствия
+            ctx.fillStyle = '#e94560';
+            obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+        }
+
+        let frame = 0;
+        const origUpdate = update;
+        update = function() { frame++; origUpdate(); };
+
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); player.x = Math.max(0, Math.min(260, e.touches[0].clientX - rect.left - player.w/2)); });
+        canvas.addEventListener('mousemove', e => { const rect = canvas.getBoundingClientRect(); player.x = Math.max(0, Math.min(260, e.clientX - rect.left - player.w/2)); });
+
+        start();
+    </script>
+</body>
+</html>
