@@ -12,10 +12,15 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; position: relative; }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
         .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
         .ctrl:active { background: var(--accent); }
+        .start-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -23,24 +28,27 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🏎️ Гонки</h2>
         <div class="score">Очки: <span id="raceScore">0</span></div>
-        <canvas id="raceCanvas" width="300" height="400"></canvas>
+        <div style="position:relative; display:inline-block;">
+            <canvas id="raceCanvas" width="300" height="400"></canvas>
+            <div class="start-overlay" id="raceStart">▶ Старт</div>
+        </div>
         <div class="controls">
             <button class="ctrl" id="raceLeft">←</button>
             <button class="ctrl" id="raceRight">→</button>
         </div>
-        <p style="color:var(--text-secondary);font-size:12px;">Уворачивайся от машин. Счёт растёт медленнее.</p>
     </div>
     <script>
         const canvas = document.getElementById('raceCanvas'), ctx = canvas.getContext('2d');
         let player = { x:130, y:340, w:40, h:50 }, obstacles = [], score = 0, interval = null, gameOver = false;
-        let leftDown = false, rightDown = false, speed = 3, spawnTimer = 0;
+        let leftDown = false, rightDown = false, speed = 3, spawnTimer = 0, running = false;
 
         function start() {
-            score = 0; obstacles = []; gameOver = false; speed = 3; spawnTimer = 0;
+            score = 0; obstacles = []; gameOver = false; speed = 3; spawnTimer = 0; running = false;
             document.getElementById('raceScore').textContent = '0';
+            document.getElementById('raceStart').style.display = 'block';
             player.x = 130;
             if (interval) clearInterval(interval);
-            interval = setInterval(update, 30);
+            draw();
         }
 
         function spawn() {
@@ -48,11 +56,11 @@
             const w = isTruck ? 50 : 40;
             const h = isTruck ? 80 : 60;
             const x = Math.random() * (300 - w);
-            obstacles.push({ x, y: -h, w, h, isTruck });
+            obstacles.push({ x, y: -h, w, h, isTruck, passed: false });
         }
 
         function update() {
-            if (gameOver) return;
+            if (!running || gameOver) return;
             if (leftDown && player.x > 0) player.x -= 5;
             if (rightDown && player.x < 260) player.x += 5;
 
@@ -60,15 +68,17 @@
             if (spawnTimer > Math.max(20, 60 - speed*5)) { spawn(); spawnTimer = 0; }
 
             obstacles = obstacles.filter(o => o.y < 420);
-            obstacles.forEach(o => o.y += speed);
-            score = Math.floor(score + 0.1);
-            document.getElementById('raceScore').textContent = Math.floor(score);
-            if (score % 100 < 0.1) speed = Math.min(8, speed + 0.2);
+            obstacles.forEach(o => {
+                o.y += speed;
+                if (!o.passed && o.y > player.y+player.h) { o.passed = true; score += o.isTruck ? 2 : 1; document.getElementById('raceScore').textContent = score; }
+            });
+
+            if (score > 0 && score % 20 === 0) speed = Math.min(8, 3 + score/20);
 
             for (const o of obstacles) {
                 if (player.x < o.x+o.w && player.x+player.w > o.x && player.y < o.y+o.h && player.y+player.h > o.y) {
-                    clearInterval(interval); gameOver = true;
-                    alert('💥 Разбился! Очки: ' + Math.floor(score)); start(); return;
+                    clearInterval(interval); gameOver = true; running = false;
+                    alert('💥 Разбился! Очки: ' + score); start(); return;
                 }
             }
             draw();
@@ -76,21 +86,20 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Дорога
             ctx.fillStyle = '#555';
             for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*3)%400-50, 4, 30);
-            // Игрок
             ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
-            // Препятствия
-            obstacles.forEach(o => {
-                ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560';
-                ctx.fillRect(o.x, o.y, o.w, o.h);
-            });
+            obstacles.forEach(o => { ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; ctx.fillRect(o.x, o.y, o.w, o.h); });
         }
 
         let frame = 0;
         const origUpdate = update;
         update = function() { frame++; origUpdate(); };
+
+        document.getElementById('raceStart').addEventListener('click', () => {
+            running = true; document.getElementById('raceStart').style.display = 'none';
+            if (interval) clearInterval(interval); interval = setInterval(update, 30);
+        });
 
         document.getElementById('raceLeft').addEventListener('pointerdown', () => leftDown = true);
         document.getElementById('raceLeft').addEventListener('pointerup', () => leftDown = false);
