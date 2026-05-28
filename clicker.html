@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Кликер — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --gold: #f0c040; --green: #4caf84; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --gold: #f0c040; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -41,7 +41,7 @@
     </div>
     <script src="sfx.js"></script>
     <script>
-        const VERSION = 4;
+        const VERSION = 5;
         let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
         if (data.version !== VERSION) { data = {}; }
 
@@ -50,17 +50,17 @@
         let autoClicker = data.autoClicker || 0;
         let codeShown = data.codeShown || false;
 
-        // Уровни прокачки: [название, начальная цена, +к клику, +авто/сек, множитель цены]
+        // [название, начальная цена, +к клику, +авто/сек]
         const levels = [
-            { name: 'Курсор', cost: 10, click: 1, auto: 0, owned: data.lvl0 || 0, costMult: 1.08 },
-            { name: 'Бабушка', cost: 100, click: 0, auto: 1, owned: data.lvl1 || 0, costMult: 1.08 },
-            { name: 'Ферма', cost: 500, click: 0, auto: 4, owned: data.lvl2 || 0, costMult: 1.08 },
-            { name: 'Шахта', cost: 3000, click: 0, auto: 10, owned: data.lvl3 || 0, costMult: 1.08 },
-            { name: 'Фабрика', cost: 15000, click: 0, auto: 30, owned: data.lvl4 || 0, costMult: 1.08 },
-            { name: 'Лаборатория', cost: 80000, click: 0, auto: 100, owned: data.lvl5 || 0, costMult: 1.08 },
-            { name: 'Портал', cost: 500000, click: 0, auto: 400, owned: data.lvl6 || 0, costMult: 1.08 },
+            { name: '👆 Пальцы', cost: 10, click: 1, auto: 0, owned: data.lvl0 || 0 },
+            { name: '🖱 Мышки', cost: 80, click: 2, auto: 0, owned: data.lvl1 || 0 },
+            { name: '⌨️ Клавиатуры', cost: 400, click: 5, auto: 1, owned: data.lvl2 || 0 },
+            { name: '🤖 Боты', cost: 2000, click: 10, auto: 3, owned: data.lvl3 || 0 },
+            { name: '🖥 Серверы', cost: 12000, click: 30, auto: 10, owned: data.lvl4 || 0 },
+            { name: '🧠 Нейросеть', cost: 80000, click: 100, auto: 40, owned: data.lvl5 || 0 },
+            { name: '🌌 Квантовый ИИ', cost: 500000, click: 500, auto: 200, owned: data.lvl6 || 0 },
         ];
-        let owned = levels.map((l, i) => data['lvl'+i] || 0);
+        const INFLATION = 1.05;
 
         function save() {
             const obj = { version: VERSION, score, perClick, autoClicker, codeShown };
@@ -74,7 +74,7 @@
             document.getElementById('perClick').textContent = perClick;
             document.getElementById('autoClicker').textContent = autoClicker;
             document.getElementById('upgrades').innerHTML = levels.map((l, i) => {
-                const cost = ceil(l.cost * Math.pow(l.costMult, l.owned));
+                const cost = ceil(l.cost * Math.pow(INFLATION, l.owned));
                 const canBuy = score >= cost;
                 return `<button class="upgrade-btn" ${canBuy ? '' : 'disabled'} onclick="buy(${i})">
                     <span>${l.name} (${l.owned})</span>
@@ -93,7 +93,7 @@
 
         function buy(i) {
             const l = levels[i];
-            const cost = ceil(l.cost * Math.pow(l.costMult, l.owned));
+            const cost = ceil(l.cost * Math.pow(INFLATION, l.owned));
             if (score < cost) return;
             score -= cost;
             perClick += l.click;
