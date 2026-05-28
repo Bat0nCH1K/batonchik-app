@@ -1,21 +1,21 @@
-// Звуковая библиотека BatonCHIK Games
+// Звуковая библиотека BatonCHIK Games v6.0
 const SFX = {
     _ctx: null,
     _musicGain: null,
-    _musicOsc: null,
+    _currentMusic: null,
     _musicPlaying: false,
     
-    // Инициализация аудиоконтекста (вызвать при первом клике)
+    // Инициализация
     init() {
         if (!this._ctx) {
             this._ctx = new (window.AudioContext || window.webkitAudioContext)();
             this._musicGain = this._ctx.createGain();
-            this._musicGain.gain.value = 0.03;
+            this._musicGain.gain.value = 0.05;
             this._musicGain.connect(this._ctx.destination);
         }
     },
     
-    // Простой звуковой эффект
+    // Синтезированные SFX
     play(freq, type, duration, vol = 0.1) {
         this.init();
         const osc = this._ctx.createOscillator();
@@ -30,39 +30,49 @@ const SFX = {
     },
     
     // Готовые звуки
-    click() { this.play(800, 'square', 0.08, 0.05); },
-    coin() { this.play(1200, 'square', 0.1, 0.08); this.play(1600, 'square', 0.1, 0.06); },
-    eat() { this.play(400, 'sine', 0.12, 0.07); },
-    death() { this.play(200, 'sawtooth', 0.4, 0.2); setTimeout(() => this.play(150, 'sawtooth', 0.4, 0.3), 150); },
-    shoot() { this.play(100, 'square', 0.06, 0.03); },
-    explosion() { this.play(60, 'sawtooth', 0.3, 0.2); },
-    lineClear() { this.play(600, 'square', 0.15, 0.1); setTimeout(() => this.play(900, 'square', 0.15, 0.1), 100); },
-    drop() { this.play(300, 'triangle', 0.1, 0.05); },
-    match() { this.play(500, 'sine', 0.15, 0.08); setTimeout(() => this.play(700, 'sine', 0.15, 0.08), 80); },
-    win() { this.play(523, 'square', 0.2, 0.1); setTimeout(() => this.play(659, 'square', 0.2, 0.1), 150); setTimeout(() => this.play(784, 'square', 0.3, 0.2), 300); },
+    click() { this.play(800, 'square', 0.06, 0.05); },
+    coin() { this.play(1200, 'square', 0.08, 0.07); this.play(1600, 'square', 0.08, 0.05); },
+    eat() { this.play(400, 'sine', 0.1, 0.06); },
+    death() { this.play(200, 'sawtooth', 0.35, 0.15); setTimeout(() => this.play(150, 'sawtooth', 0.35, 0.25), 150); },
+    shoot() { this.play(80, 'square', 0.05, 0.03); },
+    explosion() { this.play(50, 'sawtooth', 0.25, 0.15); },
+    lineClear() { this.play(600, 'square', 0.12, 0.08); setTimeout(() => this.play(900, 'square', 0.12, 0.08), 80); },
+    drop() { this.play(250, 'triangle', 0.08, 0.04); },
+    match() { this.play(500, 'sine', 0.12, 0.06); setTimeout(() => this.play(700, 'sine', 0.12, 0.06), 60); },
+    win() { this.play(523, 'square', 0.15, 0.08); setTimeout(() => this.play(659, 'square', 0.15, 0.08), 120); setTimeout(() => this.play(784, 'square', 0.2, 0.15), 240); },
+    lose() { this.play(400, 'sawtooth', 0.2, 0.1); setTimeout(() => this.play(300, 'sawtooth', 0.3, 0.2), 200); },
     
-    // Фоновая музыка — простой пентатонический loop
-    startMusic() {
+    // Звуки для памяти (4 кнопки — 4 разных тона)
+    memory0() { this.play(523, 'sine', 0.25, 0.12); }, // C
+    memory1() { this.play(659, 'sine', 0.25, 0.12); }, // E
+    memory2() { this.play(784, 'sine', 0.25, 0.12); }, // G
+    memory3() { this.play(1047, 'sine', 0.25, 0.12); }, // C'
+    
+    // Фоновая музыка из релизов
+    _musicTracks: {
+        menu: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/C418_-_Sweden_30921677.mp3',
+        calm: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Theme_-_Papers_Please_62974833.mp3',
+        action: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Dimrain47_-_At_the_Speed_of_Light_Full_62880084.mp3',
+        runner: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Subway_Surfers_-_OST_Glavnaya_tema_73599365.mp3',
+    },
+    
+    playMusic(track) {
         this.init();
-        if (this._musicPlaying) return;
+        this.stopMusic();
+        const url = this._musicTracks[track];
+        if (!url) return;
+        this._currentMusic = new Audio(url);
+        this._currentMusic.loop = true;
+        this._currentMusic.volume = 0.05;
+        this._currentMusic.play().catch(e => console.log('Музыка не загрузилась'));
         this._musicPlaying = true;
-        const notes = [262, 294, 330, 392, 440]; // C D E G A
-        let i = 0;
-        const playNote = () => {
-            if (!this._musicPlaying) return;
-            const osc = this._ctx.createOscillator();
-            osc.type = 'sine';
-            osc.frequency.value = notes[i % notes.length];
-            osc.connect(this._musicGain);
-            osc.start(this._ctx.currentTime);
-            osc.stop(this._ctx.currentTime + 0.3);
-            i++;
-            setTimeout(playNote, 500);
-        };
-        playNote();
     },
     
     stopMusic() {
+        if (this._currentMusic) {
+            this._currentMusic.pause();
+            this._currentMusic = null;
+        }
         this._musicPlaying = false;
     }
 };
