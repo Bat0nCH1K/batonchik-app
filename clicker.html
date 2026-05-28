@@ -33,28 +33,24 @@
         <p>Очков: <span id="clicks">0</span> | За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек</p>
         <button class="click-btn" id="clickBtn">ЖМИ</button>
         <button class="upgrade-btn" id="up1" disabled>+1 к клику (10)</button>
-        <button class="upgrade-btn" id="up2" disabled>Автокликер +1/сек (100)</button>
-        <button class="upgrade-btn" id="up3" disabled>+5 к клику (500)</button>
-        <button class="upgrade-btn" id="up4" disabled>Автокликер +5/сек (2500)</button>
-        <button class="upgrade-btn" id="up5" disabled>+10 к клику (10 000)</button>
-        <button class="upgrade-btn" id="up6" disabled>Автокликер +10/сек (50 000)</button>
+        <button class="upgrade-btn" id="up2" disabled>Автокликер +1/сек (50)</button>
         <div class="secret" id="secretCode"></div>
     </div>
     <script>
-        let data = JSON.parse(localStorage.getItem('clicker_save') || '{"score":0,"perClick":1,"autoClicker":0,"codeShown":false}');
-        let { score, perClick, autoClicker, codeShown } = data;
-        const costs = [10, 100, 500, 2500, 10000, 50000];
+        let data = JSON.parse(localStorage.getItem('clicker_save') || '{"score":0,"perClick":1,"clickCost":10,"autoClicker":0,"autoCost":50,"codeShown":false}');
+        let { score, perClick, clickCost, autoClicker, autoCost, codeShown } = data;
 
-        function save() { localStorage.setItem('clicker_save', JSON.stringify({ score, perClick, autoClicker, codeShown })); }
+        function save() { localStorage.setItem('clicker_save', JSON.stringify({ score, perClick, clickCost, autoClicker, autoCost, codeShown })); }
 
         function updateUI() {
             document.getElementById('score').textContent = score;
             document.getElementById('clicks').textContent = score;
             document.getElementById('perClick').textContent = perClick;
             document.getElementById('autoClicker').textContent = autoClicker;
-            for (let i = 0; i < 6; i++) {
-                document.getElementById('up' + (i+1)).disabled = score < costs[i];
-            }
+            document.getElementById('up1').disabled = score < clickCost;
+            document.getElementById('up1').textContent = `+1 к клику (${clickCost})`;
+            document.getElementById('up2').disabled = score < autoCost;
+            document.getElementById('up2').textContent = `Автокликер +1/сек (${autoCost})`;
             if (score >= 1000000 && !codeShown) {
                 codeShown = true;
                 document.getElementById('secretCode').innerHTML = `🏆 Секретный код: <strong>CLICK-MASTER</strong>`;
@@ -65,12 +61,12 @@
         }
 
         document.getElementById('clickBtn').addEventListener('click', () => { score += perClick; updateUI(); });
-        document.getElementById('up1').addEventListener('click', () => { if (score >= 10) { score -= 10; perClick += 1; updateUI(); } });
-        document.getElementById('up2').addEventListener('click', () => { if (score >= 100) { score -= 100; autoClicker += 1; updateUI(); } });
-        document.getElementById('up3').addEventListener('click', () => { if (score >= 500) { score -= 500; perClick += 5; updateUI(); } });
-        document.getElementById('up4').addEventListener('click', () => { if (score >= 2500) { score -= 2500; autoClicker += 5; updateUI(); } });
-        document.getElementById('up5').addEventListener('click', () => { if (score >= 10000) { score -= 10000; perClick += 10; updateUI(); } });
-        document.getElementById('up6').addEventListener('click', () => { if (score >= 50000) { score -= 50000; autoClicker += 10; updateUI(); } });
+        document.getElementById('up1').addEventListener('click', () => {
+            if (score >= clickCost) { score -= clickCost; perClick += 1; clickCost = Math.floor(clickCost * 1.15); updateUI(); }
+        });
+        document.getElementById('up2').addEventListener('click', () => {
+            if (score >= autoCost) { score -= autoCost; autoClicker += 1; autoCost = Math.floor(autoCost * 1.15); updateUI(); }
+        });
         setInterval(() => { if (autoClicker > 0) { score += autoClicker; updateUI(); } }, 1000);
         updateUI();
     </script>
