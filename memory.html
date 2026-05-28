@@ -43,7 +43,6 @@
     </div>
     <script src="sfx.js"></script>
     <script>
-        const colors = ['red','blue','green','yellow'];
         const memorySounds = [SFX.memory0, SFX.memory1, SFX.memory2, SFX.memory3];
         let sequence = [], playerSeq = [], level = 0, showing = false, canClick = false;
 
@@ -71,7 +70,7 @@
             document.getElementById('memMessage').textContent = 'Запомни...';
             for (const color of sequence) {
                 await activate(color);
-                await sleep(400);
+                await sleep(300);
             }
             showing = false; canClick = true;
             playerSeq = [];
@@ -83,7 +82,7 @@
                 const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
                 btn.classList.add('active');
                 memorySounds[color]();
-                setTimeout(() => { btn.classList.remove('active'); resolve(); }, 400);
+                setTimeout(() => { btn.classList.remove('active'); resolve(); }, 350);
             });
         }
 
@@ -92,10 +91,10 @@
         function playerClick(color) {
             if (!canClick || showing) return;
             playerSeq.push(color);
-            memorySounds[color]();
             activate(color);
             
-            if (playerSeq[playerSeq.length-1] !== sequence[playerSeq.length-1]) {
+            const idx = playerSeq.length - 1;
+            if (playerSeq[idx] !== sequence[idx]) {
                 canClick = false;
                 SFX.lose();
                 document.getElementById('memMessage').textContent = '❌ Ошибка! Уровень: ' + level;
@@ -110,7 +109,7 @@
                 document.getElementById('memMessage').textContent = '✅ Уровень ' + level + '!';
                 SFX.coin();
                 addToSequence();
-                setTimeout(showSequence, 800);
+                setTimeout(showSequence, 600);
             }
         }
 
