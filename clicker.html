@@ -36,6 +36,7 @@
         <button class="upgrade-btn" id="up2" disabled>Автокликер +1/сек (50)</button>
         <div class="secret" id="secretCode"></div>
     </div>
+    <script src="sfx.js"></script>
     <script>
         let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
         let score = data.score || 0;
@@ -64,16 +65,17 @@
                 document.getElementById('secretCode').innerHTML = `🏆 Титул получен: Клик-мастер!`;
                 document.getElementById('secretCode').classList.add('show');
                 localStorage.setItem('earned_CLICK-MASTER', '1');
+                SFX.win();
             }
             save();
         }
 
-        document.getElementById('clickBtn').addEventListener('click', () => { score += perClick; updateUI(); });
+        document.getElementById('clickBtn').addEventListener('click', () => { SFX.click(); score += perClick; updateUI(); });
         document.getElementById('up1').addEventListener('click', () => {
-            if (score >= clickCost) { score -= clickCost; perClick += clickBonus; clickCost = ceil(clickCost * 1.05); clickBonus = ceil(clickBonus * 1.05); updateUI(); }
+            if (score >= clickCost) { score -= clickCost; perClick += clickBonus; clickCost = ceil(clickCost * 1.05); clickBonus = ceil(clickBonus * 1.05); SFX.coin(); updateUI(); }
         });
         document.getElementById('up2').addEventListener('click', () => {
-            if (score >= autoCost) { score -= autoCost; autoClicker += autoBonus; autoCost = ceil(autoCost * 1.05); autoBonus = ceil(autoBonus * 1.05); updateUI(); }
+            if (score >= autoCost) { score -= autoCost; autoClicker += autoBonus; autoCost = ceil(autoCost * 1.05); autoBonus = ceil(autoBonus * 1.05); SFX.coin(); updateUI(); }
         });
         setInterval(() => { if (autoClicker > 0) { score += autoClicker; updateUI(); } }, 1000);
         updateUI();
