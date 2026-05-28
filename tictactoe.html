@@ -72,7 +72,10 @@
         function move(i) {
             if (board[i] !== '' || gameOver) return;
             board[i] = HU; draw();
-            if (win(HU)) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; }
+            if (win(HU)) { document.getElementById('tttFeedback').textContent = 'Ты победил!'; gameOver = true; return; 
+                          localStorage.setItem('earned_TICKET-LEGEND', '1');
+            }
+            save();}
             if (board.every(v => v !== '')) { document.getElementById('tttFeedback').textContent = 'Ничья!'; gameOver = true; return; }
             board[bestMove()] = AI; draw();
             if (win(AI)) { document.getElementById('tttFeedback').textContent = 'ИИ победил!'; gameOver = true; return; }
