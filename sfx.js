@@ -5,7 +5,6 @@ const SFX = {
     _currentMusic: null,
     _musicPlaying: false,
     
-    // Инициализация
     init() {
         if (!this._ctx) {
             this._ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -15,7 +14,6 @@ const SFX = {
         }
     },
     
-    // Синтезированные SFX
     play(freq, type, duration, vol = 0.1) {
         this.init();
         const osc = this._ctx.createOscillator();
@@ -29,7 +27,6 @@ const SFX = {
         osc.stop(this._ctx.currentTime + duration);
     },
     
-    // Готовые звуки
     click() { this.play(800, 'square', 0.06, 0.05); },
     coin() { this.play(1200, 'square', 0.08, 0.07); this.play(1600, 'square', 0.08, 0.05); },
     eat() { this.play(400, 'sine', 0.1, 0.06); },
@@ -41,19 +38,18 @@ const SFX = {
     match() { this.play(500, 'sine', 0.12, 0.06); setTimeout(() => this.play(700, 'sine', 0.12, 0.06), 60); },
     win() { this.play(523, 'square', 0.15, 0.08); setTimeout(() => this.play(659, 'square', 0.15, 0.08), 120); setTimeout(() => this.play(784, 'square', 0.2, 0.15), 240); },
     lose() { this.play(400, 'sawtooth', 0.2, 0.1); setTimeout(() => this.play(300, 'sawtooth', 0.3, 0.2), 200); },
+    memory0() { this.play(523, 'sine', 0.25, 0.12); },
+    memory1() { this.play(659, 'sine', 0.25, 0.12); },
+    memory2() { this.play(784, 'sine', 0.25, 0.12); },
+    memory3() { this.play(1047, 'sine', 0.25, 0.12); },
     
-    // Звуки для памяти (4 кнопки — 4 разных тона)
-    memory0() { this.play(523, 'sine', 0.25, 0.12); }, // C
-    memory1() { this.play(659, 'sine', 0.25, 0.12); }, // E
-    memory2() { this.play(784, 'sine', 0.25, 0.12); }, // G
-    memory3() { this.play(1047, 'sine', 0.25, 0.12); }, // C'
-    
-    // Фоновая музыка из релизов
     _musicTracks: {
-        menu: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/C418_-_Sweden_30921677.mp3',
-        calm: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Theme_-_Papers_Please_62974833.mp3',
+        sweden: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/C418_-_Sweden_30921677.mp3',
+        papers: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Theme_-_Papers_Please_62974833.mp3',
         action: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Dimrain47_-_At_the_Speed_of_Light_Full_62880084.mp3',
-        runner: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Subway_Surfers_-_OST_Glavnaya_tema_73599365.mp3',
+        subway: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Subway_Surfers_-_OST_Glavnaya_tema_73599365.mp3',
+        snowy: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Snowy_64962758.mp3',
+        bonetrousle: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Bonetrousle_64962766.mp3',
     },
     
     playMusic(track) {
@@ -69,10 +65,7 @@ const SFX = {
     },
     
     stopMusic() {
-        if (this._currentMusic) {
-            this._currentMusic.pause();
-            this._currentMusic = null;
-        }
+        if (this._currentMusic) { this._currentMusic.pause(); this._currentMusic = null; }
         this._musicPlaying = false;
     }
 };
