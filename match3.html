@@ -24,6 +24,7 @@
     </div>
     <script src="sfx.js"></script>
     <script>
+        console.log('Match-3 v2.1 загружен!');
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
         const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
@@ -32,7 +33,6 @@
         function start() {
             score = 0; document.getElementById('m3Score').textContent = '0';
             board = Array(ROWS).fill().map(() => Array(COLS).fill().map(() => Math.floor(Math.random()*6)));
-            // Убираем начальные матчи
             let matches = getMatches();
             while (matches.length > 0) {
                 matches.forEach(({r,c}) => board[r][c] = Math.floor(Math.random()*6));
@@ -60,23 +60,8 @@
 
         function getMatches() {
             const matches = [];
-            // Горизонтальные
-            for (let r=0; r<ROWS; r++) {
-                for (let c=0; c<COLS-2; c++) {
-                    if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) {
-                        matches.push({r,c},{r,c:c+1},{r,c:c+2});
-                    }
-                }
-            }
-            // Вертикальные
-            for (let c=0; c<COLS; c++) {
-                for (let r=0; r<ROWS-2; r++) {
-                    if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) {
-                        matches.push({r,c},{r:r+1,c},{r:r+2,c});
-                    }
-                }
-            }
-            // Убираем дубликаты
+            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS-2; c++) if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) matches.push({r,c},{r,c:c+1},{r,c:c+2});
+            for (let c=0; c<COLS; c++) for (let r=0; r<ROWS-2; r++) if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) matches.push({r,c},{r:r+1,c},{r:r+2,c});
             return [...new Map(matches.map(m => `${m.r},${m.c}`)).values()];
         }
 
@@ -90,24 +75,24 @@
                         write--;
                     }
                 }
-                while (write >= 0) {
-                    board[write][c] = Math.floor(Math.random()*6);
-                    write--;
-                }
+                while (write >= 0) { board[write][c] = Math.floor(Math.random()*6); write--; }
             }
         }
 
         function processMatches() {
             processing = true;
             let matches = getMatches();
+            console.log('Найдено матчей:', matches.length);
             
             function step() {
                 if (matches.length === 0) {
+                    console.log('Матчей больше нет, завершаем');
                     processing = false;
                     draw();
                     return;
                 }
                 
+                console.log('Удаляю матчи...');
                 score += matches.length * 10;
                 document.getElementById('m3Score').textContent = score;
                 SFX.match();
@@ -116,10 +101,12 @@
                 draw();
                 
                 setTimeout(() => {
+                    console.log('Гравитация...');
                     gravity();
                     draw();
                     setTimeout(() => {
                         matches = getMatches();
+                        console.log('Новые матчи:', matches.length);
                         step();
                     }, 200);
                 }, 200);
@@ -139,35 +126,17 @@
             const r = Math.floor((e.clientY-rect.top)/CELL);
             if (r<0||r>=ROWS||c<0||c>=COLS) return;
             
-            if (!selected) {
-                selected = {r,c};
-                draw();
-                return;
-            }
+            if (!selected) { selected = {r,c}; draw(); return; }
+            if (selected.r===r && selected.c===c) { selected = null; draw(); return; }
+            if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) { selected = {r,c}; draw(); return; }
             
-            if (selected.r===r && selected.c===c) {
-                selected = null;
-                draw();
-                return;
-            }
-            
-            // Проверяем, соседние ли клетки
-            if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) {
-                selected = {r,c};
-                draw();
-                return;
-            }
-            
-            // Меняем местами
             swap(selected.r, selected.c, r, c);
             selected = null;
             draw();
             
-            // Проверяем матчи
             if (getMatches().length > 0) {
                 processMatches();
             } else {
-                // Возвращаем обратно
                 setTimeout(() => {
                     swap(selected?.r??r, selected?.c??c, r, c);
                     selected = null;
