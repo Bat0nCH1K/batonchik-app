@@ -24,7 +24,7 @@
     <div id="debug-log"></div>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3 v2.2</h2>
+        <h2>💎 Match-3 v2.3</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
@@ -37,10 +37,7 @@
             el.innerHTML += msg + '<br>';
             el.scrollTop = el.scrollHeight;
         }
-        window.onerror = function(msg, url, line) {
-            debug('❌ ' + msg + ' (строка ' + line + ')');
-        };
-        debug('Match-3 v2.2 загружен!');
+        window.onerror = function(msg, url, line) { debug('❌ ' + msg + ' (строка ' + line + ')'); };
 
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
@@ -51,10 +48,7 @@
             score = 0; document.getElementById('m3Score').textContent = '0';
             board = Array(ROWS).fill().map(() => Array(COLS).fill().map(() => Math.floor(Math.random()*6)));
             let matches = getMatches();
-            while (matches.length > 0) {
-                matches.forEach(({r,c}) => board[r][c] = Math.floor(Math.random()*6));
-                matches = getMatches();
-            }
+            while (matches.length > 0) { matches.forEach(({r,c}) => board[r][c] = Math.floor(Math.random()*6)); matches = getMatches(); }
             draw();
         }
 
@@ -80,24 +74,13 @@
             for (let r=0; r<ROWS; r++) for (let c=0; c<COLS-2; c++) if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) matches.push({r,c},{r,c:c+1},{r,c:c+2});
             for (let c=0; c<COLS; c++) for (let r=0; r<ROWS-2; r++) if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) matches.push({r,c},{r:r+1,c},{r:r+2,c});
             const seen = new Set();
-            return matches.filter(m => {
-                const key = `${m.r},${m.c}`;
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
+            return matches.filter(m => { const key = `${m.r},${m.c}`; if (seen.has(key)) return false; seen.add(key); return true; });
         }
 
         function gravity() {
             for (let c=0; c<COLS; c++) {
                 let write = ROWS-1;
-                for (let r=ROWS-1; r>=0; r--) {
-                    if (board[r][c] !== -1) {
-                        board[write][c] = board[r][c];
-                        if (write !== r) board[r][c] = -1;
-                        write--;
-                    }
-                }
+                for (let r=ROWS-1; r>=0; r--) { if (board[r][c] !== -1) { board[write][c] = board[r][c]; if (write !== r) board[r][c] = -1; write--; } }
                 while (write >= 0) { board[write][c] = Math.floor(Math.random()*6); write--; }
             }
         }
@@ -105,67 +88,31 @@
         function processMatches() {
             processing = true;
             let matches = getMatches();
-            debug('Найдено матчей: ' + matches.length);
-            
             function step() {
-                if (matches.length === 0) {
-                    debug('Готово!');
-                    processing = false;
-                    draw();
-                    return;
-                }
-                
-                score += matches.length * 10;
-                document.getElementById('m3Score').textContent = score;
-                SFX.match();
-                debug('Удаляю ' + matches.length + ' матчей...');
-                
+                if (matches.length === 0) { processing = false; draw(); return; }
+                score += matches.length * 10; document.getElementById('m3Score').textContent = score; SFX.match();
                 matches.forEach(({r,c}) => board[r][c] = -1);
                 draw();
-                
-                setTimeout(() => {
-                    debug('Гравитация...');
-                    gravity();
-                    draw();
-                    setTimeout(() => {
-                        matches = getMatches();
-                        debug('Новых матчей: ' + matches.length);
-                        step();
-                    }, 200);
-                }, 200);
+                setTimeout(() => { gravity(); draw(); setTimeout(() => { matches = getMatches(); step(); }, 200); }, 200);
             }
-            
             step();
         }
 
-        function swap(r1,c1,r2,c2) {
-            [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
-        }
+        function swap(r1,c1,r2,c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; }
 
         canvas.addEventListener('click', (e) => {
             if (processing) return;
             const rect = canvas.getBoundingClientRect();
-            const c = Math.floor((e.clientX-rect.left)/CELL);
-            const r = Math.floor((e.clientY-rect.top)/CELL);
+            const c = Math.floor((e.clientX-rect.left)/CELL), r = Math.floor((e.clientY-rect.top)/CELL);
             if (r<0||r>=ROWS||c<0||c>=COLS) return;
-            
             if (!selected) { selected = {r,c}; draw(); return; }
             if (selected.r===r && selected.c===c) { selected = null; draw(); return; }
             if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) { selected = {r,c}; draw(); return; }
-            
-            swap(selected.r, selected.c, r, c);
-            selected = null;
-            draw();
-            
-            if (getMatches().length > 0) {
-                processMatches();
-            } else {
-                setTimeout(() => {
-                    swap(selected?.r??r, selected?.c??c, r, c);
-                    selected = null;
-                    draw();
-                }, 300);
-            }
+            const sr = selected.r, sc = selected.c;
+            swap(sr, sc, r, c);
+            selected = null; draw();
+            if (getMatches().length > 0) { processMatches(); }
+            else { setTimeout(() => { swap(sr, sc, r, c); draw(); }, 300); }
         });
 
         start();
