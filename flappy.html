@@ -32,7 +32,9 @@
         </div>
         <p style="color:var(--text-secondary); margin-top:8px;">Нажми на экран или пробел</p>
     </div>
+    <script src="sfx.js"></script>
     <script>
+        SFX.playMusic('snowy');
         const canvas = document.getElementById('flappyCanvas'), ctx = canvas.getContext('2d');
         const G = 0.3, JP = -6, PS = 1.8, PW = 50, PG = 150;
         let bird = { x:50, y:200, vy:0, sz:18 }, pipes = [], frame = 0, score = 0, interval = null, running = false;
@@ -53,13 +55,13 @@
         function update() {
             if (!running) return;
             bird.vy += G; bird.y += bird.vy;
-            if (bird.y < 0 || bird.y > 400) { clearInterval(interval); running = false; alert('Очки: ' + score); start(); return; }
+            if (bird.y < 0 || bird.y > 400) { clearInterval(interval); running = false; SFX.death(); alert('Очки: ' + score); start(); return; }
             if (frame % 100 === 0) pipes.push({ x:300, y: Math.random()*(400-PG-60)+30 });
             for (let i = pipes.length-1; i >= 0; i--) {
                 pipes[i].x -= PS;
-                if (pipes[i].x + PW < 0) { pipes.splice(i,1); score++; document.getElementById('flappyScore').textContent = score; continue; }
+                if (pipes[i].x + PW < 0) { pipes.splice(i,1); score++; document.getElementById('flappyScore').textContent = score; SFX.coin(); continue; }
                 if (bird.x+bird.sz > pipes[i].x && bird.x-bird.sz < pipes[i].x+PW && (bird.y-bird.sz < pipes[i].y || bird.y+bird.sz > pipes[i].y+PG)) {
-                    clearInterval(interval); running = false; alert('Очки: ' + score); start(); return;
+                    clearInterval(interval); running = false; SFX.death(); alert('Очки: ' + score); start(); return;
                 }
             }
             draw(); frame++;
@@ -72,8 +74,7 @@
         }
 
         document.getElementById('flappyStart').addEventListener('click', launch);
-        canvas.addEventListener('click', () => { if (running) bird.vy = JP; else launch(); });
-
+        canvas.addEventListener('click', () => { if (running) { bird.vy = JP; SFX.click(); } else launch(); });
         start();
     </script>
 </body>
