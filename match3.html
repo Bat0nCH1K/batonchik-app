@@ -13,36 +13,21 @@
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
-        #debug-log {
-            position: fixed; bottom: 0; left: 0; width: 100%; max-height: 30%;
-            overflow-y: auto; background: rgba(0,0,0,0.85); color: #0f0;
-            font-size: 10px; padding: 8px; z-index: 9999; display: none; text-align: left;
-        }
     </style>
 </head>
 <body>
-    <div id="debug-log"></div>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3 v2.3</h2>
+        <h2>💎 Match-3 v2.4</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
     <script src="sfx.js"></script>
     <script>
-        function debug(msg) {
-            const el = document.getElementById('debug-log');
-            if (!el) return;
-            el.style.display = 'block';
-            el.innerHTML += msg + '<br>';
-            el.scrollTop = el.scrollHeight;
-        }
-        window.onerror = function(msg, url, line) { debug('❌ ' + msg + ' (строка ' + line + ')'); };
-
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
         const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
-        let board = [], selected = null, score = 0, processing = false;
+        let board = [], selected = null, score = 0, processing = false, reverting = false;
 
         function start() {
             score = 0; document.getElementById('m3Score').textContent = '0';
@@ -101,18 +86,24 @@
         function swap(r1,c1,r2,c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; }
 
         canvas.addEventListener('click', (e) => {
-            if (processing) return;
+            if (processing || reverting) return;
             const rect = canvas.getBoundingClientRect();
             const c = Math.floor((e.clientX-rect.left)/CELL), r = Math.floor((e.clientY-rect.top)/CELL);
             if (r<0||r>=ROWS||c<0||c>=COLS) return;
             if (!selected) { selected = {r,c}; draw(); return; }
             if (selected.r===r && selected.c===c) { selected = null; draw(); return; }
             if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) { selected = {r,c}; draw(); return; }
+            
             const sr = selected.r, sc = selected.c;
             swap(sr, sc, r, c);
             selected = null; draw();
-            if (getMatches().length > 0) { processMatches(); }
-            else { setTimeout(() => { swap(sr, sc, r, c); draw(); }, 300); }
+            
+            if (getMatches().length > 0) {
+                processMatches();
+            } else {
+                reverting = true;
+                setTimeout(() => { swap(sr, sc, r, c); draw(); reverting = false; }, 300);
+            }
         });
 
         start();
