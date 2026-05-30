@@ -18,13 +18,12 @@
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3 <span style="font-size:12px;opacity:0.6;">v2.0</span></h2>
+        <h2>💎 Match-3 v2.1</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
     <script src="sfx.js"></script>
     <script>
-        console.log('Match-3 v2.0 загружен!');
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
         const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
@@ -33,8 +32,12 @@
         function start() {
             score = 0; document.getElementById('m3Score').textContent = '0';
             board = Array(ROWS).fill().map(() => Array(COLS).fill().map(() => Math.floor(Math.random()*6)));
-            while (findMatches().length) removeMatchesSilent();
-            if (!hasMoves()) start();
+            // Убираем начальные матчи
+            let matches = getMatches();
+            while (matches.length > 0) {
+                matches.forEach(({r,c}) => board[r][c] = Math.floor(Math.random()*6));
+                matches = getMatches();
+            }
             draw();
         }
 
@@ -44,7 +47,7 @@
                 if (board[r][c] === -1) continue;
                 ctx.fillStyle = colors[board[r][c]];
                 ctx.beginPath();
-                ctx.arc(c*CELL+CELL/2, r*CELL+CELL/2, CELL/2-3, 0, Math.PI*2);
+                ctx.arc(c*CELL+CELL/2, r*CELL+CELL/2, CELL/2-4, 0, Math.PI*2);
                 ctx.fill();
                 if (selected && selected.r===r && selected.c===c) {
                     ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
@@ -55,73 +58,122 @@
             }
         }
 
-        function findMatches() {
+        function getMatches() {
             const matches = [];
-            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS-2; c++) if (board[r][c]!==-1&&board[r][c]===board[r][c+1]&&board[r][c]===board[r][c+2]) matches.push({r,c},{r,c:c+1},{r,c:c+2});
-            for (let c=0; c<COLS; c++) for (let r=0; r<ROWS-2; r++) if (board[r][c]!==-1&&board[r][c]===board[r+1][c]&&board[r][c]===board[r+2][c]) matches.push({r,c},{r:r+1,c},{r:r+2,c});
-            return [...new Map(matches.map(m=>`${m.r},${m.c}`)).values()];
+            // Горизонтальные
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS-2; c++) {
+                    if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) {
+                        matches.push({r,c},{r,c:c+1},{r,c:c+2});
+                    }
+                }
+            }
+            // Вертикальные
+            for (let c=0; c<COLS; c++) {
+                for (let r=0; r<ROWS-2; r++) {
+                    if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) {
+                        matches.push({r,c},{r:r+1,c},{r:r+2,c});
+                    }
+                }
+            }
+            // Убираем дубликаты
+            return [...new Map(matches.map(m => `${m.r},${m.c}`)).values()];
         }
 
-        function removeMatchesSilent() {
-            const m = findMatches();
-            if (!m.length) return;
-            m.forEach(({r,c}) => board[r][c] = -1);
-            applyGravity();
-            draw();
-        }
-
-        function applyGravity() {
+        function gravity() {
             for (let c=0; c<COLS; c++) {
                 let write = ROWS-1;
-                for (let r=ROWS-1; r>=0; r--) if (board[r][c]!==-1) board[write--][c] = board[r][c];
-                while (write>=0) board[write--][c] = Math.floor(Math.random()*6);
+                for (let r=ROWS-1; r>=0; r--) {
+                    if (board[r][c] !== -1) {
+                        board[write][c] = board[r][c];
+                        if (write !== r) board[r][c] = -1;
+                        write--;
+                    }
+                }
+                while (write >= 0) {
+                    board[write][c] = Math.floor(Math.random()*6);
+                    write--;
+                }
             }
         }
 
-        function hasMoves() {
-            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
-                if (c<COLS-1) { [board[r][c],board[r][c+1]]=[board[r][c+1],board[r][c]]; if (findMatches().length) { [board[r][c],board[r][c+1]]=[board[r][c+1],board[r][c]]; return true; } [board[r][c],board[r][c+1]]=[board[r][c+1],board[r][c]]; }
-                if (r<ROWS-1) { [board[r][c],board[r+1][c]]=[board[r+1][c],board[r][c]]; if (findMatches().length) { [board[r][c],board[r+1][c]]=[board[r+1][c],board[r][c]]; return true; } [board[r][c],board[r+1][c]]=[board[r+1][c],board[r][c]]; }
-            }
-            return false;
-        }
-
-        async function processMatches() {
+        function processMatches() {
             processing = true;
-            let matches = findMatches();
-            while (matches.length) {
-                score += matches.length * 10; document.getElementById('m3Score').textContent = score;
+            let matches = getMatches();
+            
+            function step() {
+                if (matches.length === 0) {
+                    processing = false;
+                    draw();
+                    return;
+                }
+                
+                score += matches.length * 10;
+                document.getElementById('m3Score').textContent = score;
                 SFX.match();
+                
                 matches.forEach(({r,c}) => board[r][c] = -1);
                 draw();
-                await sleep(200);
-                applyGravity();
-                draw();
-                await sleep(200);
-                matches = findMatches();
+                
+                setTimeout(() => {
+                    gravity();
+                    draw();
+                    setTimeout(() => {
+                        matches = getMatches();
+                        step();
+                    }, 200);
+                }, 200);
             }
-            if (!hasMoves()) start();
-            processing = false;
+            
+            step();
         }
 
-        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+        function swap(r1,c1,r2,c2) {
+            [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+        }
 
-        canvas.addEventListener('click', async (e) => {
+        canvas.addEventListener('click', (e) => {
             if (processing) return;
             const rect = canvas.getBoundingClientRect();
-            const c = Math.floor((e.clientX-rect.left)/CELL), r = Math.floor((e.clientY-rect.top)/CELL);
+            const c = Math.floor((e.clientX-rect.left)/CELL);
+            const r = Math.floor((e.clientY-rect.top)/CELL);
             if (r<0||r>=ROWS||c<0||c>=COLS) return;
-            if (!selected) { selected = {r,c}; draw(); return; }
-            if (selected.r===r && selected.c===c) { selected = null; draw(); return; }
-            if (Math.abs(selected.r-r)+Math.abs(selected.c-c) === 1) {
-                [board[selected.r][selected.c], board[r][c]] = [board[r][c], board[selected.r][selected.c]];
-                selected = null; draw();
-                if (!findMatches().length) {
-                    await sleep(200);
-                    [board[selected?.r??r][selected?.c??c], board[r][c]] = [board[r][c], board[selected?.r??r][selected?.c??c]];
+            
+            if (!selected) {
+                selected = {r,c};
+                draw();
+                return;
+            }
+            
+            if (selected.r===r && selected.c===c) {
+                selected = null;
+                draw();
+                return;
+            }
+            
+            // Проверяем, соседние ли клетки
+            if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) {
+                selected = {r,c};
+                draw();
+                return;
+            }
+            
+            // Меняем местами
+            swap(selected.r, selected.c, r, c);
+            selected = null;
+            draw();
+            
+            // Проверяем матчи
+            if (getMatches().length > 0) {
+                processMatches();
+            } else {
+                // Возвращаем обратно
+                setTimeout(() => {
+                    swap(selected?.r??r, selected?.c??c, r, c);
+                    selected = null;
                     draw();
-                } else processMatches();
-            } else { selected = {r,c}; draw(); }
+                }, 300);
+            }
         });
 
         start();
