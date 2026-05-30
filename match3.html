@@ -18,7 +18,7 @@
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3 v2.4</h2>
+        <h2>💎 Match-3 v2.5</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
@@ -28,6 +28,9 @@
         const ROWS = 8, COLS = 8, CELL = 40;
         const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
         let board = [], selected = null, score = 0, processing = false, reverting = false;
+        // Анимация
+        let animating = false, animFrom = null, animTo = null, animStart = 0;
+        const ANIM_DURATION = 150;
 
         function start() {
             score = 0; document.getElementById('m3Score').textContent = '0';
@@ -37,18 +40,30 @@
             draw();
         }
 
-        function draw() {
+        function draw(animProgress) {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
                 if (board[r][c] === -1) continue;
+                let x = c*CELL+CELL/2, y = r*CELL+CELL/2;
+                
+                // Анимация перемещения
+                if (animating && animFrom && animTo && animProgress !== undefined) {
+                    const fr = animFrom.r, fc = animFrom.c, tr = animTo.r, tc = animTo.c;
+                    if ((r===fr && c===fc) || (r===tr && c===tc)) {
+                        const dx = (tc-fc)*CELL, dy = (tr-fr)*CELL;
+                        if (r===fr && c===fc) { x += dx*animProgress; y += dy*animProgress; }
+                        else if (r===tr && c===tc) { x -= dx*(1-animProgress); y -= dy*(1-animProgress); }
+                    }
+                }
+                
                 ctx.fillStyle = colors[board[r][c]];
                 ctx.beginPath();
-                ctx.arc(c*CELL+CELL/2, r*CELL+CELL/2, CELL/2-4, 0, Math.PI*2);
+                ctx.arc(x, y, CELL/2-4, 0, Math.PI*2);
                 ctx.fill();
-                if (selected && selected.r===r && selected.c===c) {
+                if (selected && selected.r===r && selected.c===c && !animating) {
                     ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.arc(c*CELL+CELL/2, r*CELL+CELL/2, CELL/2-1, 0, Math.PI*2);
+                    ctx.arc(x, y, CELL/2-1, 0, Math.PI*2);
                     ctx.stroke();
                 }
             }
@@ -85,8 +100,19 @@
 
         function swap(r1,c1,r2,c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; }
 
+        function animateSwap(fr, fc, tr, tc, callback) {
+            animating = true; animFrom = {r:fr, c:fc}; animTo = {r:tr, c:tc}; animStart = performance.now();
+            function animFrame(time) {
+                const progress = Math.min(1, (time-animStart)/ANIM_DURATION);
+                draw(progress);
+                if (progress < 1) { requestAnimationFrame(animFrame); }
+                else { animating = false; animFrom = null; animTo = null; draw(); if (callback) callback(); }
+            }
+            requestAnimationFrame(animFrame);
+        }
+
         canvas.addEventListener('click', (e) => {
-            if (processing || reverting) return;
+            if (processing || reverting || animating) return;
             const rect = canvas.getBoundingClientRect();
             const c = Math.floor((e.clientX-rect.left)/CELL), r = Math.floor((e.clientY-rect.top)/CELL);
             if (r<0||r>=ROWS||c<0||c>=COLS) return;
@@ -95,15 +121,19 @@
             if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) { selected = {r,c}; draw(); return; }
             
             const sr = selected.r, sc = selected.c;
-            swap(sr, sc, r, c);
-            selected = null; draw();
+            selected = null;
             
-            if (getMatches().length > 0) {
-                processMatches();
-            } else {
-                reverting = true;
-                setTimeout(() => { swap(sr, sc, r, c); draw(); reverting = false; }, 300);
-            }
+            animateSwap(sr, sc, r, c, () => {
+                swap(sr, sc, r, c);
+                if (getMatches().length > 0) { processMatches(); }
+                else {
+                    reverting = true;
+                    animateSwap(sr, sc, r, c, () => {
+                        swap(sr, sc, r, c);
+                        reverting = false;
+                    });
+                }
+            });
         });
 
         start();
