@@ -24,13 +24,12 @@
     <div id="debug-log"></div>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3 v2.1</h2>
+        <h2>💎 Match-3 v2.2</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
     <script src="sfx.js"></script>
     <script>
-        // Отладчик на экране
         function debug(msg) {
             const el = document.getElementById('debug-log');
             if (!el) return;
@@ -41,7 +40,7 @@
         window.onerror = function(msg, url, line) {
             debug('❌ ' + msg + ' (строка ' + line + ')');
         };
-        debug('Match-3 v2.1 загружен!');
+        debug('Match-3 v2.2 загружен!');
 
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
@@ -80,7 +79,13 @@
             const matches = [];
             for (let r=0; r<ROWS; r++) for (let c=0; c<COLS-2; c++) if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) matches.push({r,c},{r,c:c+1},{r,c:c+2});
             for (let c=0; c<COLS; c++) for (let r=0; r<ROWS-2; r++) if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) matches.push({r,c},{r:r+1,c},{r:r+2,c});
-            return [...new Map(matches.map(m => `${m.r},${m.c}`)).values()];
+            const seen = new Set();
+            return matches.filter(m => {
+                const key = `${m.r},${m.c}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
         }
 
         function gravity() {
