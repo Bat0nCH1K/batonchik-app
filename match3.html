@@ -13,6 +13,8 @@
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .combo { font-size: 16px; color: #ff9800; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -20,50 +22,44 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>💎 Match-3 v2.5</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
+        <div class="combo">🔥 Комбо: <span id="m3Combo">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="m3Record">0</span></div>
         <canvas id="m3Canvas" width="320" height="320"></canvas>
     </div>
     <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
     <script>
+        SFX.playMusic('papers');
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
         const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
         let board = [], selected = null, score = 0, processing = false, reverting = false;
-        // Анимация
-        let animating = false, animFrom = null, animTo = null, animStart = 0;
-        const ANIM_DURATION = 150;
+        let comboCount = 0, maxCombo = 0;
+
+        document.getElementById('m3Record').textContent = Highscores.get('match3');
 
         function start() {
-            score = 0; document.getElementById('m3Score').textContent = '0';
+            score = 0; comboCount = 0; maxCombo = 0;
+            document.getElementById('m3Score').textContent = '0';
+            document.getElementById('m3Combo').textContent = '0';
             board = Array(ROWS).fill().map(() => Array(COLS).fill().map(() => Math.floor(Math.random()*6)));
             let matches = getMatches();
             while (matches.length > 0) { matches.forEach(({r,c}) => board[r][c] = Math.floor(Math.random()*6)); matches = getMatches(); }
             draw();
         }
 
-        function draw(animProgress) {
+        function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
                 if (board[r][c] === -1) continue;
-                let x = c*CELL+CELL/2, y = r*CELL+CELL/2;
-                
-                // Анимация перемещения
-                if (animating && animFrom && animTo && animProgress !== undefined) {
-                    const fr = animFrom.r, fc = animFrom.c, tr = animTo.r, tc = animTo.c;
-                    if ((r===fr && c===fc) || (r===tr && c===tc)) {
-                        const dx = (tc-fc)*CELL, dy = (tr-fr)*CELL;
-                        if (r===fr && c===fc) { x += dx*animProgress; y += dy*animProgress; }
-                        else if (r===tr && c===tc) { x -= dx*(1-animProgress); y -= dy*(1-animProgress); }
-                    }
-                }
-                
                 ctx.fillStyle = colors[board[r][c]];
                 ctx.beginPath();
-                ctx.arc(x, y, CELL/2-4, 0, Math.PI*2);
+                ctx.arc(c*CELL+CELL/2, r*CELL+CELL/2, CELL/2-4, 0, Math.PI*2);
                 ctx.fill();
-                if (selected && selected.r===r && selected.c===c && !animating) {
+                if (selected && selected.r===r && selected.c===c) {
                     ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.arc(x, y, CELL/2-1, 0, Math.PI*2);
+                    ctx.arc(c*CELL+CELL/2, r*CELL+CELL/2, CELL/2-1, 0, Math.PI*2);
                     ctx.stroke();
                 }
             }
@@ -74,7 +70,18 @@
             for (let r=0; r<ROWS; r++) for (let c=0; c<COLS-2; c++) if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) matches.push({r,c},{r,c:c+1},{r,c:c+2});
             for (let c=0; c<COLS; c++) for (let r=0; r<ROWS-2; r++) if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) matches.push({r,c},{r:r+1,c},{r:r+2,c});
             const seen = new Set();
-            return matches.filter(m => { const key = `${m.r},${m.c}`; if (seen.has(key)) return false; seen.add(key); return true; });
+            const filtered = matches.filter(m => { const key = `${m.r},${m.c}`; if (seen.has(key)) return false; seen.add(key); return true; });
+            // Обновляем комбо
+            if (filtered.length > 0) {
+                comboCount++;
+                maxCombo = Math.max(maxCombo, comboCount);
+                document.getElementById('m3Combo').textContent = comboCount;
+                if (filtered.length >= 7) localStorage.setItem('earned_MATCH-STRIKE', '1');
+            } else {
+                comboCount = 0;
+                document.getElementById('m3Combo').textContent = '0';
+            }
+            return filtered;
         }
 
         function gravity() {
@@ -89,8 +96,15 @@
             processing = true;
             let matches = getMatches();
             function step() {
-                if (matches.length === 0) { processing = false; draw(); return; }
-                score += matches.length * 10; document.getElementById('m3Score').textContent = score; SFX.match();
+                if (matches.length === 0) {
+                    processing = false; draw();
+                    Highscores.save('match3', score);
+                    document.getElementById('m3Record').textContent = Highscores.get('match3');
+                    return;
+                }
+                score += matches.length * 10 * (1 + Math.floor(comboCount/3));
+                document.getElementById('m3Score').textContent = score;
+                SFX.match();
                 matches.forEach(({r,c}) => board[r][c] = -1);
                 draw();
                 setTimeout(() => { gravity(); draw(); setTimeout(() => { matches = getMatches(); step(); }, 200); }, 200);
@@ -100,19 +114,8 @@
 
         function swap(r1,c1,r2,c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; }
 
-        function animateSwap(fr, fc, tr, tc, callback) {
-            animating = true; animFrom = {r:fr, c:fc}; animTo = {r:tr, c:tc}; animStart = performance.now();
-            function animFrame(time) {
-                const progress = Math.min(1, (time-animStart)/ANIM_DURATION);
-                draw(progress);
-                if (progress < 1) { requestAnimationFrame(animFrame); }
-                else { animating = false; animFrom = null; animTo = null; draw(); if (callback) callback(); }
-            }
-            requestAnimationFrame(animFrame);
-        }
-
         canvas.addEventListener('click', (e) => {
-            if (processing || reverting || animating) return;
+            if (processing || reverting) return;
             const rect = canvas.getBoundingClientRect();
             const c = Math.floor((e.clientX-rect.left)/CELL), r = Math.floor((e.clientY-rect.top)/CELL);
             if (r<0||r>=ROWS||c<0||c>=COLS) return;
@@ -121,19 +124,14 @@
             if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) { selected = {r,c}; draw(); return; }
             
             const sr = selected.r, sc = selected.c;
-            selected = null;
+            swap(sr, sc, r, c);
+            selected = null; draw();
             
-            animateSwap(sr, sc, r, c, () => {
-                swap(sr, sc, r, c);
-                if (getMatches().length > 0) { processMatches(); }
-                else {
-                    reverting = true;
-                    animateSwap(sr, sc, r, c, () => {
-                        swap(sr, sc, r, c);
-                        reverting = false;
-                    });
-                }
-            });
+            if (getMatches().length > 0) { processMatches(); }
+            else {
+                reverting = true;
+                setTimeout(() => { swap(sr, sc, r, c); draw(); reverting = false; comboCount = 0; document.getElementById('m3Combo').textContent = '0'; }, 300);
+            }
         });
 
         start();
