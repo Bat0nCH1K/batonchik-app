@@ -19,6 +19,7 @@
             background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
             font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
         }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -26,6 +27,7 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🐦 Flappy Bird</h2>
         <div class="score">Очки: <span id="flappyScore">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="flappyRecord">0</span></div>
         <div class="canvas-wrap">
             <canvas id="flappyCanvas" width="300" height="400"></canvas>
             <div class="start-overlay" id="flappyStart">▶ Старт</div>
@@ -33,11 +35,18 @@
         <p style="color:var(--text-secondary); margin-top:8px;">Нажми на экран или пробел</p>
     </div>
     <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
         SFX.playMusic('snowy');
+        const BIRD_IMG = new Image();
+        BIRD_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531100842.png';
+        
         const canvas = document.getElementById('flappyCanvas'), ctx = canvas.getContext('2d');
         const G = 0.3, JP = -6, PS = 1.8, PW = 50, PG = 150;
         let bird = { x:50, y:200, vy:0, sz:18 }, pipes = [], frame = 0, score = 0, interval = null, running = false;
+
+        document.getElementById('flappyRecord').textContent = Highscores.get('flappy');
 
         function start() {
             score = 0; document.getElementById('flappyScore').textContent = '0';
@@ -55,13 +64,23 @@
         function update() {
             if (!running) return;
             bird.vy += G; bird.y += bird.vy;
-            if (bird.y < 0 || bird.y > 400) { clearInterval(interval); running = false; SFX.death(); alert('Очки: ' + score); start(); return; }
+            if (bird.y < 0 || bird.y > 400) {
+                clearInterval(interval); running = false;
+                const isNew = Highscores.save('flappy', score);
+                document.getElementById('flappyRecord').textContent = Highscores.get('flappy');
+                Modal.show('💀 Столкновение', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+                return;
+            }
             if (frame % 100 === 0) pipes.push({ x:300, y: Math.random()*(400-PG-60)+30 });
             for (let i = pipes.length-1; i >= 0; i--) {
                 pipes[i].x -= PS;
                 if (pipes[i].x + PW < 0) { pipes.splice(i,1); score++; document.getElementById('flappyScore').textContent = score; SFX.coin(); continue; }
                 if (bird.x+bird.sz > pipes[i].x && bird.x-bird.sz < pipes[i].x+PW && (bird.y-bird.sz < pipes[i].y || bird.y+bird.sz > pipes[i].y+PG)) {
-                    clearInterval(interval); running = false; SFX.death(); alert('Очки: ' + score); start(); return;
+                    clearInterval(interval); running = false;
+                    const isNew = Highscores.save('flappy', score);
+                    document.getElementById('flappyRecord').textContent = Highscores.get('flappy');
+                    Modal.show('💀 Столкновение', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+                    return;
                 }
             }
             draw(); frame++;
@@ -69,8 +88,16 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle = '#e94560'; ctx.fillRect(bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2);
-            ctx.fillStyle = '#4caf84'; pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
+            // Птица — текстура или заглушка
+            if (BIRD_IMG.complete && BIRD_IMG.naturalWidth > 0) {
+                ctx.drawImage(BIRD_IMG, bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2);
+            } else {
+                ctx.fillStyle = '#e94560';
+                ctx.fillRect(bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2);
+            }
+            // Трубы
+            ctx.fillStyle = '#4caf84';
+            pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
         }
 
         document.getElementById('flappyStart').addEventListener('click', launch);
