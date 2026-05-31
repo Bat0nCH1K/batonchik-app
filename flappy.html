@@ -39,7 +39,6 @@
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('snowy');
-        // Музыка останавливается при уходе со страницы
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) SFX.stopMusic();
             else SFX.playMusic('snowy');
@@ -50,13 +49,13 @@
         
         const canvas = document.getElementById('flappyCanvas'), ctx = canvas.getContext('2d');
         const G = 0.3, JP = -6, PS = 1.8, PW = 50, PG = 150;
-        let bird = { x:50, y:200, vy:0, sz:18 }, pipes = [], frame = 0, score = 0, interval = null, running = false;
+        let bird = { x:50, y:200, vy:0, sz:20 }, pipes = [], frame = 0, score = 0, interval = null, running = false;
 
         document.getElementById('flappyRecord').textContent = Highscores.get('flappy');
 
         function start() {
             score = 0; document.getElementById('flappyScore').textContent = '0';
-            bird = { x:50, y:200, vy:0, sz:18 }; pipes = []; frame = 0; running = false;
+            bird = { x:50, y:200, vy:0, sz:20 }; pipes = []; frame = 0; running = false;
             document.getElementById('flappyStart').style.display = 'block';
             if (interval) clearInterval(interval);
             draw();
@@ -94,15 +93,13 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Птица — увеличена в 2 раза от размера текстуры
             if (BIRD_IMG.complete && BIRD_IMG.naturalWidth > 0) {
-                const birdSize = 50;
+                const birdSize = 55;
                 ctx.drawImage(BIRD_IMG, bird.x-birdSize/2, bird.y-birdSize/2, birdSize, birdSize);
             } else {
                 ctx.fillStyle = '#e94560';
                 ctx.fillRect(bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2);
             }
-            // Трубы
             ctx.fillStyle = '#4caf84';
             pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
         }
