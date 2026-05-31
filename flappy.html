@@ -39,10 +39,6 @@
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('snowy');
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) SFX.stopMusic();
-            else SFX.playMusic('snowy');
-        });
         
         const BIRD_IMG = new Image();
         BIRD_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531100842.png';
@@ -94,7 +90,7 @@
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             if (BIRD_IMG.complete && BIRD_IMG.naturalWidth > 0) {
-                const birdSize = 55;
+                const birdSize = 65;
                 ctx.drawImage(BIRD_IMG, bird.x-birdSize/2, bird.y-birdSize/2, birdSize, birdSize);
             } else {
                 ctx.fillStyle = '#e94560';
