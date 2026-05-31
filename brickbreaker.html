@@ -31,7 +31,12 @@
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
-        SFX.playMusic('action');
+        SFX.playMusic('bonetrousle');
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) SFX.stopMusic();
+            else SFX.playMusic('bonetrousle');
+        });
+        
         const canvas = document.getElementById('bbCanvas'), ctx = canvas.getContext('2d');
         let paddle = { x:120, y:370, w:50, h:10 }, ball = { x:150, y:350, vx:0, vy:0, r:6 };
         let bricks = [], score = 0, interval = null, running = false;
