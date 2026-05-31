@@ -97,7 +97,10 @@
             if (score > 0 && score % 20 === 0) speed = Math.min(8, 3 + score/20);
 
             for (const o of obstacles) {
-                if (player.x < o.x+o.w && player.x+player.w > o.x && player.y < o.y+o.h && player.y+player.h > o.y) {
+                // Хитбокс чуть меньше текстуры
+                const marginX = 5, marginY = 8;
+                if (player.x+marginX < o.x+o.w-marginX && player.x+player.w-marginX > o.x+marginX && 
+                    player.y+marginY < o.y+o.h-marginY && player.y+player.h-marginY > o.y+marginY) {
                     clearInterval(interval); gameOver = true; running = false;
                     const isNew = Highscores.save('race', score);
                     document.getElementById('raceRecord').textContent = Highscores.get('race');
@@ -110,14 +113,27 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
+            // Дорога
             ctx.fillStyle = '#555';
             for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*3)%400-50, 4, 30);
-            if (PLAYER_IMG.complete) ctx.drawImage(PLAYER_IMG, player.x, player.y, player.w, player.h);
-            else { ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h); }
+            
+            // Игрок — сохраняем соотношение сторон, размер больше хитбокса
+            if (PLAYER_IMG.complete && PLAYER_IMG.naturalWidth > 0) {
+                const imgW = player.w + 10, imgH = player.h + 10;
+                ctx.drawImage(PLAYER_IMG, player.x-5, player.y-5, imgW, imgH);
+            } else {
+                ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
+            }
+            
+            // Препятствия — сохраняем соотношение
             obstacles.forEach(o => {
                 const img = o.isTruck ? TRUCK_IMG : OBSTACLE_IMG;
-                if (img.complete) ctx.drawImage(img, o.x, o.y, o.w, o.h);
-                else { ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; ctx.fillRect(o.x, o.y, o.w, o.h); }
+                if (img.complete && img.naturalWidth > 0) {
+                    ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
+                } else {
+                    ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; 
+                    ctx.fillRect(o.x, o.y, o.w, o.h);
+                }
             });
         }
 
