@@ -96,9 +96,11 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
+            // Змейка
             ctx.fillStyle = '#e94560';
             snake.forEach(s => ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2));
-            if (APPLE_IMG.complete) {
+            // Яблоко — увеличено до размера клетки
+            if (APPLE_IMG.complete && APPLE_IMG.naturalWidth > 0) {
                 ctx.drawImage(APPLE_IMG, food.x*cell, food.y*cell, cell, cell);
             } else {
                 ctx.fillStyle = '#4caf84';
