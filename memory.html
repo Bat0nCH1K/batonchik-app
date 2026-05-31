@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Гонки — BatonCHIK Games</title>
+    <title>Цветовая память — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,144 +12,179 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .canvas-wrap { position: relative; display: inline-block; }
-        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        .game-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 240px; margin: 20px auto; }
+        .color-btn { width: 110px; height: 110px; border-radius: 16px; cursor: pointer; transition: transform 0.1s, filter 0.3s; border: 3px solid transparent; }
+        .color-btn:active { transform: scale(0.95); }
+        .color-btn.active { filter: brightness(2.5); border-color: #fff; }
+        .color-btn.red { background: #e94560; }
+        .color-btn.blue { background: #4a90d9; }
+        .color-btn.green { background: #4caf84; }
+        .color-btn.yellow { background: #f0c040; }
         .start-overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
-            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+            font-size: 20px; font-weight: bold; cursor: pointer; display: inline-block; margin: 10px;
         }
-        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
-        .ctrl:active { background: var(--accent); }
+        .message { font-size: 18px; margin: 10px 0; min-height: 28px; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        #debug-log {
+            position: fixed; bottom: 0; left: 0; width: 100%; max-height: 25%;
+            overflow-y: auto; background: rgba(0,0,0,0.9); color: #0f0;
+            font-size: 9px; padding: 6px; z-index: 9999; display: none; text-align: left;
+        }
     </style>
 </head>
 <body>
+    <div id="debug-log"></div>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>🏎️ Гонки</h2>
-        <div class="score">Очки: <span id="raceScore">0</span></div>
-        <div class="record">🏆 Рекорд: <span id="raceRecord">0</span></div>
-        <div class="canvas-wrap">
-            <canvas id="raceCanvas" width="300" height="400"></canvas>
-            <div class="start-overlay" id="raceStart">▶ Старт</div>
+        <h2>🧠 Цветовая память</h2>
+        <div class="score">Уровень: <span id="memLevel">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="memRecord">0</span></div>
+        <div class="game-board" id="gameBoard">
+            <div class="color-btn red" data-color="0"></div>
+            <div class="color-btn blue" data-color="1"></div>
+            <div class="color-btn green" data-color="2"></div>
+            <div class="color-btn yellow" data-color="3"></div>
         </div>
-        <div class="controls">
-            <button class="ctrl" id="raceLeft">←</button>
-            <button class="ctrl" id="raceRight">→</button>
-        </div>
+        <div class="message" id="memMessage">Нажми Старт</div>
+        <div class="start-overlay" id="memStart">▶ Старт</div>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
-    <script src="modals.js"></script>
     <script>
-        SFX.playMusic('subway');
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) SFX.stopMusic();
-            else SFX.playMusic('subway');
-        });
+        SFX.playMusic('sweden');
         
-        const PLAYER_IMG = new Image();
-        PLAYER_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/IMG_20260531_122114.png';
-        const OBSTACLE_IMG = new Image();
-        OBSTACLE_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531105241.png';
-        const TRUCK_IMG = new Image();
-        TRUCK_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/IMG_20260531_125358.png';
+        // Консоль для отладки
+        function debug(msg) {
+            const el = document.getElementById('debug-log');
+            if (!el) return;
+            el.style.display = 'block';
+            el.innerHTML += msg + '<br>';
+            el.scrollTop = el.scrollHeight;
+        }
+        
+        const memorySounds = [SFX.memory0, SFX.memory1, SFX.memory2, SFX.memory3];
+        let sequence = [], playerSeq = [], level = 0, showing = false, canClick = false;
+        let timeoutIds = [];
 
-        const canvas = document.getElementById('raceCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:130, y:340, w:40, h:50 }, obstacles = [], score = 0, interval = null, gameOver = false;
-        let leftDown = false, rightDown = false, speed = 3, spawnTimer = 0, running = false;
-
-        document.getElementById('raceRecord').textContent = Highscores.get('race');
+        document.getElementById('memRecord').textContent = Highscores.get('memory');
 
         function start() {
-            score = 0; obstacles = []; gameOver = false; speed = 3; spawnTimer = 0; running = false;
-            document.getElementById('raceScore').textContent = '0';
-            document.getElementById('raceStart').style.display = 'block';
-            player.x = 130;
-            if (interval) clearInterval(interval);
-            draw();
+            // Очищаем все таймеры
+            timeoutIds.forEach(id => clearTimeout(id));
+            timeoutIds = [];
+            sequence = []; playerSeq = []; level = 0;
+            document.getElementById('memLevel').textContent = '0';
+            document.getElementById('memMessage').textContent = 'Нажми Старт';
+            document.getElementById('memStart').style.display = 'inline-block';
+            canClick = false;
+            showing = false;
+            debug('Игра сброшена');
         }
 
-        function launch() {
-            running = true; document.getElementById('raceStart').style.display = 'none';
-            interval = setInterval(update, 30);
+        async function launch() {
+            document.getElementById('memStart').style.display = 'none';
+            sequence = []; playerSeq = []; level = 1;
+            document.getElementById('memLevel').textContent = '1';
+            addToSequence();
+            debug('Запуск. Уровень 1. Последовательность: ' + sequence.join(','));
+            await showSequence();
         }
 
-        function spawn() {
-            const isTruck = Math.random() < 0.25;
-            const w = isTruck ? 50 : 40;
-            const h = isTruck ? 80 : 60;
-            const x = Math.random() * (300 - w);
-            obstacles.push({ x, y: -h, w, h, isTruck, passed: false });
+        function addToSequence() { 
+            const next = Math.floor(Math.random()*4);
+            sequence.push(next);
+            debug('Добавлен цвет: ' + next + '. Всего: ' + sequence.length);
         }
 
-        function update() {
-            if (!running || gameOver) return;
-            if (leftDown && player.x > 0) player.x -= 5;
-            if (rightDown && player.x < 260) player.x += 5;
-
-            spawnTimer++;
-            if (spawnTimer > Math.max(20, 60 - speed*5)) { spawn(); spawnTimer = 0; }
-
-            obstacles = obstacles.filter(o => o.y < 420);
-            obstacles.forEach(o => {
-                o.y += speed;
-                if (!o.passed && o.y > player.y+player.h) { o.passed = true; score += o.isTruck ? 2 : 1; document.getElementById('raceScore').textContent = score; }
-            });
-
-            if (score > 0 && score % 20 === 0) speed = Math.min(8, 3 + score/20);
-
-            for (const o of obstacles) {
-                // Хитбокс уже текстуры (margin побольше)
-                const mx = 10, my = 12;
-                if (player.x+mx < o.x+o.w-mx && player.x+player.w-mx > o.x+mx && 
-                    player.y+my < o.y+o.h-my && player.y+player.h-my > o.y+my) {
-                    clearInterval(interval); gameOver = true; running = false;
-                    const isNew = Highscores.save('race', score);
-                    document.getElementById('raceRecord').textContent = Highscores.get('race');
-                    Modal.show('💥 Разбился!', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
-                    return;
-                }
+        async function showSequence() {
+            showing = true; canClick = false;
+            document.getElementById('memMessage').textContent = 'Запомни...';
+            debug('Показываю последовательность...');
+            for (let i = 0; i < sequence.length; i++) {
+                debug('Показываю #' + i + ': цвет ' + sequence[i]);
+                await activate(sequence[i]);
+                await sleep(300);
             }
-            draw();
+            showing = false; canClick = true;
+            playerSeq = [];
+            document.getElementById('memMessage').textContent = 'Повтори!';
+            debug('Готово. Жду ответа.');
         }
 
-        function draw() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Дорога
-            ctx.fillStyle = '#555';
-            for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*3)%400-50, 4, 30);
-            
-            // Игрок — текстура больше хитбокса
-            if (PLAYER_IMG.complete && PLAYER_IMG.naturalWidth > 0) {
-                ctx.drawImage(PLAYER_IMG, player.x-5, player.y-5, player.w+10, player.h+10);
-            } else {
-                ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
-            }
-            
-            // Препятствия
-            obstacles.forEach(o => {
-                const img = o.isTruck ? TRUCK_IMG : OBSTACLE_IMG;
-                if (img.complete && img.naturalWidth > 0) {
-                    ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
-                } else {
-                    ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; 
-                    ctx.fillRect(o.x, o.y, o.w, o.h);
-                }
+        function activate(color) {
+            return new Promise(resolve => {
+                const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
+                if (!btn) { debug('ОШИБКА: кнопка ' + color + ' не найдена!'); resolve(); return; }
+                btn.classList.add('active');
+                memorySounds[color]();
+                const id = setTimeout(() => { 
+                    if (btn) btn.classList.remove('active'); 
+                    debug('Кнопка ' + color + ' погасла');
+                    resolve(); 
+                }, 350);
+                timeoutIds.push(id);
             });
         }
 
-        let frame = 0;
-        const origUpdate = update;
-        update = function() { frame++; origUpdate(); };
+        function sleep(ms) { 
+            return new Promise(r => {
+                const id = setTimeout(r, ms);
+                timeoutIds.push(id);
+            }); 
+        }
 
-        document.getElementById('raceStart').addEventListener('click', launch);
-        document.getElementById('raceLeft').addEventListener('pointerdown', () => leftDown = true);
-        document.getElementById('raceLeft').addEventListener('pointerup', () => leftDown = false);
-        document.getElementById('raceRight').addEventListener('pointerdown', () => rightDown = true);
-        document.getElementById('raceRight').addEventListener('pointerup', () => rightDown = false);
+        function playerClick(color) {
+            debug('Клик игрока: цвет ' + color + '. canClick=' + canClick + ' showing=' + showing + ' playerSeq.length=' + playerSeq.length);
+            
+            if (!canClick || showing) { debug('Клик заблокирован'); return; }
+            
+            const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
+            if (btn) {
+                btn.classList.add('active');
+                memorySounds[color]();
+                const id = setTimeout(() => { if (btn) btn.classList.remove('active'); }, 200);
+                timeoutIds.push(id);
+            }
+            
+            playerSeq.push(color);
+            const idx = playerSeq.length - 1;
+            debug('Игрок нажал #' + idx + ': ' + color + '. Ожидалось: ' + sequence[idx]);
+            
+            if (playerSeq[idx] !== sequence[idx]) {
+                canClick = false;
+                SFX.lose();
+                Highscores.save('memory', level);
+                document.getElementById('memRecord').textContent = Highscores.get('memory');
+                document.getElementById('memMessage').textContent = '❌ Ошибка! Уровень: ' + level;
+                document.getElementById('memStart').style.display = 'inline-block';
+                debug('ОШИБКА! Игрок ошибся на уровне ' + level);
+                return;
+            }
+
+            if (playerSeq.length === sequence.length) {
+                canClick = false;
+                level++;
+                document.getElementById('memLevel').textContent = level;
+                Highscores.save('memory', level);
+                document.getElementById('memRecord').textContent = Highscores.get('memory');
+                if (level >= 20) localStorage.setItem('earned_MEMORY-KING', '1');
+                document.getElementById('memMessage').textContent = '✅ Уровень ' + level + '!';
+                SFX.coin();
+                debug('Уровень пройден! Новый уровень: ' + level);
+                addToSequence();
+                const id = setTimeout(() => showSequence(), 600);
+                timeoutIds.push(id);
+            }
+        }
+
+        document.getElementById('memStart').addEventListener('click', () => {
+            debug('Нажата кнопка Старт');
+            launch();
+        });
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => playerClick(parseInt(btn.dataset.color)));
+        });
 
         start();
     </script>
