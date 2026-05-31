@@ -26,6 +26,7 @@
         .secret { margin-top: 10px; font-size: 14px; color: var(--gold); font-weight: bold; display: none; }
         .secret.show { display: block; }
         .reset-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 10px; background: none; border: 1px solid #555; color: #999; font-size: 12px; cursor: pointer; border-radius: 8px; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -34,13 +35,16 @@
         <h2>🔴 Кликер</h2>
         <div class="score" id="score">0</div>
         <p>За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек</p>
+        <div class="record">🏆 Рекорд: <span id="clickerRecord">0</span></div>
         <button class="click-btn" id="clickBtn">ЖМИ</button>
         <div class="upgrades" id="upgrades"></div>
         <div class="secret" id="secretCode"></div>
         <button class="reset-btn" id="resetBtn">🔄 Сбросить</button>
     </div>
     <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
     <script>
+        SFX.playMusic('sweden');
         const VERSION = 5;
         let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
         if (data.version !== VERSION) { data = {}; }
@@ -50,7 +54,6 @@
         let autoClicker = data.autoClicker || 0;
         let codeShown = data.codeShown || false;
 
-        // [название, начальная цена, +к клику, +авто/сек]
         const levels = [
             { name: '👆 Пальцы', cost: 10, click: 1, auto: 0, owned: data.lvl0 || 0 },
             { name: '🖱 Мышки', cost: 80, click: 2, auto: 0, owned: data.lvl1 || 0 },
@@ -62,10 +65,13 @@
         ];
         const INFLATION = 1.05;
 
+        document.getElementById('clickerRecord').textContent = Highscores.get('clicker');
+
         function save() {
             const obj = { version: VERSION, score, perClick, autoClicker, codeShown };
             levels.forEach((l, i) => obj['lvl'+i] = l.owned);
             localStorage.setItem('clicker_save', JSON.stringify(obj));
+            Highscores.save('clicker', score);
         }
         const ceil = (n) => Math.ceil(n);
 
@@ -81,11 +87,11 @@
                     <span class="info">+${l.click} клик +${l.auto}/сек | ${cost}💰</span>
                 </button>`;
             }).join('');
-            if (score >= 1000000 && !codeShown) {
+            document.getElementById('clickerRecord').textContent = Highscores.get('clicker');
+            if (score >= 10000000 && !codeShown) {
                 codeShown = true;
                 document.getElementById('secretCode').innerHTML = `🏆 Титул получен: Клик-мастер!`;
                 document.getElementById('secretCode').classList.add('show');
-                localStorage.setItem('earned_CLICK-MASTER', '1');
                 SFX.win();
             }
             save();
