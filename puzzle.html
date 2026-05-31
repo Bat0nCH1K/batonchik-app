@@ -12,21 +12,16 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 280px; margin: 20px auto; position: relative; }
+        .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 280px; margin: 20px auto; }
         .tile {
             aspect-ratio: 1; background: var(--accent); color: white;
             border-radius: 12px; display: flex; align-items: center; justify-content: center;
             font-size: 24px; font-weight: bold; cursor: pointer;
             transition: transform 0.15s ease;
-            position: relative;
         }
         .tile.empty { background: transparent; cursor: default; pointer-events: none; }
-        .tile:active { transform: scale(0.95); }
         .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .start-overlay {
-            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
-            font-size: 20px; font-weight: bold; cursor: pointer; display: inline-block; margin: 10px;
-        }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -34,29 +29,31 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🧩 Пятнашки</h2>
         <div class="score">Ходов: <span id="moves">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="puzzleRecord">—</span></div>
         <div class="board" id="board"></div>
-        <div class="start-overlay" id="startBtn">▶ Старт</div>
-        <button class="btn" id="shuffleBtn">🔄 Перемешать</button>
+        <button class="btn" id="shuffleBtn">🔄 Новая игра</button>
     </div>
+    <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
+        SFX.playMusic('papers');
         let board = [], empty = 15, moves = 0, gameStarted = false, animating = false;
         const size = 4;
 
+        document.getElementById('puzzleRecord').textContent = Highscores.get('puzzle') || '—';
+
         function start() {
             board = Array.from({length: size*size}, (_, i) => i === size*size-1 ? 0 : i+1);
-            empty = size*size-1;
-            moves = 0;
-            gameStarted = false;
-            animating = false;
+            empty = size*size-1; moves = 0; gameStarted = false; animating = false;
             document.getElementById('moves').textContent = '0';
-            document.getElementById('startBtn').style.display = 'inline-block';
             draw();
+            shuffle();
         }
 
         function shuffle() {
             gameStarted = true;
-            document.getElementById('startBtn').style.display = 'none';
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 200; i++) {
                 const neighbors = getNeighbors(empty);
                 const rand = neighbors[Math.floor(Math.random() * neighbors.length)];
                 swapSilent(rand);
@@ -76,28 +73,20 @@
             return neighbors;
         }
 
-        function swapSilent(idx) {
-            [board[empty], board[idx]] = [board[idx], board[empty]];
-            empty = idx;
-        }
+        function swapSilent(idx) { [board[empty], board[idx]] = [board[idx], board[empty]]; empty = idx; }
 
-        function swapAnimated(idx) {
-            if (animating) return;
+        function move(idx) {
+            if (!gameStarted || animating) return;
+            const neighbors = getNeighbors(empty);
+            if (!neighbors.includes(idx)) return;
             animating = true;
-            const tiles = document.querySelectorAll('.tile');
-            const tileEl = tiles[idx];
-            const emptyEl = tiles[empty];
-            
-            // Направление движения
+            const tileEl = document.querySelectorAll('.tile')[idx];
             const er = Math.floor(empty/size), ec = empty%size;
             const tr = Math.floor(idx/size), tc = idx%size;
-            const dx = (ec - tc) * 100 + '%';
-            const dy = (er - tr) * 100 + '%';
-            
+            const dx = (ec - tc) * 100 + '%', dy = (er - tr) * 100 + '%';
             tileEl.style.transition = 'transform 0.15s ease';
             tileEl.style.transform = `translate(${dx}, ${dy})`;
             tileEl.style.zIndex = '2';
-            
             setTimeout(() => {
                 tileEl.style.transition = 'none';
                 tileEl.style.transform = 'none';
@@ -107,37 +96,26 @@
                 document.getElementById('moves').textContent = moves;
                 draw();
                 animating = false;
-                
-                if (checkWin() && gameStarted) {
-                    setTimeout(() => { alert('🎉 Победа! Ходов: ' + moves); start(); }, 300);
+                SFX.click();
+                if (checkWin()) {
+                    Highscores.save('puzzle', moves);
+                    document.getElementById('puzzleRecord').textContent = Highscores.get('puzzle');
+                    if (moves <= 50) localStorage.setItem('earned_PUZZLE-MASTER', '1');
+                    Modal.show('🎉 Победа!', `Ходов: ${moves}`).then(() => start());
                 }
             }, 150);
         }
 
-        function move(idx) {
-            if (!gameStarted || animating) return;
-            const neighbors = getNeighbors(empty);
-            if (!neighbors.includes(idx)) return;
-            swapAnimated(idx);
-        }
-
         function checkWin() {
-            for (let i = 0; i < size*size-1; i++) {
-                if (board[i] !== i+1) return false;
-            }
+            for (let i = 0; i < size*size-1; i++) { if (board[i] !== i+1) return false; }
             return board[size*size-1] === 0;
         }
 
         function draw() {
-            const el = document.getElementById('board');
-            el.innerHTML = board.map((val, i) => {
-                return `<div class="tile ${val === 0 ? 'empty' : ''}" onclick="move(${i})">${val || ''}</div>`;
-            }).join('');
+            document.getElementById('board').innerHTML = board.map((val, i) => `<div class="tile ${val === 0 ? 'empty' : ''}" onclick="move(${i})">${val || ''}</div>`).join('');
         }
 
-        document.getElementById('startBtn').addEventListener('click', shuffle);
-        document.getElementById('shuffleBtn').addEventListener('click', shuffle);
-
+        document.getElementById('shuffleBtn').addEventListener('click', start);
         start();
     </script>
 </body>
