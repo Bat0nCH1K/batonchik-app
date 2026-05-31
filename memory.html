@@ -58,6 +58,7 @@
             document.getElementById('memMessage').textContent = 'Нажми Старт';
             document.getElementById('memStart').style.display = 'inline-block';
             canClick = false;
+            showing = false;
         }
 
         async function launch() {
@@ -85,9 +86,13 @@
         function activate(color) {
             return new Promise(resolve => {
                 const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
+                if (!btn) { resolve(); return; }
                 btn.classList.add('active');
                 memorySounds[color]();
-                setTimeout(() => { btn.classList.remove('active'); resolve(); }, 350);
+                setTimeout(() => { 
+                    if (btn) btn.classList.remove('active'); 
+                    resolve(); 
+                }, 350);
             });
         }
 
@@ -95,10 +100,19 @@
 
         function playerClick(color) {
             if (!canClick || showing) return;
-            playerSeq.push(color);
-            activate(color);
             
-            if (playerSeq[playerSeq.length-1] !== sequence[playerSeq.length-1]) {
+            // Быстро мигаем кнопкой для обратной связи
+            const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
+            if (btn) {
+                btn.classList.add('active');
+                memorySounds[color]();
+                setTimeout(() => { if (btn) btn.classList.remove('active'); }, 200);
+            }
+            
+            playerSeq.push(color);
+            const idx = playerSeq.length - 1;
+            
+            if (playerSeq[idx] !== sequence[idx]) {
                 canClick = false;
                 SFX.lose();
                 Highscores.save('memory', level);
@@ -118,7 +132,7 @@
                 document.getElementById('memMessage').textContent = '✅ Уровень ' + level + '!';
                 SFX.coin();
                 addToSequence();
-                setTimeout(showSequence, 600);
+                setTimeout(() => showSequence(), 600);
             }
         }
 
