@@ -12,7 +12,7 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .board { display: grid; gap: 2px; margin: 16px auto; }
-        .cell { background: var(--card); border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .cell { background: var(--card); border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .cell.revealed { background: #1a1a4e; }
         .cell.flag { background: var(--accent); }
         .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
@@ -43,7 +43,7 @@
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('sweden');
-        let size = 8, mines = 10, msBoard = [], revealed = 0, flagCount = 0, gameOver = false, timer = 0, timerInterval = null;
+        let size = 8, mines = 10, msBoard = [], revealed = 0, gameOver = false, timer = 0, timerInterval = null;
         const CELL_SIZE = size => size <= 8 ? 33 : size <= 12 ? 22 : 16;
 
         function initMS() {
@@ -57,7 +57,7 @@
                 for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<size && nc>=0 && nc<size && msBoard[nr][nc].mine) cnt++; }
                 msBoard[r][c] = { ...msBoard[r][c], count: cnt };
             }
-            revealed = 0; flagCount = 0; gameOver = false; timer = 0;
+            revealed = 0; gameOver = false; timer = 0;
             document.getElementById('msTimer').textContent = '0';
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => { if (!gameOver) { timer++; document.getElementById('msTimer').textContent = timer; } }, 1000);
