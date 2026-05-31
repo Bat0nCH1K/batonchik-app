@@ -102,7 +102,6 @@
             if (score > 0 && score % 20 === 0) speed = Math.min(8, 3 + score/20);
 
             for (const o of obstacles) {
-                // Хитбокс уже текстуры (margin побольше)
                 const mx = 10, my = 12;
                 if (player.x+mx < o.x+o.w-mx && player.x+player.w-mx > o.x+mx && 
                     player.y+my < o.y+o.h-my && player.y+player.h-my > o.y+my) {
@@ -118,22 +117,25 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Дорога
             ctx.fillStyle = '#555';
             for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*3)%400-50, 4, 30);
             
-            // Игрок — текстура больше хитбокса
+            // Игрок — растянут по горизонтали
             if (PLAYER_IMG.complete && PLAYER_IMG.naturalWidth > 0) {
-                ctx.drawImage(PLAYER_IMG, player.x-5, player.y-5, player.w+10, player.h+10);
+                ctx.drawImage(PLAYER_IMG, player.x-8, player.y-5, player.w+16, player.h+10);
             } else {
                 ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
             }
             
-            // Препятствия
+            // Препятствия — машинки растянуты, грузовик норм
             obstacles.forEach(o => {
                 const img = o.isTruck ? TRUCK_IMG : OBSTACLE_IMG;
                 if (img.complete && img.naturalWidth > 0) {
-                    ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
+                    if (o.isTruck) {
+                        ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
+                    } else {
+                        ctx.drawImage(img, o.x-8, o.y-5, o.w+16, o.h+10);
+                    }
                 } else {
                     ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; 
                     ctx.fillRect(o.x, o.y, o.w, o.h);
