@@ -51,6 +51,10 @@
     <script src="sfx.js"></script>
     <script>
         SFX.playMusic('sweden');
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) SFX.stopMusic();
+            else SFX.playMusic('sweden');
+        });
     </script>
 </body>
 </html>
