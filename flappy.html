@@ -90,7 +90,7 @@
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             if (BIRD_IMG.complete && BIRD_IMG.naturalWidth > 0) {
-                const birdSize = 65;
+                const birdSize = 70;
                 ctx.drawImage(BIRD_IMG, bird.x-birdSize/2, bird.y-birdSize/2, birdSize, birdSize);
             } else {
                 ctx.fillStyle = '#e94560';
