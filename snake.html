@@ -12,12 +12,18 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
+        .canvas-wrap { position: relative; display: inline-block; }
         canvas { border: 3px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 16px auto; }
+        .start-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
+        }
         .controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; }
         .row { display: flex; gap: 8px; }
         .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
         .ctrl:active { background: var(--accent); }
-        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -25,7 +31,11 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🐍 Змейка</h2>
         <div class="score">Очки: <span id="snakeScore">0</span></div>
-        <canvas id="snakeCanvas" width="300" height="300"></canvas>
+        <div class="record">🏆 Рекорд: <span id="snakeRecord">0</span></div>
+        <div class="canvas-wrap">
+            <canvas id="snakeCanvas" width="300" height="300"></canvas>
+            <div class="start-overlay" id="snakeStart">▶ Старт</div>
+        </div>
         <div class="controls">
             <div class="row"><button class="ctrl" id="snakeUp">↑</button></div>
             <div class="row">
@@ -34,26 +44,67 @@
                 <button class="ctrl" id="snakeRight">→</button>
             </div>
         </div>
-        <button class="btn" id="startSnakeBtn">▶ Старт</button>
     </div>
+    <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
+        SFX.playMusic('subway');
+        const APPLE_IMG = new Image();
+        APPLE_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531095447.png';
+        
         const grid = 15, cell = 20;
         let snake = [], food = {}, dir = 'right', interval = null, score = 0, running = false;
         const canvas = document.getElementById('snakeCanvas'), ctx = canvas.getContext('2d');
 
-        function reset() { score = 0; document.getElementById('snakeScore').textContent = '0'; snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right'; running = false; if (interval) clearInterval(interval); placeFood(); draw(); document.getElementById('startSnakeBtn').style.display = 'block'; document.getElementById('startSnakeBtn').textContent = '▶ Старт'; document.getElementById('startSnakeBtn').disabled = false; }
+        document.getElementById('snakeRecord').textContent = Highscores.get('snake');
 
-        document.getElementById('startSnakeBtn').addEventListener('click', () => {
-            if (running) return;
-            const btn = document.getElementById('startSnakeBtn');
-            btn.disabled = true; let c = 3; btn.textContent = c;
-            const cd = setInterval(() => { c--; if (c <= 0) { clearInterval(cd); btn.style.display = 'none'; btn.disabled = false; start(); } else { btn.textContent = c; } }, 500);
+        function reset() {
+            score = 0; document.getElementById('snakeScore').textContent = '0';
+            snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right'; running = false;
+            if (interval) clearInterval(interval);
+            placeFood(); draw();
+            document.getElementById('snakeStart').style.display = 'block';
+        }
+
+        document.getElementById('snakeStart').addEventListener('click', () => {
+            running = true; document.getElementById('snakeStart').style.display = 'none';
+            score = 0; document.getElementById('snakeScore').textContent = '0';
+            snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right';
+            placeFood(); if (interval) clearInterval(interval);
+            interval = setInterval(update, 100);
         });
 
-        function start() { score = 0; document.getElementById('snakeScore').textContent = '0'; snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right'; running = true; placeFood(); if (interval) clearInterval(interval); interval = setInterval(update, 120); }
         function placeFood() { do { food = { x: Math.floor(Math.random()*grid), y: Math.floor(Math.random()*grid) }; } while (snake.some(s => s.x===food.x&&s.y===food.y)); }
-        function update() { const head = { ...snake[0] }; if (dir==='up') head.y--; if (dir==='down') head.y++; if (dir==='left') head.x--; if (dir==='right') head.x++; if (head.x<0||head.x>=grid||head.y<0||head.y>=grid||snake.some(s=>s.x===head.x&&s.y===head.y)) { clearInterval(interval); alert('Очки: '+score); reset(); return; } snake.unshift(head); if (head.x===food.x&&head.y===food.y) { score+=10; document.getElementById('snakeScore').textContent = score; placeFood(); } else { snake.pop(); } draw(); }
-        function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#e94560'; snake.forEach(s => ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2)); ctx.fillStyle = '#4caf84'; ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4); }
+
+        function update() {
+            if (!running) return;
+            const head = { ...snake[0] };
+            if (dir==='up') head.y--; if (dir==='down') head.y++; if (dir==='left') head.x--; if (dir==='right') head.x++;
+            if (head.x<0||head.x>=grid||head.y<0||head.y>=grid||snake.some(s=>s.x===head.x&&s.y===head.y)) {
+                clearInterval(interval); running = false;
+                const isNew = Highscores.save('snake', score);
+                document.getElementById('snakeRecord').textContent = Highscores.get('snake');
+                Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => reset());
+                return;
+            }
+            snake.unshift(head);
+            if (head.x===food.x&&head.y===food.y) { score+=10; document.getElementById('snakeScore').textContent = score; placeFood(); SFX.eat(); }
+            else { snake.pop(); }
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#e94560';
+            snake.forEach(s => ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2));
+            if (APPLE_IMG.complete) {
+                ctx.drawImage(APPLE_IMG, food.x*cell, food.y*cell, cell, cell);
+            } else {
+                ctx.fillStyle = '#4caf84';
+                ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4);
+            }
+        }
 
         document.getElementById('snakeUp').addEventListener('click', () => { if (dir!=='down') dir='up'; });
         document.getElementById('snakeDown').addEventListener('click', () => { if (dir!=='up') dir='down'; });
