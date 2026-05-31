@@ -3,113 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brick Breaker — BatonCHIK Games</title>
+    <title>2048 — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
-        .score { font-size: 20px; margin: 10px 0; }
-        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
+        .score-2048 { font-size: 20px; margin: 10px 0; }
+        .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #0f3460; border-radius: 12px; padding: 12px; width: 280px; height: 280px; margin: 16px auto; }
+        .tile { background: #1a1a4e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; aspect-ratio: 1; }
+        .tile-2 { background: #4a90d9; } .tile-4 { background: #4caf84; } .tile-8 { background: #e09540; } .tile-16 { background: #e94560; }
+        .tile-32 { background: #c0392b; } .tile-64 { background: #8e44ad; } .tile-128 { background: #f39c12; } .tile-256 { background: #2ecc71; } .tile-512 { background: #1abc9c; } .tile-1024 { background: #e74c3c; } .tile-2048 { background: #f1c40f; color: #1a1a2e; }
+        @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes merge { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .arrow-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
+        .arrow-row { display: flex; gap: 8px; }
+        .arrow-btn { width: 50px; height: 50px; border-radius: 12px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 22px; cursor: pointer; font-weight: bold; }
+        .arrow-btn:active { background: var(--accent); }
         .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>🧱 Brick Breaker</h2>
-        <div class="score">Очки: <span id="bbScore">0</span></div>
-        <canvas id="bbCanvas" width="300" height="400"></canvas>
-        <p style="color:var(--text-secondary);">Перетаскивай платформу пальцем</p>
-        <button class="btn" id="startBtn">▶ Старт</button>
+        <h2>🧩 2048</h2>
+        <div class="score-2048">Очки: <span id="score2048">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="record2048">0</span></div>
+        <div class="board" id="board2048"></div>
+        <div class="arrow-controls">
+            <div class="arrow-row"><button class="arrow-btn" id="arrowUp">↑</button></div>
+            <div class="arrow-row">
+                <button class="arrow-btn" id="arrowLeft">←</button>
+                <button class="arrow-btn" id="arrowDown">↓</button>
+                <button class="arrow-btn" id="arrowRight">→</button>
+            </div>
+        </div>
+        <button class="btn" id="reset2048">🔄 Новая игра</button>
     </div>
+    <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
-        const canvas = document.getElementById('bbCanvas'), ctx = canvas.getContext('2d');
-        let paddle = { x:120, y:370, w:50, h:10 }, ball = { x:150, y:350, vx:0, vy:0, r:6 };
-        let bricks = [], score = 0, interval = null, running = false;
+        SFX.playMusic('papers');
+        let board = [], score = 0, merging = [];
 
-        function init() {
-            score = 0; document.getElementById('bbScore').textContent = '0';
-            paddle.x = 120;
-            // Гарантированно летит вверх (угол 120°–150° от оси X вправо = 30°–60° влево-вверх)
-            const baseAngle = Math.PI / 2; // 90° — строго вверх
-            const spread = Math.PI / 6; // ±30°
-            const angle = baseAngle + (Math.random() - 0.5) * spread;
-            const speed = 7;
-            ball = {
-                x: paddle.x + paddle.w/2,
-                y: paddle.y - 15,
-                vx: Math.cos(angle) * speed,
-                vy: -Math.sin(angle) * speed,
-                r: 6
-            };
-            // Двойная проверка: vy должен быть отрицательным
-            if (ball.vy >= 0) ball.vy = -speed;
-            bricks = [];
-            for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) bricks.push({ x:c*40+10, y:r*25+10, w:35, h:20, alive:true, color: ['#e94560','#ff9800','#f1c40f','#4caf84','#4a90d9'][r] });
-            running = false;
-            document.getElementById('startBtn').style.display = 'block';
-            draw();
-        }
+        document.getElementById('record2048').textContent = Highscores.get('game2048');
 
-        function start() {
-            if (running) return;
-            running = true;
-            document.getElementById('startBtn').style.display = 'none';
-            if (interval) clearInterval(interval);
-            interval = setInterval(update, 16);
-        }
-
-        function update() {
-            if (!running) return;
-            ball.x += ball.vx * 0.016 * 60;
-            ball.y += ball.vy * 0.016 * 60;
-
-            if (ball.x - ball.r <= 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
-            if (ball.x + ball.r >= 300) { ball.x = 300 - ball.r; ball.vx = -Math.abs(ball.vx); }
-            if (ball.y - ball.r <= 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
-            
-            if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w) {
-                ball.y = paddle.y - ball.r;
-                const hitPos = (ball.x - paddle.x) / paddle.w;
-                const angle = (hitPos - 0.5) * 1.2;
-                const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
-                ball.vx = Math.sin(angle) * speed;
-                ball.vy = -Math.abs(Math.cos(angle) * speed);
-                if (Math.abs(ball.vy) < 4) ball.vy = -5;
+        function init() { board = Array(4).fill().map(() => Array(4).fill(0)); score = 0; merging = []; add(); add(); draw(); }
+        function add() { const empty = []; for (let r=0; r<4; r++) for (let c=0; c<4; c++) if (board[r][c]===0) empty.push({r,c}); if (empty.length) { const {r,c} = empty[Math.floor(Math.random()*empty.length)]; board[r][c] = Math.random()<0.9 ? 2 : 4; } }
+        function draw() {
+            const el = document.getElementById('board2048'); el.innerHTML = '';
+            for (let r=0; r<4; r++) for (let c=0; c<4; c++) {
+                const t = document.createElement('div'); t.className = 'tile'; const v = board[r][c];
+                if (v) { t.textContent = v; t.classList.add('tile-'+v); if (!merging.some(m=>m.r===r&&m.c===c)) t.style.animation='popIn 0.2s ease'; if (merging.some(m=>m.r===r&&m.c===c)) t.style.animation='merge 0.3s ease'; }
+                el.appendChild(t);
             }
-
-            if (ball.y > 420) { clearInterval(interval); running = false; alert('Очки: ' + score); init(); return; }
-
-            for (const b of bricks) {
-                if (!b.alive) continue;
-                if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
-                    b.alive = false; score += 10; document.getElementById('bbScore').textContent = score;
-                    const cx = Math.max(b.x, Math.min(ball.x, b.x + b.w)), cy = Math.max(b.y, Math.min(ball.y, b.y + b.h));
-                    const dx = ball.x - cx, dy = ball.y - cy;
-                    if (Math.abs(dx) > Math.abs(dy)) { ball.vx = ball.x < cx ? -Math.abs(ball.vx) : Math.abs(ball.vx); ball.x += ball.vx > 0 ? 3 : -3; }
-                    else { ball.vy = ball.y < cy ? -Math.abs(ball.vy) : Math.abs(ball.vy); ball.y += ball.vy > 0 ? 3 : -3; }
-                    break;
+            document.getElementById('score2048').textContent = score;
+            document.getElementById('record2048').textContent = Highscores.get('game2048');
+            merging = [];
+        }
+        function move(dir) {
+            const old = board.map(r=>[...r]); merging = [];
+            if (dir==='left'||dir==='right') { for (let r=0; r<4; r++) { let row = board[r].filter(v=>v); if (dir==='right') row.reverse(); for (let i=0; i<row.length-1; i++) { if (row[i]&&row[i]===row[i+1]) { row[i]*=2; score+=row[i]; merging.push({r,c:dir==='right'?3-i:i}); row.splice(i+1,1); row.push(0); } } while (row.length<4) row.push(0); if (dir==='right') row.reverse(); board[r]=row; } }
+            else { for (let c=0; c<4; c++) { let col = [board[0][c],board[1][c],board[2][c],board[3][c]].filter(v=>v); if (dir==='down') col.reverse(); for (let i=0; i<col.length-1; i++) { if (col[i]&&col[i]===col[i+1]) { col[i]*=2; score+=col[i]; merging.push({r:dir==='down'?3-i:i,c}); col.splice(i+1,1); col.push(0); } } while (col.length<4) col.push(0); if (dir==='down') col.reverse(); for (let r=0;r<4;r++) board[r][c]=col[r]; } }
+            if (JSON.stringify(old)!==JSON.stringify(board)) { add(); draw(); SFX.click(); }
+            Highscores.save('game2048', score);
+            // Проверка на Game Over
+            if (!board.some(row => row.some(cell => cell===0))) {
+                let canMove = false;
+                for (let r=0; r<4; r++) for (let c=0; c<3; c++) if (board[r][c]===board[r][c+1]) canMove=true;
+                for (let c=0; c<4; c++) for (let r=0; r<3; r++) if (board[r][c]===board[r+1][c]) canMove=true;
+                if (!canMove) {
+                    setTimeout(() => {
+                        Modal.show('💀 Игра окончена', `Очки: ${score}`).then(() => init());
+                    }, 300);
                 }
             }
-
-            if (bricks.every(b => !b.alive)) { clearInterval(interval); running = false; alert('🎉 Победа! Очки: ' + score); init(); return; }
-            draw();
         }
-
-        function draw() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle = '#fff'; ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
-            bricks.forEach(b => { if (!b.alive) return; ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); });
-        }
-
-        document.getElementById('startBtn').addEventListener('click', start);
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); paddle.x = Math.max(0, Math.min(300 - paddle.w, e.touches[0].clientX - rect.left - paddle.w/2)); });
-        canvas.addEventListener('mousemove', e => { const rect = canvas.getBoundingClientRect(); paddle.x = Math.max(0, Math.min(300 - paddle.w, e.clientX - rect.left - paddle.w/2)); });
-
+        document.getElementById('reset2048').addEventListener('click', init);
+        document.getElementById('arrowUp').addEventListener('click', ()=>move('up'));
+        document.getElementById('arrowDown').addEventListener('click', ()=>move('down'));
+        document.getElementById('arrowLeft').addEventListener('click', ()=>move('left'));
+        document.getElementById('arrowRight').addEventListener('click', ()=>move('right'));
         init();
     </script>
 </body>
