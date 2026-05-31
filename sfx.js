@@ -1,143 +1,89 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кликер — BatonCHIK Games</title>
-    <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --gold: #f0c040; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
-        .container { max-width: 500px; margin: 0 auto; }
-        h2 { font-size: 20px; margin-bottom: 16px; }
-        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
-        .score { font-size: 48px; font-weight: bold; color: var(--accent); margin: 16px 0; }
-        .click-btn {
-            width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--accent);
-            background: var(--card); color: white; font-size: 28px; font-weight: bold;
-            cursor: pointer; box-shadow: 0 6px 20px rgba(233,69,96,0.4);
-            transition: transform 0.1s; margin: 20px auto; display: block;
+// Звуковая библиотека BatonCHIK Games v6.0
+const SFX = {
+    _ctx: null,
+    _musicGain: null,
+    _currentMusic: null,
+    _musicPlaying: false,
+    _lastTrack: null,
+    
+    init() {
+        if (!this._ctx) {
+            this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this._musicGain = this._ctx.createGain();
+            this._musicGain.gain.value = 0.05;
+            this._musicGain.connect(this._ctx.destination);
         }
-        .click-btn:active { transform: scale(0.9); background: var(--accent); }
-        .upgrades { display: flex; flex-direction: column; gap: 8px; max-width: 300px; margin: 0 auto; }
-        .upgrade-btn { padding: 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--card); color: var(--text); font-size: 13px; cursor: pointer; font-weight: bold; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-        .upgrade-btn:disabled { opacity: 0.3; border-color: #555; }
-        .upgrade-btn .info { font-size: 11px; color: var(--text-secondary); }
-        .rebirth-btn { padding: 14px; border: 2px solid var(--gold); border-radius: 12px; background: var(--card); color: var(--gold); font-size: 15px; cursor: pointer; font-weight: bold; margin-top: 12px; width: 100%; max-width: 300px; }
-        .rebirth-btn:disabled { opacity: 0.3; }
-        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
-        .reset-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 10px; background: none; border: 1px solid #555; color: #999; font-size: 12px; cursor: pointer; border-radius: 8px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="index.html" class="back">← Назад</a>
-        <h2>🔴 Кликер</h2>
-        <div class="score" id="score">0</div>
-        <p>За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек | Множитель: x<span id="multiplier">1</span></p>
-        <div class="record">🏆 Рекорд: <span id="clickerRecord">0</span></div>
-        <button class="click-btn" id="clickBtn">ЖМИ</button>
-        <div class="upgrades" id="upgrades"></div>
-        <button class="rebirth-btn" id="rebirthBtn" disabled>🔄 Перерождение (1000💰)</button>
-        <button class="reset-btn" id="resetBtn">🗑 Полный сброс</button>
-    </div>
-    <script src="sfx.js"></script>
-    <script src="highscores.js"></script>
-    <script>
-        SFX.playMusic('sweden');
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) SFX.stopMusic();
-            else SFX.playMusic('sweden');
-        });
-        
-        const VERSION = 6;
-        let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
-        if (data.version !== VERSION) { data = {}; }
-
-        let score = data.score || 0;
-        let perClick = data.perClick || 1;
-        let autoClicker = data.autoClicker || 0;
-        let multiplier = data.multiplier || 1;
-        let rebirthCount = data.rebirthCount || 0;
-
-        const levels = [
-            { name: '👆 Пальцы', cost: 10, click: 1, auto: 0, owned: data.lvl0 || 0 },
-            { name: '🖱 Мышки', cost: 80, click: 2, auto: 0, owned: data.lvl1 || 0 },
-            { name: '⌨️ Клавиатуры', cost: 400, click: 5, auto: 1, owned: data.lvl2 || 0 },
-            { name: '🤖 Боты', cost: 2000, click: 10, auto: 3, owned: data.lvl3 || 0 },
-            { name: '🖥 Серверы', cost: 12000, click: 30, auto: 10, owned: data.lvl4 || 0 },
-            { name: '🧠 Нейросеть', cost: 80000, click: 100, auto: 40, owned: data.lvl5 || 0 },
-            { name: '🌌 Квантовый ИИ', cost: 500000, click: 500, auto: 200, owned: data.lvl6 || 0 },
-        ];
-        const INFLATION = 1.05;
-        const rebirthCosts = [1000, 100000, 10000000, 1000000000];
-        const rebirthMultipliers = [1.2, 1.5, 2, 5];
-
-        document.getElementById('clickerRecord').textContent = Highscores.get('clicker');
-
-        function save() {
-            const obj = { version: VERSION, score, perClick, autoClicker, multiplier, rebirthCount };
-            levels.forEach((l, i) => obj['lvl'+i] = l.owned);
-            localStorage.setItem('clicker_save', JSON.stringify(obj));
-            Highscores.save('clicker', score);
+    },
+    
+    play(freq, type, duration, vol = 0.1) {
+        this.init();
+        const osc = this._ctx.createOscillator();
+        const gain = this._ctx.createGain();
+        osc.connect(gain); gain.connect(this._ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this._ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this._ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this._ctx.currentTime + duration);
+        osc.start(this._ctx.currentTime);
+        osc.stop(this._ctx.currentTime + duration);
+    },
+    
+    click() { this.play(800, 'square', 0.06, 0.05); },
+    coin() { this.play(1200, 'square', 0.08, 0.07); this.play(1600, 'square', 0.08, 0.05); },
+    eat() { this.play(400, 'sine', 0.1, 0.06); },
+    death() { this.play(200, 'sawtooth', 0.35, 0.15); setTimeout(() => this.play(150, 'sawtooth', 0.35, 0.25), 150); },
+    shoot() { this.play(80, 'square', 0.05, 0.03); },
+    explosion() { this.play(50, 'sawtooth', 0.25, 0.15); },
+    lineClear() { this.play(600, 'square', 0.12, 0.08); setTimeout(() => this.play(900, 'square', 0.12, 0.08), 80); },
+    drop() { this.play(250, 'triangle', 0.08, 0.04); },
+    match() { this.play(500, 'sine', 0.12, 0.06); setTimeout(() => this.play(700, 'sine', 0.12, 0.06), 60); },
+    win() { this.play(523, 'square', 0.15, 0.08); setTimeout(() => this.play(659, 'square', 0.15, 0.08), 120); setTimeout(() => this.play(784, 'square', 0.2, 0.15), 240); },
+    lose() { this.play(400, 'sawtooth', 0.2, 0.1); setTimeout(() => this.play(300, 'sawtooth', 0.3, 0.2), 200); },
+    memory0() { this.play(523, 'sine', 0.25, 0.12); },
+    memory1() { this.play(659, 'sine', 0.25, 0.12); },
+    memory2() { this.play(784, 'sine', 0.25, 0.12); },
+    memory3() { this.play(1047, 'sine', 0.25, 0.12); },
+    
+    _musicTracks: {
+        sweden: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/C418_-_Sweden_30921677.mp3',
+        papers: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Theme_-_Papers_Please_62974833.mp3',
+        action: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Dimrain47_-_At_the_Speed_of_Light_Full_62880084.mp3',
+        subway: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Subway_Surfers_-_OST_Glavnaya_tema_73599365.mp3',
+        snowy: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Snowy_64962758.mp3',
+        bonetrousle: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Bonetrousle_64962766.mp3',
+        tetris: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Video_Game_Players_-_Tetris_Theme_48152782.mp3',
+    },
+    
+    playMusic(track) {
+        this.init();
+        this.stopMusic();
+        this._lastTrack = track;
+        const url = this._musicTracks[track];
+        if (!url) return;
+        this._currentMusic = new Audio(url);
+        this._currentMusic.loop = true;
+        this._currentMusic.volume = 0.05;
+        this._currentMusic.play().catch(e => console.log('Музыка не загрузилась'));
+        this._musicPlaying = true;
+    },
+    
+    stopMusic() {
+        if (this._currentMusic) { this._currentMusic.pause(); this._currentMusic = null; }
+        this._musicPlaying = false;
+    },
+    
+    resumeMusic() {
+        if (this._lastTrack && !this._musicPlaying) {
+            this.playMusic(this._lastTrack);
         }
-        const ceil = (n) => Math.ceil(n);
+    }
+};
 
-        function updateUI() {
-            document.getElementById('score').textContent = score;
-            document.getElementById('perClick').textContent = perClick;
-            document.getElementById('autoClicker').textContent = autoClicker;
-            document.getElementById('multiplier').textContent = multiplier.toFixed(1);
-            document.getElementById('upgrades').innerHTML = levels.map((l, i) => {
-                const cost = ceil(l.cost * Math.pow(INFLATION, l.owned));
-                return `<button class="upgrade-btn" ${score >= cost ? '' : 'disabled'} onclick="buy(${i})">
-                    <span>${l.name} (${l.owned})</span>
-                    <span class="info">+${l.click} клик +${l.auto}/сек | ${cost}💰</span>
-                </button>`;
-            }).join('');
-            
-            const rebirthCost = rebirthCosts[rebirthCount] || Infinity;
-            document.getElementById('rebirthBtn').disabled = score < rebirthCost;
-            document.getElementById('rebirthBtn').textContent = `🔄 Перерождение ${rebirthCount+1} (${rebirthCost}💰) → x${(rebirthMultipliers[rebirthCount]||1).toFixed(1)}`;
-            
-            document.getElementById('clickerRecord').textContent = Highscores.get('clicker');
-            save();
-        }
-
-        function buy(i) {
-            const l = levels[i];
-            const cost = ceil(l.cost * Math.pow(INFLATION, l.owned));
-            if (score < cost) return;
-            score -= cost;
-            perClick += l.click;
-            autoClicker += l.auto;
-            l.owned++;
-            SFX.coin();
-            updateUI();
-        }
-        
-        function rebirth() {
-            const cost = rebirthCosts[rebirthCount];
-            if (score < cost) return;
-            const newMult = rebirthMultipliers[rebirthCount] || 1;
-            score = 0;
-            perClick = 1;
-            autoClicker = 0;
-            levels.forEach(l => l.owned = 0);
-            multiplier *= newMult;
-            rebirthCount++;
-            SFX.win();
-            updateUI();
-        }
-        
-        window.buy = buy;
-        window.rebirth = rebirth;
-
-        document.getElementById('clickBtn').addEventListener('click', () => { SFX.click(); score += Math.floor(perClick * multiplier); updateUI(); });
-        document.getElementById('rebirthBtn').addEventListener('click', rebirth);
-        document.getElementById('resetBtn').addEventListener('click', () => { if (confirm('Полностью сбросить всё, включая перерождения?')) { localStorage.removeItem('clicker_save'); location.reload(); } });
-        setInterval(() => { if (autoClicker > 0) { score += Math.floor(autoClicker * multiplier); updateUI(); } }, 1000);
-        updateUI();
-    </script>
-</body>
-</html>
+// Глобальный обработчик — работает на всех страницах, где подключён sfx.js
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        SFX.stopMusic();
+    } else {
+        SFX.resumeMusic();
+    }
+});
