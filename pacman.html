@@ -20,7 +20,7 @@
             font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
         }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; }
         .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
         .timer { font-size: 20px; color: #ff9800; margin: 5px 0; }
@@ -52,7 +52,7 @@
     <script>
         SFX.playMusic('snowy');
         const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:7, y:7 }, dir = 'right';
+        let player = { x:7, y:7 }, dir = null;
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null, ghostInterval = null, running = false;
         let timeLeft = 60, timerInterval = null;
@@ -83,7 +83,7 @@
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
             document.getElementById('pmTimer').textContent = '60';
             document.getElementById('pmStart').style.display = 'block';
-            player = { x:7, y:7 }; dir = 'right';
+            player = { x:7, y:7 }; dir = null;
             dots = []; walls = []; ghosts = [];
             for (let r=0; r<15; r++) { walls[r]=[]; for (let c=0; c<15; c++) { walls[r][c]=maze[r][c]===1; if (!walls[r][c]&&!(c===7&&r===7)&&!(c===7&&r===8)) dots.push({x:c,y:r}); } }
             ghosts = [{x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6},{x:7,y:8,color:'#6bff6b',homeX:7,homeY:8}];
@@ -95,46 +95,52 @@
 
         function launch() {
             running = true; document.getElementById('pmStart').style.display = 'none';
-            interval = setInterval(update, 180);
+            interval = setInterval(movePlayer, 150);
             ghostInterval = setInterval(updateGhosts, 250);
             timerInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById('pmTimer').textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(interval); clearInterval(ghostInterval); clearInterval(timerInterval);
-                    running = false;
-                    if (dots.length === 0) {
-                        localStorage.setItem('earned_PACMAN-SPEED', '1');
-                        const isNew = Highscores.save('pacman', score);
-                        document.getElementById('pmRecord').textContent = Highscores.get('pacman');
-                        Modal.show('🎉 Победа!', `Все точки собраны за 60 сек!${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
-                    } else {
-                        Modal.show('⏰ Время вышло!', `Очки: ${score}`).then(() => start());
-                    }
-                }
+                if (timeLeft <= 0) endGame();
             }, 1000);
         }
 
-        function update() {
-            if (!running) return;
-            let nx=player.x, ny=player.y;
-            if (dir==='up') ny--; if (dir==='down') ny++; if (dir==='left') nx--; if (dir==='right') nx++;
-            if (nx<0) nx=14; if (nx>14) nx=0;
+        function endGame(won = false) {
+            clearInterval(interval); clearInterval(ghostInterval); clearInterval(timerInterval);
+            running = false;
+            if (won || dots.length === 0) {
+                localStorage.setItem('earned_PACMAN-SPEED', '1');
+                const isNew = Highscores.save('pacman', score);
+                document.getElementById('pmRecord').textContent = Highscores.get('pacman');
+                Modal.show('🎉 Победа!', `Все точки собраны!${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+            } else {
+                const isNew = Highscores.save('pacman', score);
+                document.getElementById('pmRecord').textContent = Highscores.get('pacman');
+                Modal.show('⏰ Время вышло!', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+            }
+        }
+
+        function movePlayer() {
+            if (!running || !dir) return;
+            
+            let nx = player.x, ny = player.y;
+            if (dir === 'up') ny--;
+            if (dir === 'down') ny++;
+            if (dir === 'left') nx--;
+            if (dir === 'right') nx++;
+            
+            if (nx < 0) nx = 14; if (nx > 14) nx = 0;
+            
             if (!walls[ny]?.[nx]) {
-                player.x=nx; player.y=ny;
-                const di=dots.findIndex(d=>d.x===player.x&&d.y===player.y);
-                if (di!==-1) { dots.splice(di,1); score+=10; document.getElementById('pmScore').textContent=score; SFX.eat(); }
-                if (dots.length===0) {
-                    clearInterval(interval); clearInterval(ghostInterval); clearInterval(timerInterval);
-                    running = false;
-                    localStorage.setItem('earned_PACMAN-SPEED', '1');
-                    const isNew = Highscores.save('pacman', score);
-                    document.getElementById('pmRecord').textContent = Highscores.get('pacman');
-                    Modal.show('🎉 Победа!', `Все точки собраны!${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
-                    return;
-                }
+                player.x = nx; player.y = ny;
+                
+                const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
+                if (di !== -1) { dots.splice(di,1); score+=10; document.getElementById('pmScore').textContent=score; SFX.eat(); }
+                if (dots.length === 0) { endGame(true); return; }
                 checkCollision();
                 draw();
+            } else {
+                // Уперлись в стену — останавливаемся
+                dir = null;
             }
         }
 
@@ -145,7 +151,7 @@
         }
 
         function checkCollision() {
-            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<1&&Math.abs(player.y-g.y)<1){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir='right';ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8};}});
+            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<1&&Math.abs(player.y-g.y)<1){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir=null;ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8};}});
         }
 
         function draw() {
@@ -156,17 +162,28 @@
             ctx.fillStyle='#ffff00';ctx.beginPath();
             const mouth = 0.2 + (Math.sin(Date.now()/100)*0.1);
             const angles = {right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2};
-            ctx.arc(player.x*20+10,player.y*20+10,8,angles[dir]+mouth,angles[dir]+Math.PI*2-mouth);
-            ctx.lineTo(player.x*20+10,player.y*20+10);
+            if (dir) {
+                ctx.arc(player.x*20+10,player.y*20+10,8,angles[dir]+mouth,angles[dir]+Math.PI*2-mouth);
+                ctx.lineTo(player.x*20+10,player.y*20+10);
+            } else {
+                ctx.arc(player.x*20+10,player.y*20+10,8,0,Math.PI*2);
+            }
             ctx.fill();
         }
 
-        document.getElementById('pmStart').addEventListener('click', launch);
-        document.getElementById('pmUp').addEventListener('click', ()=>dir='up');
-        document.getElementById('pmDown').addEventListener('click', ()=>dir='down');
-        document.getElementById('pmLeft').addEventListener('click', ()=>dir='left');
-        document.getElementById('pmRight').addEventListener('click', ()=>dir='right');
+        // Управление: клики (тапы) + зажатие
+        function setDir(d) { dir = d; }
+        document.getElementById('pmUp').addEventListener('click', () => setDir('up'));
+        document.getElementById('pmDown').addEventListener('click', () => setDir('down'));
+        document.getElementById('pmLeft').addEventListener('click', () => setDir('left'));
+        document.getElementById('pmRight').addEventListener('click', () => setDir('right'));
+        // Зажатие
+        document.getElementById('pmUp').addEventListener('pointerdown', () => setDir('up'));
+        document.getElementById('pmDown').addEventListener('pointerdown', () => setDir('down'));
+        document.getElementById('pmLeft').addEventListener('pointerdown', () => setDir('left'));
+        document.getElementById('pmRight').addEventListener('pointerdown', () => setDir('right'));
 
+        document.getElementById('pmStart').addEventListener('click', launch);
         start();
     </script>
 </body>
