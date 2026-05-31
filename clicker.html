@@ -23,10 +23,10 @@
         .upgrade-btn { padding: 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--card); color: var(--text); font-size: 13px; cursor: pointer; font-weight: bold; text-align: left; display: flex; justify-content: space-between; align-items: center; }
         .upgrade-btn:disabled { opacity: 0.3; border-color: #555; }
         .upgrade-btn .info { font-size: 11px; color: var(--text-secondary); }
-        .secret { margin-top: 10px; font-size: 14px; color: var(--gold); font-weight: bold; display: none; }
-        .secret.show { display: block; }
-        .reset-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 10px; background: none; border: 1px solid #555; color: #999; font-size: 12px; cursor: pointer; border-radius: 8px; }
+        .rebirth-btn { padding: 14px; border: 2px solid var(--gold); border-radius: 12px; background: var(--card); color: var(--gold); font-size: 15px; cursor: pointer; font-weight: bold; margin-top: 12px; width: 100%; max-width: 300px; }
+        .rebirth-btn:disabled { opacity: 0.3; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .reset-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 10px; background: none; border: 1px solid #555; color: #999; font-size: 12px; cursor: pointer; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -34,25 +34,31 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🔴 Кликер</h2>
         <div class="score" id="score">0</div>
-        <p>За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек</p>
+        <p>За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек | Множитель: x<span id="multiplier">1</span></p>
         <div class="record">🏆 Рекорд: <span id="clickerRecord">0</span></div>
         <button class="click-btn" id="clickBtn">ЖМИ</button>
         <div class="upgrades" id="upgrades"></div>
-        <div class="secret" id="secretCode"></div>
-        <button class="reset-btn" id="resetBtn">🔄 Сбросить</button>
+        <button class="rebirth-btn" id="rebirthBtn" disabled>🔄 Перерождение (1000💰)</button>
+        <button class="reset-btn" id="resetBtn">🗑 Полный сброс</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script>
         SFX.playMusic('sweden');
-        const VERSION = 5;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) SFX.stopMusic();
+            else SFX.playMusic('sweden');
+        });
+        
+        const VERSION = 6;
         let data = JSON.parse(localStorage.getItem('clicker_save') || '{}');
         if (data.version !== VERSION) { data = {}; }
 
         let score = data.score || 0;
         let perClick = data.perClick || 1;
         let autoClicker = data.autoClicker || 0;
-        let codeShown = data.codeShown || false;
+        let multiplier = data.multiplier || 1;
+        let rebirthCount = data.rebirthCount || 0;
 
         const levels = [
             { name: '👆 Пальцы', cost: 10, click: 1, auto: 0, owned: data.lvl0 || 0 },
@@ -64,11 +70,13 @@
             { name: '🌌 Квантовый ИИ', cost: 500000, click: 500, auto: 200, owned: data.lvl6 || 0 },
         ];
         const INFLATION = 1.05;
+        const rebirthCosts = [1000, 100000, 10000000, 1000000000];
+        const rebirthMultipliers = [1.2, 1.5, 2, 5];
 
         document.getElementById('clickerRecord').textContent = Highscores.get('clicker');
 
         function save() {
-            const obj = { version: VERSION, score, perClick, autoClicker, codeShown };
+            const obj = { version: VERSION, score, perClick, autoClicker, multiplier, rebirthCount };
             levels.forEach((l, i) => obj['lvl'+i] = l.owned);
             localStorage.setItem('clicker_save', JSON.stringify(obj));
             Highscores.save('clicker', score);
@@ -79,21 +87,20 @@
             document.getElementById('score').textContent = score;
             document.getElementById('perClick').textContent = perClick;
             document.getElementById('autoClicker').textContent = autoClicker;
+            document.getElementById('multiplier').textContent = multiplier.toFixed(1);
             document.getElementById('upgrades').innerHTML = levels.map((l, i) => {
                 const cost = ceil(l.cost * Math.pow(INFLATION, l.owned));
-                const canBuy = score >= cost;
-                return `<button class="upgrade-btn" ${canBuy ? '' : 'disabled'} onclick="buy(${i})">
+                return `<button class="upgrade-btn" ${score >= cost ? '' : 'disabled'} onclick="buy(${i})">
                     <span>${l.name} (${l.owned})</span>
                     <span class="info">+${l.click} клик +${l.auto}/сек | ${cost}💰</span>
                 </button>`;
             }).join('');
+            
+            const rebirthCost = rebirthCosts[rebirthCount] || Infinity;
+            document.getElementById('rebirthBtn').disabled = score < rebirthCost;
+            document.getElementById('rebirthBtn').textContent = `🔄 Перерождение ${rebirthCount+1} (${rebirthCost}💰) → x${(rebirthMultipliers[rebirthCount]||1).toFixed(1)}`;
+            
             document.getElementById('clickerRecord').textContent = Highscores.get('clicker');
-            if (score >= 10000000 && !codeShown) {
-                codeShown = true;
-                document.getElementById('secretCode').innerHTML = `🏆 Титул получен: Клик-мастер!`;
-                document.getElementById('secretCode').classList.add('show');
-                SFX.win();
-            }
             save();
         }
 
@@ -108,11 +115,28 @@
             SFX.coin();
             updateUI();
         }
+        
+        function rebirth() {
+            const cost = rebirthCosts[rebirthCount];
+            if (score < cost) return;
+            const newMult = rebirthMultipliers[rebirthCount] || 1;
+            score = 0;
+            perClick = 1;
+            autoClicker = 0;
+            levels.forEach(l => l.owned = 0);
+            multiplier *= newMult;
+            rebirthCount++;
+            SFX.win();
+            updateUI();
+        }
+        
         window.buy = buy;
+        window.rebirth = rebirth;
 
-        document.getElementById('clickBtn').addEventListener('click', () => { SFX.click(); score += perClick; updateUI(); });
-        document.getElementById('resetBtn').addEventListener('click', () => { if (confirm('Сбросить весь прогресс?')) { localStorage.removeItem('clicker_save'); location.reload(); } });
-        setInterval(() => { if (autoClicker > 0) { score += autoClicker; updateUI(); } }, 1000);
+        document.getElementById('clickBtn').addEventListener('click', () => { SFX.click(); score += Math.floor(perClick * multiplier); updateUI(); });
+        document.getElementById('rebirthBtn').addEventListener('click', rebirth);
+        document.getElementById('resetBtn').addEventListener('click', () => { if (confirm('Полностью сбросить всё, включая перерождения?')) { localStorage.removeItem('clicker_save'); location.reload(); } });
+        setInterval(() => { if (autoClicker > 0) { score += Math.floor(autoClicker * multiplier); updateUI(); } }, 1000);
         updateUI();
     </script>
 </body>
