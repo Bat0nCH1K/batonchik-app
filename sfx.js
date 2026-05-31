@@ -50,6 +50,7 @@ const SFX = {
         subway: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Subway_Surfers_-_OST_Glavnaya_tema_73599365.mp3',
         snowy: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Snowy_64962758.mp3',
         bonetrousle: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Bonetrousle_64962766.mp3',
+        tetris: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Video_Game_Players_-_Tetris_Theme_48152782.mp3',
     },
     
     playMusic(track) {
