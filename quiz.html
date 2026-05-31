@@ -21,6 +21,7 @@
         .option-btn.wrong { background: var(--accent); border-color: var(--accent); }
         .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
         .stats { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -34,10 +35,14 @@
             <div class="feedback" id="feedback"></div>
         </div>
         <div class="stats" id="stats">Правильных: 0 | Всего: 0</div>
+        <div class="record">🏆 Рекорд: <span id="quizRecord">0</span></div>
     </div>
     <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
     <script>
+        SFX.playMusic('papers');
         let correct = 0, total = 0, answered = false, question = null;
+        document.getElementById('quizRecord').textContent = Highscores.get('quiz');
 
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
 
@@ -110,6 +115,8 @@
                 document.getElementById('feedback').textContent = '❌ Неправильно!';
             }
             document.getElementById('stats').textContent = `Правильных: ${correct} | Всего: ${total}`;
+            Highscores.save('quiz', correct);
+            document.getElementById('quizRecord').textContent = Highscores.get('quiz');
         }
 
         getQuestion();
