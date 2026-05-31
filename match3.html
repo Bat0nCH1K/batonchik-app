@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match-3 — BatonCHIK Games</title>
+    <title>Три в ряд — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,7 +20,7 @@
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
-        <h2>💎 Match-3 v2.5</h2>
+        <h2>💎 Три в ряд</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
         <div class="combo">🔥 Комбо: <span id="m3Combo">0</span></div>
         <div class="record">🏆 Рекорд: <span id="m3Record">0</span></div>
@@ -30,10 +30,6 @@
     <script src="highscores.js"></script>
     <script>
         SFX.playMusic('papers');
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) SFX.stopMusic();
-            else SFX.playMusic('papers');
-        });
         
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
