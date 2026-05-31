@@ -20,7 +20,7 @@
             font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
         }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
         .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
         .timer { font-size: 20px; color: #ff9800; margin: 5px 0; }
@@ -51,8 +51,13 @@
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('snowy');
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) SFX.stopMusic();
+            else SFX.playMusic('snowy');
+        });
+        
         const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:7, y:7 }, dir = null;
+        let player = { x:7, y:7 }, dir = 'right';
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null, ghostInterval = null, running = false;
         let timeLeft = 60, timerInterval = null;
@@ -83,7 +88,7 @@
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
             document.getElementById('pmTimer').textContent = '60';
             document.getElementById('pmStart').style.display = 'block';
-            player = { x:7, y:7 }; dir = null;
+            player = { x:7, y:7 }; dir = 'right';
             dots = []; walls = []; ghosts = [];
             for (let r=0; r<15; r++) { walls[r]=[]; for (let c=0; c<15; c++) { walls[r][c]=maze[r][c]===1; if (!walls[r][c]&&!(c===7&&r===7)&&!(c===7&&r===8)) dots.push({x:c,y:r}); } }
             ghosts = [{x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6},{x:7,y:8,color:'#6bff6b',homeX:7,homeY:8}];
@@ -95,7 +100,7 @@
 
         function launch() {
             running = true; document.getElementById('pmStart').style.display = 'none';
-            interval = setInterval(movePlayer, 150);
+            interval = setInterval(movePlayer, 180);
             ghostInterval = setInterval(updateGhosts, 250);
             timerInterval = setInterval(() => {
                 timeLeft--;
@@ -120,7 +125,7 @@
         }
 
         function movePlayer() {
-            if (!running || !dir) return;
+            if (!running) return;
             
             let nx = player.x, ny = player.y;
             if (dir === 'up') ny--;
@@ -138,9 +143,6 @@
                 if (dots.length === 0) { endGame(true); return; }
                 checkCollision();
                 draw();
-            } else {
-                // Уперлись в стену — останавливаемся
-                dir = null;
             }
         }
 
@@ -151,7 +153,7 @@
         }
 
         function checkCollision() {
-            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<1&&Math.abs(player.y-g.y)<1){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir=null;ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8};}});
+            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<1&&Math.abs(player.y-g.y)<1){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir='right';ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8};}});
         }
 
         function draw() {
@@ -162,28 +164,18 @@
             ctx.fillStyle='#ffff00';ctx.beginPath();
             const mouth = 0.2 + (Math.sin(Date.now()/100)*0.1);
             const angles = {right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2};
-            if (dir) {
-                ctx.arc(player.x*20+10,player.y*20+10,8,angles[dir]+mouth,angles[dir]+Math.PI*2-mouth);
-                ctx.lineTo(player.x*20+10,player.y*20+10);
-            } else {
-                ctx.arc(player.x*20+10,player.y*20+10,8,0,Math.PI*2);
-            }
+            ctx.arc(player.x*20+10,player.y*20+10,8,angles[dir]+mouth,angles[dir]+Math.PI*2-mouth);
+            ctx.lineTo(player.x*20+10,player.y*20+10);
             ctx.fill();
         }
 
-        // Управление: клики (тапы) + зажатие
-        function setDir(d) { dir = d; }
-        document.getElementById('pmUp').addEventListener('click', () => setDir('up'));
-        document.getElementById('pmDown').addEventListener('click', () => setDir('down'));
-        document.getElementById('pmLeft').addEventListener('click', () => setDir('left'));
-        document.getElementById('pmRight').addEventListener('click', () => setDir('right'));
-        // Зажатие
-        document.getElementById('pmUp').addEventListener('pointerdown', () => setDir('up'));
-        document.getElementById('pmDown').addEventListener('pointerdown', () => setDir('down'));
-        document.getElementById('pmLeft').addEventListener('pointerdown', () => setDir('left'));
-        document.getElementById('pmRight').addEventListener('pointerdown', () => setDir('right'));
-
+        // Только клики
+        document.getElementById('pmUp').addEventListener('click', () => dir = 'up');
+        document.getElementById('pmDown').addEventListener('click', () => dir = 'down');
+        document.getElementById('pmLeft').addEventListener('click', () => dir = 'left');
+        document.getElementById('pmRight').addEventListener('click', () => dir = 'right');
         document.getElementById('pmStart').addEventListener('click', launch);
+
         start();
     </script>
 </body>
