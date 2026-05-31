@@ -25,6 +25,7 @@
             font-size: 20px; font-weight: bold; cursor: pointer; display: inline-block; margin: 10px;
         }
         .message { font-size: 18px; margin: 10px 0; min-height: 28px; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -32,6 +33,7 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🧠 Цветовая память</h2>
         <div class="score">Уровень: <span id="memLevel">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="memRecord">0</span></div>
         <div class="game-board" id="gameBoard">
             <div class="color-btn red" data-color="0"></div>
             <div class="color-btn blue" data-color="1"></div>
@@ -42,9 +44,13 @@
         <div class="start-overlay" id="memStart">▶ Старт</div>
     </div>
     <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
     <script>
+        SFX.playMusic('sweden');
         const memorySounds = [SFX.memory0, SFX.memory1, SFX.memory2, SFX.memory3];
         let sequence = [], playerSeq = [], level = 0, showing = false, canClick = false;
+
+        document.getElementById('memRecord').textContent = Highscores.get('memory');
 
         function start() {
             sequence = []; playerSeq = []; level = 0;
@@ -52,7 +58,6 @@
             document.getElementById('memMessage').textContent = 'Нажми Старт';
             document.getElementById('memStart').style.display = 'inline-block';
             canClick = false;
-            SFX.playMusic('menu');
         }
 
         async function launch() {
@@ -93,10 +98,11 @@
             playerSeq.push(color);
             activate(color);
             
-            const idx = playerSeq.length - 1;
-            if (playerSeq[idx] !== sequence[idx]) {
+            if (playerSeq[playerSeq.length-1] !== sequence[playerSeq.length-1]) {
                 canClick = false;
                 SFX.lose();
+                Highscores.save('memory', level);
+                document.getElementById('memRecord').textContent = Highscores.get('memory');
                 document.getElementById('memMessage').textContent = '❌ Ошибка! Уровень: ' + level;
                 document.getElementById('memStart').style.display = 'inline-block';
                 return;
@@ -106,6 +112,9 @@
                 canClick = false;
                 level++;
                 document.getElementById('memLevel').textContent = level;
+                Highscores.save('memory', level);
+                document.getElementById('memRecord').textContent = Highscores.get('memory');
+                if (level >= 20) localStorage.setItem('earned_MEMORY-KING', '1');
                 document.getElementById('memMessage').textContent = '✅ Уровень ' + level + '!';
                 SFX.coin();
                 addToSequence();
