@@ -11,60 +11,89 @@
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
-        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 280px; margin: 16px auto; }
-        .cell { width: 33px; height: 33px; background: var(--card); border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .board { display: grid; gap: 2px; margin: 16px auto; }
+        .cell { background: var(--card); border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; cursor: pointer; border-radius: 4px; }
         .cell.revealed { background: #1a1a4e; }
         .cell.flag { background: var(--accent); }
         .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .timer { font-size: 20px; color: #ff9800; margin: 5px 0; }
+        .diff-select { margin-bottom: 10px; }
+        .diff-select select { padding: 8px 14px; border-radius: 8px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-family: inherit; }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
         <h2>💣 Сапёр</h2>
+        <div class="diff-select">
+            <select id="diffSelect">
+                <option value="8">🟢 8×8 (10 мин)</option>
+                <option value="12">🟡 12×12 (20 мин)</option>
+                <option value="16">🔴 16×16 (40 мин)</option>
+            </select>
+        </div>
+        <div class="timer">⏱ <span id="msTimer">0</span>с</div>
+        <div class="record">🏆 Рекорд: <span id="msRecord">—</span></div>
         <div class="board" id="msBoard"></div>
         <button class="btn" id="resetMS">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
-        SFX.playMusic('menu');
-        
-        let msBoard = [];
+        SFX.playMusic('sweden');
+        let size = 8, mines = 10, msBoard = [], revealed = 0, flagCount = 0, gameOver = false, timer = 0, timerInterval = null;
+        const CELL_SIZE = size => size <= 8 ? 33 : size <= 12 ? 22 : 16;
 
         function initMS() {
-            msBoard = Array(8).fill().map(() => Array(8).fill({ mine: false, revealed: false, flag: false, count: 0 }));
-            for (let i = 0; i < 10; i++) { let r, c; do { r = Math.floor(Math.random()*8); c = Math.floor(Math.random()*8); } while (msBoard[r][c].mine); msBoard[r][c] = { ...msBoard[r][c], mine: true }; }
-            for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+            size = parseInt(document.getElementById('diffSelect').value);
+            mines = size === 8 ? 10 : size === 12 ? 20 : 40;
+            msBoard = Array(size).fill().map(() => Array(size).fill({ mine: false, revealed: false, flag: false, count: 0 }));
+            for (let i = 0; i < mines; i++) { let r, c; do { r = Math.floor(Math.random()*size); c = Math.floor(Math.random()*size); } while (msBoard[r][c].mine); msBoard[r][c] = { ...msBoard[r][c], mine: true }; }
+            for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
                 if (msBoard[r][c].mine) continue;
                 let cnt = 0;
-                for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && msBoard[nr][nc].mine) cnt++; }
+                for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<size && nc>=0 && nc<size && msBoard[nr][nc].mine) cnt++; }
                 msBoard[r][c] = { ...msBoard[r][c], count: cnt };
             }
+            revealed = 0; flagCount = 0; gameOver = false; timer = 0;
+            document.getElementById('msTimer').textContent = '0';
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => { if (!gameOver) { timer++; document.getElementById('msTimer').textContent = timer; } }, 1000);
             drawMS();
         }
 
         function drawMS() {
             const board = document.getElementById('msBoard');
+            const cs = CELL_SIZE(size);
+            board.style.gridTemplateColumns = `repeat(${size}, ${cs}px)`;
             board.innerHTML = msBoard.map((row, r) => row.map((cell, c) => {
                 let content = '', cls = 'cell';
                 if (cell.revealed) { cls += ' revealed'; content = cell.mine ? '💣' : cell.count || ''; }
                 else if (cell.flag) { cls += ' flag'; content = '🚩'; }
-                return `<div class="${cls}" onclick="revealMS(${r},${c})" oncontextmenu="event.preventDefault();flagMS(${r},${c})">${content}</div>`;
+                return `<div class="${cls}" style="width:${cs}px;height:${cs}px;" onclick="revealMS(${r},${c})" oncontextmenu="event.preventDefault();flagMS(${r},${c})">${content}</div>`;
             }).join('')).join('');
         }
 
         function revealMS(r, c) {
-            if (msBoard[r][c].revealed || msBoard[r][c].flag) return;
-            msBoard[r][c] = { ...msBoard[r][c], revealed: true };
-            if (msBoard[r][c].mine) { SFX.death(); alert('💥 Мина!'); initMS(); return; }
+            if (gameOver || msBoard[r][c].revealed || msBoard[r][c].flag) return;
+            msBoard[r][c] = { ...msBoard[r][c], revealed: true }; revealed++;
+            if (msBoard[r][c].mine) { gameOver = true; clearInterval(timerInterval); SFX.death(); Modal.show('💥 Мина!', `Время: ${timer}с`).then(() => initMS()); return; }
             SFX.click();
-            if (msBoard[r][c].count === 0) { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<8 && nc>=0 && nc<8 && !msBoard[nr][nc].revealed) revealMS(nr, nc); } }
+            if (msBoard[r][c].count === 0) { for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const nr = r+dr, nc = c+dc; if (nr>=0 && nr<size && nc>=0 && nc<size && !msBoard[nr][nc].revealed) revealMS(nr, nc); } }
             drawMS();
-            if (msBoard.every(row => row.every(cell => cell.revealed || cell.mine))) { SFX.win(); alert('🎉 Победа!'); initMS(); }
+            if (revealed === size*size - mines) {
+                gameOver = true; clearInterval(timerInterval); SFX.win();
+                const isNew = Highscores.save('minesweeper', timer);
+                document.getElementById('msRecord').textContent = Highscores.get('minesweeper') + 'с';
+                if (size === 12 && timer <= 120) localStorage.setItem('earned_MINESWEEPER-PRO', '1');
+                Modal.show('🎉 Победа!', `Время: ${timer}с${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => initMS());
+            }
         }
 
         function flagMS(r, c) {
-            if (msBoard[r][c].revealed) return;
+            if (gameOver || msBoard[r][c].revealed) return;
             msBoard[r][c] = { ...msBoard[r][c], flag: !msBoard[r][c].flag };
             SFX.click();
             drawMS();
@@ -74,6 +103,7 @@
         window.flagMS = flagMS;
 
         document.getElementById('resetMS').addEventListener('click', initMS);
+        document.getElementById('diffSelect').addEventListener('change', initMS);
         initMS();
     </script>
 </body>
