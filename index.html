@@ -50,7 +50,9 @@
     </div>
     <script src="sfx.js"></script>
     <script>
-        SFX.playMusic('ruins');
+        window.addEventListener('load', () => {
+            SFX.playMusic('ruins');
+        });
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) SFX.stopMusic();
             else SFX.playMusic('ruins');
