@@ -13,7 +13,7 @@
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         .game-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 240px; margin: 20px auto; }
-        .color-btn { width: 110px; height: 110px; border-radius: 16px; cursor: pointer; transition: transform 0.1s, filter 0.3s; border: 3px solid transparent; }
+        .color-btn { width: 110px; height: 110px; border-radius: 16px; cursor: pointer; transition: transform 0.1s, filter 0.3s; border: 3px solid transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .color-btn:active { transform: scale(0.95); }
         .color-btn.active { filter: brightness(2.5); border-color: #fff; }
         .color-btn.red { background: #e94560; }
@@ -26,9 +26,15 @@
         }
         .message { font-size: 18px; margin: 10px 0; min-height: 28px; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        #debug-log {
+            position: fixed; bottom: 0; left: 0; width: 100%; max-height: 30%;
+            overflow-y: auto; background: rgba(0,0,0,0.9); color: #0f0;
+            font-size: 9px; padding: 6px; z-index: 9999; text-align: left;
+        }
     </style>
 </head>
 <body>
+    <div id="debug-log"></div>
     <div class="container">
         <a href="index.html" class="back">← Назад</a>
         <h2>🧠 Цветовая память</h2>
@@ -47,12 +53,21 @@
     <script src="highscores.js"></script>
     <script>
         SFX.playMusic('sweden');
+        
+        function log(msg) {
+            const el = document.getElementById('debug-log');
+            if (!el) return;
+            el.style.display = 'block';
+            const time = new Date().toLocaleTimeString();
+            el.innerHTML += `[${time}] ${msg}<br>`;
+            el.scrollTop = el.scrollHeight;
+        }
+        
         const memorySounds = [SFX.memory0, SFX.memory1, SFX.memory2, SFX.memory3];
         let sequence = [], playerSeq = [], level = 0, showing = false, canClick = false;
 
         document.getElementById('memRecord').textContent = Highscores.get('memory');
 
-        // Сброс всех кнопок
         function resetAllButtons() {
             document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
         }
@@ -65,68 +80,87 @@
             document.getElementById('memStart').style.display = 'inline-block';
             canClick = false;
             showing = false;
+            log('🟢 Игра сброшена');
         }
 
         async function launch() {
+            log('🚀 Запуск');
             resetAllButtons();
             document.getElementById('memStart').style.display = 'none';
             sequence = []; playerSeq = []; level = 1;
             document.getElementById('memLevel').textContent = '1';
             addToSequence();
+            log('📊 Уровень 1. Цвета: [' + sequence.join(', ') + ']');
             await showSequence();
         }
 
         function addToSequence() { 
-            sequence.push(Math.floor(Math.random()*4));
+            const next = Math.floor(Math.random()*4);
+            sequence.push(next);
+            log('➕ Добавлен ' + next + '. Длина: ' + sequence.length);
         }
 
         async function showSequence() {
+            log('👁 Показ...');
             showing = true; canClick = false;
             document.getElementById('memMessage').textContent = 'Запомни...';
             
-            for (let i = 0; i < sequence.length; i++) {
-                await activate(sequence[i]);
-                await sleep(300);
+            try {
+                for (let i = 0; i < sequence.length; i++) {
+                    log('🔵 Элемент #' + i + ': ' + sequence[i]);
+                    await activate(sequence[i]);
+                    await sleep(300);
+                }
+            } catch(e) {
+                log('❌ Ошибка показа: ' + e.message);
             }
             
-            // Гарантированно сбрасываем все кнопки после показа
             resetAllButtons();
             showing = false; canClick = true;
             playerSeq = [];
             document.getElementById('memMessage').textContent = 'Повтори!';
+            log('✅ Показ завершён. showing=' + showing + ' canClick=' + canClick);
         }
 
         function activate(color) {
             return new Promise(resolve => {
-                resetAllButtons(); // Сбрасываем перед активацией
+                resetAllButtons();
                 const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
-                if (!btn) { resolve(); return; }
+                if (!btn) { log('❌ Кнопка ' + color + ' не найдена!'); resolve(); return; }
                 btn.classList.add('active');
                 memorySounds[color]();
+                log('💡 Зажглась ' + color);
                 setTimeout(() => { 
-                    btn.classList.remove('active'); 
+                    if (btn) btn.classList.remove('active'); 
+                    log('🔌 Погасла ' + color);
                     resolve(); 
                 }, 350);
             });
         }
 
         function sleep(ms) { 
-            return new Promise(r => setTimeout(r, ms)); 
+            return new Promise(r => {
+                log('⏱ Пауза ' + ms + 'мс');
+                setTimeout(r, ms);
+            }); 
         }
 
         function playerClick(color) {
-            if (!canClick || showing) return;
+            log('👆 Клик: ' + color + ' | canClick=' + canClick + ' showing=' + showing + ' progress=' + playerSeq.length + '/' + sequence.length);
+            
+            if (!canClick || showing) { log('🚫 Блокирован'); return; }
             
             resetAllButtons();
             const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
             if (btn) {
                 btn.classList.add('active');
                 memorySounds[color]();
-                setTimeout(() => btn.classList.remove('active'), 200);
+                setTimeout(() => { if (btn) btn.classList.remove('active'); }, 200);
             }
             
             playerSeq.push(color);
             const idx = playerSeq.length - 1;
+            log('📝 Игрок: [' + playerSeq.join(', ') + '] | Ожидалось: [' + sequence.slice(0, idx+1).join(', ') + ']');
             
             if (playerSeq[idx] !== sequence[idx]) {
                 canClick = false;
@@ -135,6 +169,7 @@
                 document.getElementById('memRecord').textContent = Highscores.get('memory');
                 document.getElementById('memMessage').textContent = '❌ Ошибка! Уровень: ' + level;
                 document.getElementById('memStart').style.display = 'inline-block';
+                log('💀 Ошибка! Ожидался ' + sequence[idx] + ', получен ' + color + '. Уровень ' + level);
                 return;
             }
 
@@ -147,16 +182,22 @@
                 if (level >= 20) localStorage.setItem('earned_MEMORY-KING', '1');
                 document.getElementById('memMessage').textContent = '✅ Уровень ' + level + '!';
                 SFX.coin();
+                log('🎉 Уровень ' + (level-1) + ' пройден!');
                 addToSequence();
+                log('⏳ Запуск показа через 600мс...');
                 setTimeout(() => showSequence(), 600);
             }
         }
 
-        document.getElementById('memStart').addEventListener('click', launch);
+        document.getElementById('memStart').addEventListener('click', () => {
+            log('🖱 Старт');
+            launch();
+        });
         document.querySelectorAll('.color-btn').forEach(btn => {
             btn.addEventListener('click', () => playerClick(parseInt(btn.dataset.color)));
         });
 
+        log('📦 Готово');
         start();
     </script>
 </body>
