@@ -56,9 +56,8 @@
         const grid = 15, cell = 20;
         let snake = [], food = {}, dir = 'right', interval = null, score = 0, running = false;
         const canvas = document.getElementById('snakeCanvas'), ctx = canvas.getContext('2d');
-        
-        // Плавные координаты
         let smoothSnake = [];
+        let dirQueue = [];
 
         document.getElementById('snakeRecord').textContent = Highscores.get('snake');
 
@@ -66,6 +65,7 @@
             score = 0; document.getElementById('snakeScore').textContent = '0';
             snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right'; running = false;
             smoothSnake = snake.map(s => ({ x: s.x * cell, y: s.y * cell }));
+            dirQueue = [];
             if (interval) clearInterval(interval);
             placeFood(); draw();
             document.getElementById('snakeStart').style.display = 'block';
@@ -76,6 +76,7 @@
             score = 0; document.getElementById('snakeScore').textContent = '0';
             snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right';
             smoothSnake = snake.map(s => ({ x: s.x * cell, y: s.y * cell }));
+            dirQueue = [];
             placeFood(); if (interval) clearInterval(interval);
             interval = setInterval(update, 130);
             requestAnimationFrame(animateLoop);
@@ -85,6 +86,16 @@
 
         function update() {
             if (!running) return;
+            
+            // Обрабатываем очередь направлений
+            while (dirQueue.length > 0) {
+                const nd = dirQueue.shift();
+                if (nd === 'up' && dir !== 'down') { dir = 'up'; break; }
+                if (nd === 'down' && dir !== 'up') { dir = 'down'; break; }
+                if (nd === 'left' && dir !== 'right') { dir = 'left'; break; }
+                if (nd === 'right' && dir !== 'left') { dir = 'right'; break; }
+            }
+            
             const head = { ...snake[0] };
             if (dir==='up') head.y--; if (dir==='down') head.y++; if (dir==='left') head.x--; if (dir==='right') head.x++;
             if (head.x<0||head.x>=grid||head.y<0||head.y>=grid||snake.some(s=>s.x===head.x&&s.y===head.y)) {
@@ -103,8 +114,6 @@
 
         function animateLoop() {
             if (!running) return;
-            
-            // Плавное движение к целевым координатам
             for (let i = 0; i < snake.length; i++) {
                 const target = snake[i];
                 const smooth = smoothSnake[i];
@@ -112,7 +121,6 @@
                 smooth.x += (target.x * cell - smooth.x) * 0.3;
                 smooth.y += (target.y * cell - smooth.y) * 0.3;
             }
-            
             draw();
             requestAnimationFrame(animateLoop);
         }
@@ -120,7 +128,6 @@
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             
-            // Яблоко — большое, по центру клетки
             if (APPLE_IMG.complete && APPLE_IMG.naturalWidth > 0) {
                 ctx.drawImage(APPLE_IMG, food.x*cell-3, food.y*cell-3, cell+6, cell+6);
             } else {
@@ -128,7 +135,6 @@
                 ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4);
             }
             
-            // Змейка — плавная, с градиентом зелёный→тёмно-зелёный
             for (let i = smoothSnake.length - 1; i >= 0; i--) {
                 const s = smoothSnake[i];
                 const t = i / Math.max(1, smoothSnake.length - 1);
@@ -138,9 +144,7 @@
                 ctx.fillStyle = `rgb(${r},${g},${b})`;
                 
                 if (i === 0) {
-                    // Голова — чуть больше
                     ctx.fillRect(s.x+0.5, s.y+0.5, cell-1, cell-1);
-                    // Круглые глаза
                     ctx.fillStyle = '#fff';
                     let ex1, ey1, ex2, ey2;
                     if (dir === 'right') { ex1 = s.x+12; ey1 = s.y+5; ex2 = s.x+12; ey2 = s.y+13; }
@@ -155,10 +159,10 @@
             }
         }
 
-        document.getElementById('snakeUp').addEventListener('click', () => { if (dir!=='down') dir='up'; });
-        document.getElementById('snakeDown').addEventListener('click', () => { if (dir!=='up') dir='down'; });
-        document.getElementById('snakeLeft').addEventListener('click', () => { if (dir!=='right') dir='left'; });
-        document.getElementById('snakeRight').addEventListener('click', () => { if (dir!=='left') dir='right'; });
+        document.getElementById('snakeUp').addEventListener('click', () => dirQueue.push('up'));
+        document.getElementById('snakeDown').addEventListener('click', () => dirQueue.push('down'));
+        document.getElementById('snakeLeft').addEventListener('click', () => dirQueue.push('left'));
+        document.getElementById('snakeRight').addEventListener('click', () => dirQueue.push('right'));
 
         reset();
     </script>
