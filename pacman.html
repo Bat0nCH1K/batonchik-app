@@ -59,7 +59,6 @@
         let mouthAngle = 0;
         let px = 7*20, py = 7*20;
         let moveCooldown = 0;
-        // Плавные координаты призраков
         let ghostPX = [7*20, 7*20], ghostPY = [6*20, 8*20];
 
         const maze = [
@@ -167,14 +166,14 @@
                     if (g.dir==='up') g.y--; if (g.dir==='down') g.y++; if (g.dir==='left') g.x--; if (g.dir==='right') g.x++;
                     if (g.x<0) g.x=14; if (g.x>14) g.x=0;
                 }
-                ghostPX[i] += (g.x*20 - ghostPX[i]) * 0.4;
-                ghostPY[i] += (g.y*20 - ghostPY[i]) * 0.4;
+                ghostPX[i] += (g.x*20 - ghostPX[i]) * 0.6;
+                ghostPY[i] += (g.y*20 - ghostPY[i]) * 0.6;
             });
             checkCollision(); draw();
         }
 
         function checkCollision() {
-            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<1&&Math.abs(player.y-g.y)<1){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir='right';nextDir='right';px=7*20;py=7*20;moveCooldown=0;ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6,dir:'up'};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8,dir:'down'};ghostPX=[7*20,7*20];ghostPY=[6*20,8*20];}});
+            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<0.7&&Math.abs(player.y-g.y)<0.7){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir='right';nextDir='right';px=7*20;py=7*20;moveCooldown=0;ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6,dir:'up'};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8,dir:'down'};ghostPX=[7*20,7*20];ghostPY=[6*20,8*20];}});
         }
 
         function draw() {
@@ -183,21 +182,22 @@
             for(let r=0;r<15;r++)for(let c=0;c<15;c++)if(walls[r][c])ctx.fillRect(c*20,r*20,20,20);
             ctx.fillStyle='#fff';
             dots.forEach(d=>ctx.fillRect(d.x*20+8,d.y*20+8,4,4));
-            // Призраки с плавными координатами и глазами
             ghosts.forEach((g, i) => {
                 const gx = ghostPX[i], gy = ghostPY[i];
                 ctx.fillStyle = g.color;
                 ctx.beginPath();
                 ctx.arc(gx+10, gy+10, 8, 0, Math.PI*2);
                 ctx.fill();
-                // Глаза
                 ctx.fillStyle = '#fff';
                 const eyeOffX = g.dir==='right'?2:g.dir==='left'?-2:0;
                 const eyeOffY = g.dir==='down'?2:g.dir==='up'?-2:0;
                 ctx.beginPath(); ctx.arc(gx+6+eyeOffX, gy+7+eyeOffY, 2.5, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(gx+14+eyeOffX, gy+7+eyeOffY, 2.5, 0, Math.PI*2); ctx.fill();
+                // Зрачки
+                ctx.fillStyle = '#000';
+                ctx.beginPath(); ctx.arc(gx+7+eyeOffX, gy+7+eyeOffY, 1.2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(gx+15+eyeOffX, gy+7+eyeOffY, 1.2, 0, Math.PI*2); ctx.fill();
             });
-            // Пакман
             ctx.fillStyle='#ffff00';
             ctx.beginPath();
             const mouth = 0.2 + Math.abs(Math.sin(mouthAngle)) * 0.2;
