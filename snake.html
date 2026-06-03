@@ -56,13 +56,16 @@
         const grid = 15, cell = 20;
         let snake = [], food = {}, dir = 'right', interval = null, score = 0, running = false;
         const canvas = document.getElementById('snakeCanvas'), ctx = canvas.getContext('2d');
-        let mouthFrame = 0;
+        
+        // Плавные координаты
+        let smoothSnake = [];
 
         document.getElementById('snakeRecord').textContent = Highscores.get('snake');
 
         function reset() {
             score = 0; document.getElementById('snakeScore').textContent = '0';
             snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right'; running = false;
+            smoothSnake = snake.map(s => ({ x: s.x * cell, y: s.y * cell }));
             if (interval) clearInterval(interval);
             placeFood(); draw();
             document.getElementById('snakeStart').style.display = 'block';
@@ -72,8 +75,10 @@
             running = true; document.getElementById('snakeStart').style.display = 'none';
             score = 0; document.getElementById('snakeScore').textContent = '0';
             snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right';
+            smoothSnake = snake.map(s => ({ x: s.x * cell, y: s.y * cell }));
             placeFood(); if (interval) clearInterval(interval);
             interval = setInterval(update, 130);
+            requestAnimationFrame(animateLoop);
         });
 
         function placeFood() { do { food = { x: Math.floor(Math.random()*grid), y: Math.floor(Math.random()*grid) }; } while (snake.some(s => s.x===food.x&&s.y===food.y)); }
@@ -90,47 +95,64 @@
                 return;
             }
             snake.unshift(head);
+            smoothSnake.unshift({ x: head.x * cell, y: head.y * cell });
+            if (smoothSnake.length > snake.length) smoothSnake.pop();
             if (head.x===food.x&&head.y===food.y) { score+=10; document.getElementById('snakeScore').textContent = score; placeFood(); SFX.eat(); }
             else { snake.pop(); }
-            mouthFrame++;
+        }
+
+        function animateLoop() {
+            if (!running) return;
+            
+            // Плавное движение к целевым координатам
+            for (let i = 0; i < snake.length; i++) {
+                const target = snake[i];
+                const smooth = smoothSnake[i];
+                if (!smooth) continue;
+                smooth.x += (target.x * cell - smooth.x) * 0.3;
+                smooth.y += (target.y * cell - smooth.y) * 0.3;
+            }
+            
             draw();
+            requestAnimationFrame(animateLoop);
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             
-            // Яблоко — по центру клетки
+            // Яблоко — большое, по центру клетки
             if (APPLE_IMG.complete && APPLE_IMG.naturalWidth > 0) {
-                ctx.drawImage(APPLE_IMG, food.x*cell+2, food.y*cell+2, cell-4, cell-4);
+                ctx.drawImage(APPLE_IMG, food.x*cell-3, food.y*cell-3, cell+6, cell+6);
             } else {
                 ctx.fillStyle = '#4caf84';
                 ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4);
             }
             
-            // Змейка — квадратики на всю клетку с отступом 1px
-            ctx.fillStyle = '#e94560';
-            snake.forEach((s, i) => {
+            // Змейка — плавная, с градиентом зелёный→тёмно-зелёный
+            for (let i = smoothSnake.length - 1; i >= 0; i--) {
+                const s = smoothSnake[i];
+                const t = i / Math.max(1, smoothSnake.length - 1);
+                const r = Math.floor(30 + t * 100);
+                const g = Math.floor(180 - t * 100);
+                const b = Math.floor(60 - t * 40);
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                
                 if (i === 0) {
-                    // Голова — с анимацией рта
-                    ctx.fillStyle = '#ff6b6b';
-                    ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2);
-                    // Глаза
+                    // Голова — чуть больше
+                    ctx.fillRect(s.x+0.5, s.y+0.5, cell-1, cell-1);
+                    // Круглые глаза
                     ctx.fillStyle = '#fff';
-                    const eyeSize = 4;
                     let ex1, ey1, ex2, ey2;
-                    if (dir === 'right') { ex1 = s.x*cell+12; ey1 = s.y*cell+4; ex2 = s.x*cell+12; ey2 = s.y*cell+13; }
-                    else if (dir === 'left') { ex1 = s.x*cell+6; ey1 = s.y*cell+4; ex2 = s.x*cell+6; ey2 = s.y*cell+13; }
-                    else if (dir === 'up') { ex1 = s.x*cell+4; ey1 = s.y*cell+6; ex2 = s.x*cell+13; ey2 = s.y*cell+6; }
-                    else { ex1 = s.x*cell+4; ey1 = s.y*cell+12; ex2 = s.x*cell+13; ey2 = s.y*cell+12; }
-                    ctx.fillRect(ex1, ey1, eyeSize, eyeSize);
-                    ctx.fillRect(ex2, ey2, eyeSize, eyeSize);
+                    if (dir === 'right') { ex1 = s.x+12; ey1 = s.y+5; ex2 = s.x+12; ey2 = s.y+13; }
+                    else if (dir === 'left') { ex1 = s.x+3; ey1 = s.y+5; ex2 = s.x+3; ey2 = s.y+13; }
+                    else if (dir === 'up') { ex1 = s.x+5; ey1 = s.y+3; ex2 = s.x+13; ey2 = s.y+3; }
+                    else { ex1 = s.x+5; ey1 = s.y+14; ex2 = s.x+13; ey2 = s.y+14; }
+                    ctx.beginPath(); ctx.arc(ex1, ey1, 3, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(ex2, ey2, 3, 0, Math.PI*2); ctx.fill();
                 } else {
-                    // Тело — градиент от красного к тёмному
-                    const shade = Math.max(0, 255 - i * 15);
-                    ctx.fillStyle = `rgb(255, ${shade}, ${shade})`;
-                    ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2);
+                    ctx.fillRect(s.x+1, s.y+1, cell-2, cell-2);
                 }
-            });
+            }
         }
 
         document.getElementById('snakeUp').addEventListener('click', () => { if (dir!=='down') dir='up'; });
