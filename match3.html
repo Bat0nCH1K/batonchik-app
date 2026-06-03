@@ -33,7 +33,7 @@
         
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
         const ROWS = 8, COLS = 8, CELL = 40;
-        const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#8e44ad']; // 5 цветов
+        const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#8e44ad'];
         let board = [], selected = null, score = 0, processing = false, reverting = false;
         let comboCount = 0;
         let animating = false, animFrom = null, animTo = null, animStart = 0;
@@ -66,20 +66,18 @@
                     }
                 }
                 
-                // Основной круг
                 ctx.fillStyle = colors[board[r][c]];
                 ctx.beginPath();
                 ctx.arc(x, y, CELL/2-4, 0, Math.PI*2);
                 ctx.fill();
                 
-                // Чёрная обводка
-                ctx.strokeStyle = '#000';
+                // Тёмная обводка
+                ctx.strokeStyle = 'rgba(0,0,0,0.4)';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
                 ctx.arc(x, y, CELL/2-4, 0, Math.PI*2);
                 ctx.stroke();
                 
-                // Выделение
                 if (selected && selected.r===r && selected.c===c && !animating) {
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 3;
@@ -137,25 +135,50 @@
             requestAnimationFrame(animFrame);
         }
 
-        canvas.addEventListener('click', (e) => {
+        // Свайп + тап
+        let touchStartX = 0, touchStartY = 0;
+        canvas.addEventListener('touchstart', (e) => {
             if (processing || reverting || animating) return;
             const rect = canvas.getBoundingClientRect();
-            const c = Math.floor((e.clientX-rect.left)/CELL), r = Math.floor((e.clientY-rect.top)/CELL);
-            if (r<0||r>=ROWS||c<0||c>=COLS) return;
-            if (!selected) { selected = {r,c}; draw(); return; }
-            if (selected.r===r && selected.c===c) { selected = null; draw(); return; }
-            if (Math.abs(selected.r-r) + Math.abs(selected.c-c) !== 1) { selected = {r,c}; draw(); return; }
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (processing || reverting || animating) return;
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            const dx = endX - touchStartX;
+            const dy = endY - touchStartY;
+            const r = Math.floor((endY - rect.top) / CELL);
+            const c = Math.floor((endX - rect.left) / CELL);
             
+            if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+                // Тап
+                if (r<0||r>=ROWS||c<0||c>=COLS) return;
+                if (!selected) { selected = {r,c}; draw(); }
+                else if (selected.r===r && selected.c===c) { selected = null; draw(); }
+                else { selected = {r,c}; draw(); }
+                return;
+            }
+            
+            // Свайп
+            if (!selected) return;
             const sr = selected.r, sc = selected.c;
-            selected = null;
+            let tr = sr, tc = sc;
+            if (Math.abs(dx) > Math.abs(dy)) { tc += dx > 0 ? 1 : -1; }
+            else { tr += dy > 0 ? 1 : -1; }
+            if (tr<0||tr>=ROWS||tc<0||tc>=COLS) return;
             
-            animateSwap(sr, sc, r, c, () => {
-                swap(sr, sc, r, c);
+            selected = null;
+            animateSwap(sr, sc, tr, tc, () => {
+                swap(sr, sc, tr, tc);
                 if (getMatches().length > 0) { processMatches(); }
                 else {
                     reverting = true;
-                    animateSwap(sr, sc, r, c, () => {
-                        swap(sr, sc, r, c);
+                    animateSwap(sr, sc, tr, tc, () => {
+                        swap(sr, sc, tr, tc);
                         reverting = false;
                         comboCount = 0;
                         document.getElementById('m3Combo').textContent = '0';
