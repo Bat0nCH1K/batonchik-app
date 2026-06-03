@@ -13,7 +13,7 @@
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         .canvas-wrap { position: relative; display: inline-block; }
-        canvas { border: 3px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 16px auto; }
+        canvas { border: 3px solid var(--accent); border-radius: 12px; display: block; margin: 16px auto; }
         .start-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
@@ -42,16 +42,19 @@
         
         const BIRD_IMG = new Image();
         BIRD_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531100842.png';
+        const BG_IMG = new Image();
+        BG_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/b2b084ad6061dfe2122302266ea8af58.jpg';
         
         const canvas = document.getElementById('flappyCanvas'), ctx = canvas.getContext('2d');
         const G = 0.3, JP = -6, PS = 1.8, PW = 50, PG = 150;
         let bird = { x:50, y:200, vy:0, sz:20 }, pipes = [], frame = 0, score = 0, interval = null, running = false;
+        let bgX = 0;
 
         document.getElementById('flappyRecord').textContent = Highscores.get('flappy');
 
         function start() {
             score = 0; document.getElementById('flappyScore').textContent = '0';
-            bird = { x:50, y:200, vy:0, sz:20 }; pipes = []; frame = 0; running = false;
+            bird = { x:50, y:200, vy:0, sz:20 }; pipes = []; frame = 0; running = false; bgX = 0;
             document.getElementById('flappyStart').style.display = 'block';
             if (interval) clearInterval(interval);
             draw();
@@ -84,11 +87,27 @@
                     return;
                 }
             }
+            bgX = (bgX - 1) % 300;
             draw(); frame++;
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            // Фон
+            if (BG_IMG.complete && BG_IMG.naturalWidth > 0) {
+                ctx.drawImage(BG_IMG, bgX, 0, 300, 400);
+                ctx.drawImage(BG_IMG, bgX + 300, 0, 300, 400);
+            } else {
+                ctx.fillStyle = '#0a0a1a';
+                ctx.fillRect(0, 0, 300, 400);
+            }
+            
+            // Трубы
+            ctx.fillStyle = '#4caf84';
+            pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
+            
+            // Птица
             if (BIRD_IMG.complete && BIRD_IMG.naturalWidth > 0) {
                 const birdSize = 80;
                 ctx.drawImage(BIRD_IMG, bird.x-birdSize/2, bird.y-birdSize/2, birdSize, birdSize);
@@ -96,8 +115,6 @@
                 ctx.fillStyle = '#e94560';
                 ctx.fillRect(bird.x-bird.sz, bird.y-bird.sz, bird.sz*2, bird.sz*2);
             }
-            ctx.fillStyle = '#4caf84';
-            pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
         }
 
         document.getElementById('flappyStart').addEventListener('click', launch);
