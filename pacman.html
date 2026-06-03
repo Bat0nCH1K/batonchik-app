@@ -31,7 +31,7 @@
         <a href="index.html" class="back">← Назад</a>
         <h2>🟡 Pac-Man</h2>
         <div class="score">Очки: <span id="pmScore">0</span> | Жизни: <span id="pmLives">❤️❤️❤️</span></div>
-        <div class="timer">⏱ <span id="pmTimer">60</span>с</div>
+        <div class="timer">⏱ <span id="pmTimer">0</span>с</div>
         <div class="record">🏆 Рекорд: <span id="pmRecord">0</span></div>
         <div class="canvas-wrap">
             <canvas id="pmCanvas" width="300" height="300"></canvas>
@@ -55,9 +55,9 @@
         let player = { x:7, y:7 }, dir = 'right', nextDir = 'right';
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null, ghostInterval = null, running = false;
-        let timeLeft = 60, timerInterval = null;
+        let timeElapsed = 0, timerInterval = null;
         let mouthAngle = 0;
-        let px = 7*20, py = 7*20; // Плавные координаты
+        let px = 7*20, py = 7*20;
 
         const maze = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -80,10 +80,10 @@
         document.getElementById('pmRecord').textContent = Highscores.get('pacman');
 
         function start() {
-            score = 0; lives = 3; running = false; timeLeft = 60;
+            score = 0; lives = 3; running = false; timeElapsed = 0;
             document.getElementById('pmScore').textContent = '0';
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
-            document.getElementById('pmTimer').textContent = '60';
+            document.getElementById('pmTimer').textContent = '0';
             document.getElementById('pmStart').style.display = 'block';
             player = { x:7, y:7 }; dir = 'right'; nextDir = 'right';
             px = 7*20; py = 7*20;
@@ -98,12 +98,11 @@
 
         function launch() {
             running = true; document.getElementById('pmStart').style.display = 'none';
-            interval = setInterval(update, 30);
-            ghostInterval = setInterval(updateGhosts, 200);
+            interval = setInterval(update, 50); // Замедлил с 30 до 50
+            ghostInterval = setInterval(updateGhosts, 250);
             timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('pmTimer').textContent = timeLeft;
-                if (timeLeft <= 0) endGame();
+                timeElapsed++;
+                document.getElementById('pmTimer').textContent = timeElapsed;
             }, 1000);
         }
 
@@ -111,39 +110,35 @@
             clearInterval(interval); clearInterval(ghostInterval); clearInterval(timerInterval);
             running = false;
             if (won || dots.length === 0) {
-                localStorage.setItem('earned_PACMAN-SPEED', '1');
+                if (timeElapsed <= 60) localStorage.setItem('earned_PACMAN-SPEED', '1');
                 const isNew = Highscores.save('pacman', score);
                 document.getElementById('pmRecord').textContent = Highscores.get('pacman');
-                Modal.show('🎉 Победа!', `Все точки собраны!${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+                Modal.show('🎉 Победа!', `Все точки собраны за ${timeElapsed}с!${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
             } else {
                 const isNew = Highscores.save('pacman', score);
                 document.getElementById('pmRecord').textContent = Highscores.get('pacman');
-                Modal.show('⏰ Время вышло!', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+                Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
             }
         }
 
         function update() {
             if (!running) return;
             
-            // Пробуем повернуть
             let nx = player.x, ny = player.y;
             if (nextDir === 'up') ny--; if (nextDir === 'down') ny++; if (nextDir === 'left') nx--; if (nextDir === 'right') nx++;
             if (nx < 0) nx = 14; if (nx > 14) nx = 0;
             if (!walls[ny]?.[nx]) { dir = nextDir; player.x = nx; player.y = ny; }
             else {
-                // Не можем повернуть — идём прямо
                 nx = player.x; ny = player.y;
                 if (dir === 'up') ny--; if (dir === 'down') ny++; if (dir === 'left') nx--; if (dir === 'right') nx++;
                 if (nx < 0) nx = 14; if (nx > 14) nx = 0;
                 if (!walls[ny]?.[nx]) { player.x = nx; player.y = ny; }
             }
             
-            // Плавное движение
             const tx = player.x * 20, ty = player.y * 20;
-            px += (tx - px) * 0.4;
-            py += (ty - py) * 0.4;
+            px += (tx - px) * 0.35;
+            py += (ty - py) * 0.35;
             
-            // Сбор точек
             const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
             if (di !== -1) { dots.splice(di,1); score+=10; document.getElementById('pmScore').textContent=score; SFX.eat(); }
             if (dots.length === 0) { endGame(true); return; }
@@ -165,15 +160,11 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Стены
             ctx.fillStyle='#3333ff';
             for(let r=0;r<15;r++)for(let c=0;c<15;c++)if(walls[r][c])ctx.fillRect(c*20,r*20,20,20);
-            // Точки
             ctx.fillStyle='#fff';
             dots.forEach(d=>ctx.fillRect(d.x*20+8,d.y*20+8,4,4));
-            // Призраки
             ghosts.forEach(g=>{ctx.fillStyle=g.color;ctx.beginPath();ctx.arc(g.x*20+10,g.y*20+10,8,0,Math.PI*2);ctx.fill();});
-            // Пакман — плавные координаты + анимация рта
             ctx.fillStyle='#ffff00';
             ctx.beginPath();
             const mouth = 0.2 + Math.abs(Math.sin(mouthAngle)) * 0.2;
@@ -184,19 +175,14 @@
             ctx.fill();
         }
 
-        // Управление: клики + свайп
         document.getElementById('pmUp').addEventListener('click', () => nextDir = 'up');
         document.getElementById('pmDown').addEventListener('click', () => nextDir = 'down');
         document.getElementById('pmLeft').addEventListener('click', () => nextDir = 'left');
         document.getElementById('pmRight').addEventListener('click', () => nextDir = 'right');
         document.getElementById('pmStart').addEventListener('click', launch);
 
-        // Свайп
         let touchStartX = 0, touchStartY = 0;
-        canvas.addEventListener('touchstart', e => {
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        });
+        canvas.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
         canvas.addEventListener('touchend', e => {
             const dx = e.changedTouches[0].clientX - touchStartX;
             const dy = e.changedTouches[0].clientY - touchStartY;
