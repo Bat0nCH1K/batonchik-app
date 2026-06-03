@@ -21,7 +21,7 @@
         }
         .controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; }
         .row { display: flex; gap: 8px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
@@ -56,6 +56,7 @@
         const grid = 15, cell = 20;
         let snake = [], food = {}, dir = 'right', interval = null, score = 0, running = false;
         const canvas = document.getElementById('snakeCanvas'), ctx = canvas.getContext('2d');
+        let mouthFrame = 0;
 
         document.getElementById('snakeRecord').textContent = Highscores.get('snake');
 
@@ -72,7 +73,7 @@
             score = 0; document.getElementById('snakeScore').textContent = '0';
             snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right';
             placeFood(); if (interval) clearInterval(interval);
-            interval = setInterval(update, 100);
+            interval = setInterval(update, 130);
         });
 
         function placeFood() { do { food = { x: Math.floor(Math.random()*grid), y: Math.floor(Math.random()*grid) }; } while (snake.some(s => s.x===food.x&&s.y===food.y)); }
@@ -91,21 +92,45 @@
             snake.unshift(head);
             if (head.x===food.x&&head.y===food.y) { score+=10; document.getElementById('snakeScore').textContent = score; placeFood(); SFX.eat(); }
             else { snake.pop(); }
+            mouthFrame++;
             draw();
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            // Змейка
-            ctx.fillStyle = '#e94560';
-            snake.forEach(s => ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2));
-            // Яблоко — увеличено до размера клетки
+            
+            // Яблоко — по центру клетки
             if (APPLE_IMG.complete && APPLE_IMG.naturalWidth > 0) {
-                ctx.drawImage(APPLE_IMG, food.x*cell, food.y*cell, cell, cell);
+                ctx.drawImage(APPLE_IMG, food.x*cell+2, food.y*cell+2, cell-4, cell-4);
             } else {
                 ctx.fillStyle = '#4caf84';
                 ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4);
             }
+            
+            // Змейка — квадратики на всю клетку с отступом 1px
+            ctx.fillStyle = '#e94560';
+            snake.forEach((s, i) => {
+                if (i === 0) {
+                    // Голова — с анимацией рта
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2);
+                    // Глаза
+                    ctx.fillStyle = '#fff';
+                    const eyeSize = 4;
+                    let ex1, ey1, ex2, ey2;
+                    if (dir === 'right') { ex1 = s.x*cell+12; ey1 = s.y*cell+4; ex2 = s.x*cell+12; ey2 = s.y*cell+13; }
+                    else if (dir === 'left') { ex1 = s.x*cell+6; ey1 = s.y*cell+4; ex2 = s.x*cell+6; ey2 = s.y*cell+13; }
+                    else if (dir === 'up') { ex1 = s.x*cell+4; ey1 = s.y*cell+6; ex2 = s.x*cell+13; ey2 = s.y*cell+6; }
+                    else { ex1 = s.x*cell+4; ey1 = s.y*cell+12; ex2 = s.x*cell+13; ey2 = s.y*cell+12; }
+                    ctx.fillRect(ex1, ey1, eyeSize, eyeSize);
+                    ctx.fillRect(ex2, ey2, eyeSize, eyeSize);
+                } else {
+                    // Тело — градиент от красного к тёмному
+                    const shade = Math.max(0, 255 - i * 15);
+                    ctx.fillStyle = `rgb(255, ${shade}, ${shade})`;
+                    ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2);
+                }
+            });
         }
 
         document.getElementById('snakeUp').addEventListener('click', () => { if (dir!=='down') dir='up'; });
