@@ -87,7 +87,6 @@
         function update() {
             if (!running) return;
             
-            // Обрабатываем очередь направлений
             while (dirQueue.length > 0) {
                 const nd = dirQueue.shift();
                 if (nd === 'up' && dir !== 'down') { dir = 'up'; break; }
@@ -118,8 +117,8 @@
                 const target = snake[i];
                 const smooth = smoothSnake[i];
                 if (!smooth) continue;
-                smooth.x += (target.x * cell - smooth.x) * 0.3;
-                smooth.y += (target.y * cell - smooth.y) * 0.3;
+                smooth.x += (target.x * cell - smooth.x) * 0.5;
+                smooth.y += (target.y * cell - smooth.y) * 0.5;
             }
             draw();
             requestAnimationFrame(animateLoop);
@@ -153,6 +152,10 @@
                     else { ex1 = s.x+5; ey1 = s.y+14; ex2 = s.x+13; ey2 = s.y+14; }
                     ctx.beginPath(); ctx.arc(ex1, ey1, 3, 0, Math.PI*2); ctx.fill();
                     ctx.beginPath(); ctx.arc(ex2, ey2, 3, 0, Math.PI*2); ctx.fill();
+                    // Зрачки
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath(); ctx.arc(ex1+1, ey1, 1.5, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(ex2+1, ey2, 1.5, 0, Math.PI*2); ctx.fill();
                 } else {
                     ctx.fillRect(s.x+1, s.y+1, cell-2, cell-2);
                 }
