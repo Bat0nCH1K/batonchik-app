@@ -20,7 +20,7 @@
             font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
         }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
     </style>
@@ -45,10 +45,6 @@
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('subway');
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) SFX.stopMusic();
-            else SFX.playMusic('subway');
-        });
         
         const PLAYER_IMG = new Image();
         PLAYER_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/IMG_20260531_122114.png';
@@ -99,7 +95,8 @@
                 if (!o.passed && o.y > player.y+player.h) { o.passed = true; score += o.isTruck ? 2 : 1; document.getElementById('raceScore').textContent = score; }
             });
 
-            if (score > 0 && score % 20 === 0) speed = Math.min(8, 3 + score/20);
+            // Плавный разгон без ограничения
+            speed = 3 + score * 0.05;
 
             for (const o of obstacles) {
                 const mx = 10, my = 12;
@@ -118,24 +115,19 @@
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             ctx.fillStyle = '#555';
-            for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*3)%400-50, 4, 30);
+            for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*speed*2)%400-50, 4, 30);
             
-            // Игрок — растянут по горизонтали
             if (PLAYER_IMG.complete && PLAYER_IMG.naturalWidth > 0) {
                 ctx.drawImage(PLAYER_IMG, player.x-8, player.y-5, player.w+16, player.h+10);
             } else {
                 ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
             }
             
-            // Препятствия — машинки растянуты, грузовик норм
             obstacles.forEach(o => {
                 const img = o.isTruck ? TRUCK_IMG : OBSTACLE_IMG;
                 if (img.complete && img.naturalWidth > 0) {
-                    if (o.isTruck) {
-                        ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
-                    } else {
-                        ctx.drawImage(img, o.x-8, o.y-5, o.w+16, o.h+10);
-                    }
+                    if (o.isTruck) ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
+                    else ctx.drawImage(img, o.x-8, o.y-5, o.w+16, o.h+10);
                 } else {
                     ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; 
                     ctx.fillRect(o.x, o.y, o.w, o.h);
