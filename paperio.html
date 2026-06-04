@@ -54,140 +54,160 @@
         SFX.playMusic('action');
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
         const SIZE = 300, CELL = 5, GRID = SIZE / CELL;
+        
+        // grid: 0=пусто, 1=база P1, 2=база P2, 3=след P1, 4=след P2
         let grid = [];
-        // 0 = пусто, 1 = территория P1, 2 = территория P2
-        // 3 = след P1 (хвост), 4 = след P2 (хвост)
-        let p1 = { x: 15, y: 15, dir: 'right', alive: true, trail: [] };
-        let p2 = { x: 45, y: 45, dir: 'left', alive: true, trail: [] };
+        let p1 = null, p2 = null;
         let dir1 = 'right', dir2 = 'left';
         let gameRunning = true;
 
         const OPPOSITE = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+        const DX = { 'up': 0, 'down': 0, 'left': -1, 'right': 1 };
+        const DY = { 'up': -1, 'down': 1, 'left': 0, 'right': 0 };
 
         function start() {
             grid = Array(GRID).fill().map(() => Array(GRID).fill(0));
+            // База P1
             for (let r = 8; r < 18; r++) for (let c = 8; c < 18; c++) grid[r][c] = 1;
+            // База P2
             for (let r = 42; r < 52; r++) for (let c = 42; c < 52; c++) grid[r][c] = 2;
-            p1 = { x: 13, y: 13, dir: 'right', alive: true, trail: [] };
-            p2 = { x: 47, y: 47, dir: 'left', alive: true, trail: [] };
+            
+            p1 = { x: 13, y: 13, trail: [], alive: true, onBase: true };
+            p2 = { x: 47, y: 47, trail: [], alive: true, onBase: true };
             dir1 = 'right'; dir2 = 'left';
             gameRunning = true;
             updateScores();
             draw();
         }
 
-        function movePlayer(p, dir, id) {
-            if (!p.alive || !gameRunning) return;
+        function movePlayer(p, newDir, id) {
+            if (!p || !p.alive || !gameRunning) return;
             
             const trailId = id === 1 ? 3 : 4;
-            const colorId = id;
-            const enemyId = id === 1 ? 2 : 1;
+            const baseId = id;
+            const enemyBaseId = id === 1 ? 2 : 1;
             const enemyTrailId = id === 1 ? 4 : 3;
             
-            // Игнорируем разворот на 180° (самоподрез)
-            if (dir === OPPOSITE[p.dir]) {
-                dir = p.dir; // Оставляем текущее направление
+            // Текущее направление (по последнему шагу)
+            let currentDir = newDir;
+            if (p.trail.length > 0) {
+                const last = p.trail[p.trail.length - 1];
+                if (last.x < p.x) currentDir = 'right';
+                else if (last.x > p.x) currentDir = 'left';
+                else if (last.y < p.y) currentDir = 'down';
+                else currentDir = 'up';
             }
             
-            p.dir = dir;
-            let nx = p.x, ny = p.y;
-            if (dir === 'up') ny--;
-            if (dir === 'down') ny++;
-            if (dir === 'left') nx--;
-            if (dir === 'right') nx++;
+            // Не даём развернуться на 180°
+            if (newDir === OPPOSITE[currentDir] && p.trail.length > 0) {
+                newDir = currentDir;
+            }
+            
+            const nx = p.x + DX[newDir];
+            const ny = p.y + DY[newDir];
             
             // Вышел за границу
             if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
-                p.alive = false;
+                killPlayer(p, id);
                 return;
             }
             
             const cell = grid[ny][nx];
             
-            // Врезался в чужую территорию или след — умирает тот, кто врезался
-            if (cell === enemyId || cell === enemyTrailId) {
-                p.alive = false;
+            // Наступил на вражеский след — враг умирает!
+            if (cell === enemyTrailId) {
+                const enemy = id === 1 ? p2 : p1;
+                killPlayer(enemy, id === 1 ? 2 : 1);
+                // Продолжаем движение, оставляем след
+            }
+            
+            // Наступил на вражескую базу — МОЖНО ходить, оставляем след
+            // и можно отрезать кусок вражеской базы при замыкании
+            
+            // Если на своей базе и без следа — просто ходим
+            if (cell === baseId && p.trail.length === 0) {
+                p.x = nx; p.y = ny;
+                p.onBase = true;
                 return;
             }
             
-            // Врезался в свой след — самоподрез (умирает)
+            // Возвращаемся на свою базу со следом — замыкаем!
+            if (cell === baseId && p.trail.length > 0) {
+                captureTerritory(p, id);
+                p.trail = [];
+                p.x = nx; p.y = ny;
+                p.onBase = true;
+                return;
+            }
+            
+            // Наступил на свой след — самоподрез
             if (cell === trailId) {
-                p.alive = false;
+                killPlayer(p, id);
                 return;
             }
             
-            // Наступил на пустую клетку — оставляем след
-            if (cell === 0) {
-                p.trail.push({ x: nx, y: ny });
-                grid[ny][nx] = trailId;
-            }
-            // Наступил на свою территорию — замыкаем
-            else if (cell === colorId) {
-                if (p.trail.length > 0) {
-                    captureTerritory(p.trail, colorId, trailId);
-                    p.trail = [];
-                }
-            }
-            
-            p.x = nx;
-            p.y = ny;
+            // Пустая клетка или вражеская база — оставляем след
+            p.trail.push({ x: nx, y: ny });
+            grid[ny][nx] = trailId;
+            p.x = nx; p.y = ny;
+            p.onBase = false;
         }
 
-        function captureTerritory(trail, colorId, trailId) {
-            if (trail.length < 4) {
-                trail.forEach(t => { if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0; });
+        function killPlayer(p, id) {
+            if (!p.alive) return;
+            p.alive = false;
+            // Стираем его след
+            const trailId = id === 1 ? 3 : 4;
+            p.trail.forEach(t => {
+                if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
+            });
+            p.trail = [];
+            SFX.death();
+        }
+
+        function captureTerritory(p, id) {
+            if (p.trail.length < 4) {
+                const trailId = id === 1 ? 3 : 4;
+                p.trail.forEach(t => {
+                    if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
+                });
                 return;
             }
             
-            // Создаём Set для быстрой проверки trail
-            const trailSet = new Set(trail.map(t => `${t.x},${t.y}`));
+            const trailSet = new Set(p.trail.map(t => `${t.x},${t.y}`));
             
-            // Ищем стартовую точку для заливки — соседняя с trail с внутренней стороны
+            // Ищем внутреннюю точку для заливки
             let start = null;
             
-            // Вычисляем нормаль (перпендикуляр к направлению замыкания)
-            // Берём среднюю точку trail и смотрим по всем направлениям
-            const mid = trail[Math.floor(trail.length / 2)];
-            const neighbors = [
-                { x: mid.x + 1, y: mid.y },
-                { x: mid.x - 1, y: mid.y },
-                { x: mid.x, y: mid.y + 1 },
-                { x: mid.x, y: mid.y - 1 }
-            ];
+            // Центр масс следа
+            let cx = 0, cy = 0;
+            p.trail.forEach(t => { cx += t.x; cy += t.y; });
+            cx = Math.floor(cx / p.trail.length);
+            cy = Math.floor(cy / p.trail.length);
             
-            for (const n of neighbors) {
-                if (n.x >= 0 && n.x < GRID && n.y >= 0 && n.y < GRID) {
-                    if (grid[n.y][n.x] === 0 && !trailSet.has(`${n.x},${n.y}`)) {
-                        start = n;
-                        break;
-                    }
-                }
-            }
+            const dirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
             
-            if (!start) {
-                // Не нашли внутреннюю точку — ищем любую пустую внутри
-                // Строим bounding box trail и ищем внутри
-                let minX = GRID, maxX = 0, minY = GRID, maxY = 0;
-                trail.forEach(t => {
-                    minX = Math.min(minX, t.x); maxX = Math.max(maxX, t.x);
-                    minY = Math.min(minY, t.y); maxY = Math.max(maxY, t.y);
-                });
-                
-                for (let y = minY; y <= maxY && !start; y++) {
-                    for (let x = minX; x <= maxX && !start; x++) {
-                        if (grid[y][x] === 0 && !trailSet.has(`${x},${y}`)) {
-                            start = { x, y };
+            // Ищем пустую или вражескую клетку рядом с центром
+            for (let r = -5; r <= 5 && !start; r++) {
+                for (let c = -5; c <= 5 && !start; c++) {
+                    const sx = cx + c, sy = cy + r;
+                    if (sx >= 0 && sx < GRID && sy >= 0 && sy < GRID) {
+                        if (!trailSet.has(`${sx},${sy}`) && grid[sy][sx] !== id) {
+                            start = { x: sx, y: sy };
                         }
                     }
                 }
             }
             
             if (!start) {
-                trail.forEach(t => { if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0; });
+                const trailId = id === 1 ? 3 : 4;
+                p.trail.forEach(t => {
+                    if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
+                });
                 return;
             }
             
-            // BFS заливка
+            // BFS — заливаем всё внутри, включая вражескую базу
             const visited = new Set();
             const queue = [start];
             visited.add(`${start.x},${start.y}`);
@@ -198,7 +218,6 @@
                 const { x, y } = queue.shift();
                 captured.push({ x, y });
                 
-                const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
                 for (const d of dirs) {
                     const nx = x + d.x, ny = y + d.y;
                     const key = `${nx},${ny}`;
@@ -211,24 +230,43 @@
                         break;
                     }
                     
-                    // Может заливать пустые клетки И вражескую территорию И вражеский след
-                    if (grid[ny][nx] === colorId) continue;
+                    // Можно закрашивать: пустые клетки, вражескую базу, вражеский след
+                    if (grid[ny][nx] === id) continue;
                     
                     visited.add(key);
                     queue.push({ x: nx, y: ny });
                 }
             }
             
+            const enemyId = id === 1 ? 2 : 1;
+            
             if (isInside && captured.length > 0 && captured.length < (GRID * GRID / 2)) {
+                // Закрашиваем захваченные клетки
                 captured.forEach(({ x, y }) => {
-                    grid[y][x] = colorId;
+                    // Если захватили вражескую базу — проверяем, не последняя ли это клетка врага
+                    grid[y][x] = id;
                 });
-                trail.forEach(t => {
-                    grid[t.y][t.x] = colorId;
+                // След тоже становится территорией
+                p.trail.forEach(t => {
+                    grid[t.y][t.x] = id;
                 });
+                
+                // Проверяем — осталась ли у врага хоть одна клетка базы
+                if (!grid.some(row => row.some(cell => cell === enemyId))) {
+                    // Враг полностью захвачен!
+                    const enemy = id === 1 ? p2 : p1;
+                    enemy.alive = false;
+                    gameRunning = false;
+                    const winner = id === 1 ? '🔴 Игрок 1' : '🔵 Игрок 2';
+                    setTimeout(() => Modal.show('🏆 Полный захват!', `${winner} победил!`).then(() => start()), 300);
+                    return;
+                }
+                
+                SFX.win();
             } else {
                 // Не замкнуто — стираем след
-                trail.forEach(t => {
+                const trailId = id === 1 ? 3 : 4;
+                p.trail.forEach(t => {
                     if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
                 });
             }
@@ -237,13 +275,17 @@
         function update() {
             if (!gameRunning) return;
             
-            if (p1.alive) movePlayer(p1, dir1, 1);
-            if (p2.alive) movePlayer(p2, dir2, 2);
+            movePlayer(p1, dir1, 1);
+            movePlayer(p2, dir2, 2);
+            
+            if (!gameRunning) return; // Могли закончить игру внутри movePlayer
             
             if (!p1.alive || !p2.alive) {
                 gameRunning = false;
-                const winner = !p1.alive ? '🔵 Игрок 2' : '🔴 Игрок 1';
-                setTimeout(() => Modal.show('Игра окончена', `${winner} победил!`).then(() => start()), 300);
+                let winner;
+                if (!p1.alive && !p2.alive) winner = 'Ничья!';
+                else winner = (!p1.alive ? '🔵 Игрок 2' : '🔴 Игрок 1') + ' победил!';
+                setTimeout(() => Modal.show('Игра окончена', winner).then(() => start()), 300);
                 return;
             }
             
@@ -264,35 +306,42 @@
 
         function draw() {
             ctx.clearRect(0, 0, SIZE, SIZE);
+            
+            // Фон
+            ctx.fillStyle = '#1a1a3e';
+            ctx.fillRect(0, 0, SIZE, SIZE);
+            
             for (let r = 0; r < GRID; r++) {
                 for (let c = 0; c < GRID; c++) {
+                    const x = c * CELL, y = r * CELL;
                     if (grid[r][c] === 1) {
                         ctx.fillStyle = '#e94560';
-                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                        ctx.fillRect(x, y, CELL, CELL);
                     } else if (grid[r][c] === 2) {
                         ctx.fillStyle = '#4a90d9';
-                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                        ctx.fillRect(x, y, CELL, CELL);
                     } else if (grid[r][c] === 3) {
-                        ctx.fillStyle = '#ff8888';
-                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                        ctx.fillStyle = '#ffaaaa';
+                        ctx.fillRect(x, y, CELL, CELL);
                     } else if (grid[r][c] === 4) {
-                        ctx.fillStyle = '#8888ff';
-                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                        ctx.fillStyle = '#aaaaff';
+                        ctx.fillRect(x, y, CELL, CELL);
                     }
                 }
             }
+            
             // Игроки
-            if (p1.alive) {
+            if (p1 && p1.alive) {
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(p1.x * CELL - 1, p1.y * CELL - 1, CELL + 2, CELL + 2);
-                ctx.fillStyle = '#e94560';
                 ctx.fillRect(p1.x * CELL, p1.y * CELL, CELL, CELL);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(p1.x * CELL + 1, p1.y * CELL + 1, CELL - 2, CELL - 2);
             }
-            if (p2.alive) {
+            if (p2 && p2.alive) {
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(p2.x * CELL - 1, p2.y * CELL - 1, CELL + 2, CELL + 2);
-                ctx.fillStyle = '#4a90d9';
                 ctx.fillRect(p2.x * CELL, p2.y * CELL, CELL, CELL);
+                ctx.fillStyle = '#0066ff';
+                ctx.fillRect(p2.x * CELL + 1, p2.y * CELL + 1, CELL - 2, CELL - 2);
             }
         }
 
@@ -313,7 +362,10 @@
             base.addEventListener('pointerup', () => {
                 active = false;
                 stick.style.transform = 'translate(-50%, -50%)';
-                setDir(null);
+            });
+            base.addEventListener('pointerleave', () => {
+                active = false;
+                stick.style.transform = 'translate(-50%, -50%)';
             });
 
             function moveStick(e) {
@@ -333,7 +385,7 @@
 
                 stick.style.transform = `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`;
 
-                if (dist > 10) {
+                if (dist > 8) {
                     if (Math.abs(dx) > Math.abs(dy)) {
                         setDir(dx > 0 ? 'right' : 'left');
                     } else {
@@ -343,21 +395,20 @@
             }
         }
 
-        setupJoystick('joy1', 'stick1', (d) => { if (d && gameRunning) dir1 = d; });
-        setupJoystick('joy2', 'stick2', (d) => { if (d && gameRunning) dir2 = d; });
+        setupJoystick('joy1', 'stick1', (d) => { if (d) dir1 = d; });
+        setupJoystick('joy2', 'stick2', (d) => { if (d) dir2 = d; });
 
         document.addEventListener('keydown', (e) => {
-            if (!gameRunning) return;
             const keyMap = {
-                'w': ['up', 1], 's': ['down', 1], 'a': ['left', 1], 'd': ['right', 1],
-                'ArrowUp': ['up', 2], 'ArrowDown': ['down', 2], 'ArrowLeft': ['left', 2], 'ArrowRight': ['right', 2]
+                'w': 'up', 's': 'down', 'a': 'left', 'd': 'right',
+                'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right'
             };
-            const action = keyMap[e.key];
-            if (action) {
-                e.preventDefault();
-                if (action[1] === 1) dir1 = action[0];
-                else dir2 = action[0];
-            }
+            const dir = keyMap[e.key];
+            if (!dir) return;
+            e.preventDefault();
+            
+            if (['w','s','a','d'].includes(e.key)) dir1 = dir;
+            else dir2 = dir;
         });
 
         setInterval(update, 100);
