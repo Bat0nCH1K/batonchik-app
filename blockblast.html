@@ -67,38 +67,34 @@
 
         function drawBoard() {
             const el = document.getElementById('board');
-            el.innerHTML = board.map((row, r) => row.map((c, col) => {
-                let cls = 'cell';
-                if (c) cls += ' filled';
-                if (isDragging && previewR >= 0 && previewC >= 0 && selectedShape) {
-                    const dr = r - previewR, dc = col - previewC;
-                    if (dr >= 0 && dr < selectedShape.length && dc >= 0 && dc < selectedShape[0].length) {
-                        if (selectedShape[dr][dc] && !c) cls += ' preview';
+            el.innerHTML = '';
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (board[r][c]) cell.classList.add('filled');
+                    
+                    // Предпросмотр при перетаскивании
+                    if (isDragging && selectedShape && previewR >= 0 && previewC >= 0) {
+                        const dr = r - previewR;
+                        const dc = c - previewC;
+                        if (dr >= 0 && dr < selectedShape.length && dc >= 0 && dc < selectedShape[0].length) {
+                            if (selectedShape[dr][dc] && !board[r][c]) {
+                                cell.classList.add('preview');
+                            }
+                        }
                     }
+                    
+                    el.appendChild(cell);
                 }
-                return `<div class="cell"></div>`;
-            }).join('')).join('');
-            
-            // Применяем классы после создания DOM
-            const cells = el.querySelectorAll('.cell');
-            cells.forEach((cell, idx) => {
-                const r = Math.floor(idx / COLS);
-                const c = idx % COLS;
-                if (board[r][c]) cell.classList.add('filled');
-                if (isDragging && previewR >= 0 && previewC >= 0 && selectedShape) {
-                    const dr = r - previewR, dc = c - previewC;
-                    if (dr >= 0 && dr < selectedShape.length && dc >= 0 && dc < selectedShape[0].length) {
-                        if (selectedShape[dr][dc] && !board[r][c]) cell.classList.add('preview');
-                    }
-                }
-            });
+            }
         }
 
         function generatePieces() {
             currentPieces = [
-                SHAPES[Math.floor(Math.random()*SHAPES.length)],
-                SHAPES[Math.floor(Math.random()*SHAPES.length)],
-                SHAPES[Math.floor(Math.random()*SHAPES.length)]
+                SHAPES[Math.floor(Math.random() * SHAPES.length)],
+                SHAPES[Math.floor(Math.random() * SHAPES.length)],
+                SHAPES[Math.floor(Math.random() * SHAPES.length)]
             ];
             renderPieces();
         }
@@ -108,16 +104,17 @@
                 <div class="piece ${selectedIdx === i ? 'selected' : ''}" 
                      onpointerdown="startDrag(${i}, event)">
                     <div class="piece-grid" style="grid-template-columns:repeat(${p[0].length},1fr)">
-                        ${p.map(row => row.map(c => `<div class="piece-cell ${c?'':'empty'}"></div>`).join('')).join('')}
+                        ${p.map(row => row.map(c => `<div class="piece-cell ${c ? '' : 'empty'}"></div>`).join('')).join('')}
                     </div>
                 </div>
             `).join('');
         }
 
-        // Глобальные обработчики на document — решают проблему потери захвата
         function startDrag(i, e) {
             e.preventDefault();
             e.stopPropagation();
+            if (gameOver) return;
+            
             selectedIdx = i;
             selectedShape = currentPieces[i];
             isDragging = true;
@@ -127,14 +124,14 @@
         }
 
         document.addEventListener('pointermove', (e) => {
-            if (!isDragging) return;
+            if (!isDragging || gameOver) return;
             e.preventDefault();
             updatePreview(e);
             drawBoard();
         });
 
         document.addEventListener('pointerup', (e) => {
-            if (!isDragging) return;
+            if (!isDragging || gameOver) return;
             e.preventDefault();
             isDragging = false;
             
@@ -150,13 +147,26 @@
             drawBoard();
         });
 
+        // Для тач-устройств — отмена при отмене касания
+        document.addEventListener('pointercancel', () => {
+            if (isDragging) {
+                isDragging = false;
+                selectedShape = null;
+                selectedIdx = -1;
+                previewR = -1;
+                previewC = -1;
+                renderPieces();
+                drawBoard();
+            }
+        });
+
         function updatePreview(e) {
             const boardEl = document.getElementById('board');
             const rect = boardEl.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
             const cellW = rect.width / COLS;
             const cellH = rect.height / ROWS;
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             const c = Math.floor(x / cellW);
             const r = Math.floor(y / cellH);
             
@@ -167,11 +177,11 @@
         }
 
         function canPlace(shape, r, c) {
-            for (let dr=0; dr<shape.length; dr++) {
-                for (let dc=0; dc<shape[dr].length; dc++) {
+            for (let dr = 0; dr < shape.length; dr++) {
+                for (let dc = 0; dc < shape[dr].length; dc++) {
                     if (!shape[dr][dc]) continue;
-                    const nr=r+dr, nc=c+dc;
-                    if (nr<0||nr>=ROWS||nc<0||nc>=COLS||board[nr][nc]) return false;
+                    const nr = r + dr, nc = c + dc;
+                    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || board[nr][nc]) return false;
                 }
             }
             return true;
@@ -180,56 +190,68 @@
         function placeAt(r, c) {
             if (gameOver || !selectedShape || !canPlace(selectedShape, r, c)) return;
             
-            for (let dr=0; dr<selectedShape.length; dr++) {
-                for (let dc=0; dc<selectedShape[dr].length; dc++) {
-                    if (selectedShape[dr][dc]) board[r+dr][c+dc] = 1;
+            for (let dr = 0; dr < selectedShape.length; dr++) {
+                for (let dc = 0; dc < selectedShape[dr].length; dc++) {
+                    if (selectedShape[dr][dc]) board[r + dr][c + dc] = 1;
                 }
             }
             
             currentPieces.splice(selectedIdx, 1);
             SFX.click();
             clearLines();
+            drawBoard();
+            renderPieces();
             
-            if (currentPieces.length === 0) generatePieces();
+            // Проверка — остались ли фигуры
+            if (currentPieces.length === 0) {
+                generatePieces();
+            }
             
-            if (!currentPieces.some(p => {
-                for (let r=0; r<ROWS; r++) {
-                    for (let c=0; c<COLS; c++) {
-                        if (!board[r][c] && canPlace(p, r, c)) return true;
-                    }
-                }
-                return false;
-            })) {
+            // Проверка на game over
+            if (!canPlaceAny()) {
                 gameOver = true;
                 Highscores.save('blockblast', score);
                 document.getElementById('record').textContent = Highscores.get('blockblast');
                 setTimeout(() => Modal.show('💀 Нет ходов!', `Очки: ${score}`).then(() => start()), 300);
             }
-            
-            drawBoard();
-            renderPieces();
+        }
+
+        function canPlaceAny() {
+            for (const piece of currentPieces) {
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (!board[r][c] && canPlace(piece, r, c)) return true;
+                    }
+                }
+            }
+            return false;
         }
 
         function clearLines() {
             let cleared = 0;
+            
             // Строки
-            for (let r=0; r<ROWS; r++) {
-                if (board[r].every(c=>c)) {
-                    for (let c=0; c<COLS; c++) board[r][c]=0;
+            for (let r = 0; r < ROWS; r++) {
+                if (board[r].every(cell => cell === 1)) {
+                    for (let c = 0; c < COLS; c++) board[r][c] = 0;
                     cleared++;
                 }
             }
+            
             // Столбцы
-            for (let c=0; c<COLS; c++) {
+            for (let c = 0; c < COLS; c++) {
                 let full = true;
-                for (let r=0; r<ROWS; r++) if (!board[r][c]) { full=false; break; }
+                for (let r = 0; r < ROWS; r++) {
+                    if (!board[r][c]) { full = false; break; }
+                }
                 if (full) {
-                    for (let r=0; r<ROWS; r++) board[r][c]=0;
+                    for (let r = 0; r < ROWS; r++) board[r][c] = 0;
                     cleared++;
                 }
             }
-            if (cleared) {
-                score += cleared*50;
+            
+            if (cleared > 0) {
+                score += cleared * 50;
                 document.getElementById('score').textContent = score;
                 SFX.lineClear();
             }
