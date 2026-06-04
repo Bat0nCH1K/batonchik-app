@@ -12,7 +12,7 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 320px; margin: 16px auto; background: #0f3460; padding: 4px; border-radius: 12px; position: relative; }
+        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 320px; margin: 16px auto; background: #0f3460; padding: 4px; border-radius: 12px; touch-action: none; }
         .cell { aspect-ratio: 1; background: #1a1a4e; border-radius: 4px; transition: background 0.1s; }
         .cell.filled { background: var(--accent); }
         .cell.preview { background: rgba(233,69,96,0.4); }
@@ -45,8 +45,8 @@
         const ROWS = 8, COLS = 8;
         let board = [], score = 0, gameOver = false;
         let selectedShape = null, selectedIdx = -1;
-        let dragPiece = null, dragStartX = 0, dragStartY = 0;
         let previewR = -1, previewC = -1;
+        let isDragging = false;
         
         const SHAPES = [
             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
@@ -58,7 +58,7 @@
         function start() {
             board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
             score = 0; gameOver = false; selectedShape = null; selectedIdx = -1;
-            previewR = -1; previewC = -1;
+            previewR = -1; previewC = -1; isDragging = false;
             document.getElementById('score').textContent = '0';
             document.getElementById('record').textContent = Highscores.get('blockblast');
             generatePieces();
@@ -70,14 +70,28 @@
             el.innerHTML = board.map((row, r) => row.map((c, col) => {
                 let cls = 'cell';
                 if (c) cls += ' filled';
-                if (previewR >= 0 && previewC >= 0 && selectedShape) {
+                if (isDragging && previewR >= 0 && previewC >= 0 && selectedShape) {
                     const dr = r - previewR, dc = col - previewC;
                     if (dr >= 0 && dr < selectedShape.length && dc >= 0 && dc < selectedShape[0].length) {
                         if (selectedShape[dr][dc] && !c) cls += ' preview';
                     }
                 }
-                return `<div class="${cls}"></div>`;
+                return `<div class="cell"></div>`;
             }).join('')).join('');
+            
+            // Применяем классы после создания DOM
+            const cells = el.querySelectorAll('.cell');
+            cells.forEach((cell, idx) => {
+                const r = Math.floor(idx / COLS);
+                const c = idx % COLS;
+                if (board[r][c]) cell.classList.add('filled');
+                if (isDragging && previewR >= 0 && previewC >= 0 && selectedShape) {
+                    const dr = r - previewR, dc = c - previewC;
+                    if (dr >= 0 && dr < selectedShape.length && dc >= 0 && dc < selectedShape[0].length) {
+                        if (selectedShape[dr][dc] && !board[r][c]) cell.classList.add('preview');
+                    }
+                }
+            });
         }
 
         function generatePieces() {
@@ -92,9 +106,7 @@
         function renderPieces() {
             document.getElementById('pieces').innerHTML = currentPieces.map((p, i) => `
                 <div class="piece ${selectedIdx === i ? 'selected' : ''}" 
-                     onpointerdown="startDrag(${i}, event)"
-                     onpointermove="onDrag(event)"
-                     onpointerup="endDrag(event)">
+                     onpointerdown="startDrag(${i}, event)">
                     <div class="piece-grid" style="grid-template-columns:repeat(${p[0].length},1fr)">
                         ${p.map(row => row.map(c => `<div class="piece-cell ${c?'':'empty'}"></div>`).join('')).join('')}
                     </div>
@@ -102,50 +114,56 @@
             `).join('');
         }
 
+        // Глобальные обработчики на document — решают проблему потери захвата
         function startDrag(i, e) {
             e.preventDefault();
+            e.stopPropagation();
             selectedIdx = i;
             selectedShape = currentPieces[i];
-            dragPiece = e.target.closest('.piece');
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-            previewR = -1; previewC = -1;
+            isDragging = true;
+            updatePreview(e);
             renderPieces();
             drawBoard();
         }
 
-        function onDrag(e) {
-            if (!selectedShape) return;
+        document.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            updatePreview(e);
+            drawBoard();
+        });
+
+        document.addEventListener('pointerup', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            isDragging = false;
+            
+            if (selectedShape && previewR >= 0 && previewC >= 0 && canPlace(selectedShape, previewR, previewC)) {
+                placeAt(previewR, previewC);
+            }
+            
+            selectedShape = null;
+            selectedIdx = -1;
+            previewR = -1;
+            previewC = -1;
+            renderPieces();
+            drawBoard();
+        });
+
+        function updatePreview(e) {
             const boardEl = document.getElementById('board');
             const rect = boardEl.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            const c = Math.floor(x / (320/COLS));
-            const r = Math.floor(y / (320/ROWS));
+            const cellW = rect.width / COLS;
+            const cellH = rect.height / ROWS;
+            const c = Math.floor(x / cellW);
+            const r = Math.floor(y / cellH);
             
-            // Центрируем фигуру относительно курсора
-            const offsetR = Math.floor(selectedShape.length/2);
-            const offsetC = Math.floor(selectedShape[0].length/2);
+            const offsetR = Math.floor(selectedShape.length / 2);
+            const offsetC = Math.floor(selectedShape[0].length / 2);
             previewR = r - offsetR;
             previewC = c - offsetC;
-            drawBoard();
-        }
-
-        function endDrag(e) {
-            if (!selectedShape || previewR < 0) {
-                selectedShape = null; selectedIdx = -1;
-                previewR = -1; previewC = -1;
-                renderPieces(); drawBoard();
-                return;
-            }
-            
-            if (canPlace(selectedShape, previewR, previewC)) {
-                placeAt(previewR, previewC);
-            } else {
-                selectedShape = null; selectedIdx = -1;
-                previewR = -1; previewC = -1;
-                renderPieces(); drawBoard();
-            }
         }
 
         function canPlace(shape, r, c) {
@@ -169,42 +187,53 @@
             }
             
             currentPieces.splice(selectedIdx, 1);
-            selectedIdx = -1; selectedShape = null;
-            previewR = -1; previewC = -1;
             SFX.click();
             clearLines();
-            drawBoard();
-            renderPieces();
             
             if (currentPieces.length === 0) generatePieces();
             
-            if (!currentPieces.some(p => board.some((row, r) => row.some((cell, c) => !cell && canPlace(p, r, c))))) {
+            if (!currentPieces.some(p => {
+                for (let r=0; r<ROWS; r++) {
+                    for (let c=0; c<COLS; c++) {
+                        if (!board[r][c] && canPlace(p, r, c)) return true;
+                    }
+                }
+                return false;
+            })) {
                 gameOver = true;
                 Highscores.save('blockblast', score);
                 document.getElementById('record').textContent = Highscores.get('blockblast');
-                Modal.show('💀 Нет ходов!', `Очки: ${score}`).then(() => start());
+                setTimeout(() => Modal.show('💀 Нет ходов!', `Очки: ${score}`).then(() => start()), 300);
             }
+            
+            drawBoard();
+            renderPieces();
         }
 
         function clearLines() {
             let cleared = 0;
+            // Строки
             for (let r=0; r<ROWS; r++) {
                 if (board[r].every(c=>c)) {
                     for (let c=0; c<COLS; c++) board[r][c]=0;
                     cleared++;
                 }
             }
+            // Столбцы
             for (let c=0; c<COLS; c++) {
                 let full = true;
                 for (let r=0; r<ROWS; r++) if (!board[r][c]) { full=false; break; }
-                if (full) { for (let r=0; r<ROWS; r++) board[r][c]=0; cleared++; }
+                if (full) {
+                    for (let r=0; r<ROWS; r++) board[r][c]=0;
+                    cleared++;
+                }
             }
-            if (cleared) { score += cleared*50; document.getElementById('score').textContent = score; SFX.lineClear(); }
+            if (cleared) {
+                score += cleared*50;
+                document.getElementById('score').textContent = score;
+                SFX.lineClear();
+            }
         }
-
-        window.startDrag = startDrag;
-        window.onDrag = onDrag;
-        window.endDrag = endDrag;
 
         document.getElementById('newGame').addEventListener('click', start);
         start();
