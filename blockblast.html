@@ -12,12 +12,13 @@
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 320px; margin: 16px auto; background: #0f3460; padding: 4px; border-radius: 12px; }
+        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 320px; margin: 16px auto; background: #0f3460; padding: 4px; border-radius: 12px; position: relative; }
         .cell { aspect-ratio: 1; background: #1a1a4e; border-radius: 4px; transition: background 0.2s; }
         .cell.filled { background: var(--accent); }
-        .pieces { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
-        .piece { cursor: pointer; transition: transform 0.2s; }
-        .piece:active { transform: scale(0.9); }
+        .cell.highlight { background: rgba(255,255,255,0.2); }
+        .pieces { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
+        .piece { cursor: pointer; transition: transform 0.2s; padding: 4px; border: 2px solid transparent; border-radius: 8px; }
+        .piece.selected { border-color: #fff; transform: scale(1.05); }
         .piece-grid { display: grid; gap: 2px; }
         .piece-cell { width: 30px; height: 30px; background: var(--accent); border-radius: 4px; }
         .piece-cell.empty { background: transparent; }
@@ -37,42 +38,61 @@
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
-        SFX.playMusic('sweden');
+        SFX.playMusic('scheming');
         const ROWS = 8, COLS = 8;
         let board = [], score = 0, gameOver = false;
+        let selectedPiece = null, selectedShape = null;
         
         const SHAPES = [
             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
             [[1,1],[1,1]], [[1,1,1,1]], [[1],[1],[1],[1]],
             [[1,1],[1,0]], [[1,1],[0,1]], [[1,1,1],[1,0,0]], [[1,0],[1,1],[0,1]]
         ];
+        
+        let currentPieces = [];
 
         function start() {
             board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-            score = 0; gameOver = false;
+            score = 0; gameOver = false; selectedPiece = null; selectedShape = null;
             document.getElementById('score').textContent = '0';
             document.getElementById('record').textContent = Highscores.get('blockblast');
-            drawBoard();
             generatePieces();
+            drawBoard();
         }
 
         function drawBoard() {
             const el = document.getElementById('board');
-            el.innerHTML = board.map(row => row.map(c => `<div class="cell ${c?'filled':''}"></div>`).join('')).join('');
+            el.innerHTML = board.map((row, r) => row.map((c, col) => {
+                let cls = 'cell';
+                if (c) cls += ' filled';
+                // Подсветка при наведении
+                if (selectedShape && canPlace(selectedShape, r, col)) cls += ' highlight';
+                return `<div class="${cls}" onclick="placeAt(${r},${col})"></div>`;
+            }).join('')).join('');
         }
 
         function generatePieces() {
-            const p1 = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-            const p2 = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-            const p3 = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-            document.getElementById('pieces').innerHTML = [p1,p2,p3].map((p, i) => `
-                <div class="piece" onclick="placePiece(${i})">
+            currentPieces = [
+                SHAPES[Math.floor(Math.random()*SHAPES.length)],
+                SHAPES[Math.floor(Math.random()*SHAPES.length)],
+                SHAPES[Math.floor(Math.random()*SHAPES.length)]
+            ];
+            document.getElementById('pieces').innerHTML = currentPieces.map((p, i) => `
+                <div class="piece ${selectedPiece === i ? 'selected' : ''}" onclick="selectPiece(${i})">
                     <div class="piece-grid" style="grid-template-columns:repeat(${p[0].length},1fr)">
                         ${p.map(row => row.map(c => `<div class="piece-cell ${c?'':'empty'}"></div>`).join('')).join('')}
                     </div>
                 </div>
             `).join('');
+        }
+
+        function selectPiece(i) {
+            selectedPiece = i;
+            selectedShape = currentPieces[i];
+            document.querySelectorAll('.piece').forEach((p, idx) => p.classList.toggle('selected', idx === i));
+            drawBoard();
         }
 
         function canPlace(shape, r, c) {
@@ -86,11 +106,38 @@
             return true;
         }
 
-        function place(shape, r, c) {
-            for (let dr=0; dr<shape.length; dr++) {
-                for (let dc=0; dc<shape[dr].length; dc++) {
-                    if (shape[dr][dc]) board[r+dr][c+dc] = 1;
+        function placeAt(r, c) {
+            if (gameOver || !selectedShape || !canPlace(selectedShape, r, c)) return;
+            
+            for (let dr=0; dr<selectedShape.length; dr++) {
+                for (let dc=0; dc<selectedShape[dr].length; dc++) {
+                    if (selectedShape[dr][dc]) board[r+dr][c+dc] = 1;
                 }
+            }
+            
+            currentPieces.splice(selectedPiece, 1);
+            selectedPiece = null; selectedShape = null;
+            SFX.click();
+            clearLines();
+            drawBoard();
+            
+            if (currentPieces.length === 0) generatePieces();
+            else {
+                document.getElementById('pieces').innerHTML = currentPieces.map((p, i) => `
+                    <div class="piece" onclick="selectPiece(${i})">
+                        <div class="piece-grid" style="grid-template-columns:repeat(${p[0].length},1fr)">
+                            ${p.map(row => row.map(c => `<div class="piece-cell ${c?'':'empty'}"></div>`).join('')).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            // Проверка на возможность хода
+            if (!currentPieces.some(p => board.some((row, r) => row.some((cell, c) => !cell && canPlace(p, r, c))))) {
+                gameOver = true;
+                Highscores.save('blockblast', score);
+                document.getElementById('record').textContent = Highscores.get('blockblast');
+                Modal.show('💀 Нет ходов!', `Очки: ${score}`).then(() => start());
             }
         }
 
@@ -105,43 +152,8 @@
             if (cleared) { score += cleared*50; document.getElementById('score').textContent = score; SFX.lineClear(); }
         }
 
-        function placePiece(idx) {
-            if (gameOver) return;
-            const shape = JSON.parse(document.getElementById('pieces').children[idx].querySelector('.piece-grid').style.gridTemplateColumns) ? 
-                SHAPES.find((_,i) => i === idx) : SHAPES[0];
-            // На самом деле shape уже в разметке
-            const pieceEl = document.getElementById('pieces').children[idx];
-            const cols = pieceEl.querySelector('.piece-grid').style.gridTemplateColumns.split('(')[1]?.split(')')[0] || '1';
-            const nCols = parseInt(cols);
-            // Упрощённо: ищем лучшее место
-            let bestR = -1, bestC = -1;
-            const shapeData = SHAPES.find((_,i) => i === 0) || SHAPES[0]; // Временно
-            for (let r=0; r<ROWS; r++) {
-                for (let c=0; c<COLS; c++) {
-                    if (canPlace(shapeData, r, c)) { bestR=r; bestC=c; break; }
-                }
-                if (bestR>=0) break;
-            }
-            if (bestR<0) { gameOver=true; SFX.death(); Highscores.save('blockblast', score); document.getElementById('record').textContent = Highscores.get('blockblast'); Modal.show('💀 Игра окончена', `Очки: ${score}`).then(() => start()); return; }
-            place(shapeData, bestR, bestC);
-            clearLines();
-            drawBoard();
-            generatePieces();
-            SFX.click();
-        }
-
-        // Упрощённый выбор фигур
-        window.placePiece = function(idx) {
-            if (gameOver) return;
-            const shapes = SHAPES.slice(); // копия
-            const shape = shapes[Math.floor(Math.random()*shapes.length)];
-            let placed = false;
-            for (let r=0; r<ROWS&&!placed; r++) for (let c=0; c<COLS&&!placed; c++) {
-                if (canPlace(shape, r, c)) { place(shape, r, c); placed=true; }
-            }
-            if (!placed) { gameOver=true; SFX.death(); Highscores.save('blockblast', score); document.getElementById('record').textContent = Highscores.get('blockblast'); Modal.show('💀 Нет места!', `Очки: ${score}`).then(() => start()); return; }
-            clearLines(); drawBoard(); generatePieces(); SFX.click();
-        };
+        window.placeAt = placeAt;
+        window.selectPiece = selectPiece;
 
         document.getElementById('newGame').addEventListener('click', start);
         start();
