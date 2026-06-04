@@ -32,14 +32,20 @@
     <script>
         SFX.playMusic('sweden');
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        const W = 300, H = 400;
         const FRUITS = ['🍒','🍓','🍊','🍋','🍏','🍇','🍈','🍑','🥝','🍉','🍍'];
-        const RADII = [12,16,22,28,36,46,56,68,82,98,116];
+        const RADII = [14,18,24,30,38,48,58,70,84,100,118];
+        const GRAVITY = 0.5;
+        const DAMPING = 0.5;
+        const DROP_Y = 30;
         let fruits = [], score = 0, gameOver = false;
         let dropX = 150, nextFruit = 0;
+        let canDrop = true;
+        let lastFruit = null;
 
         function start() {
-            fruits = []; score = 0; gameOver = false; dropX = 150;
-            nextFruit = Math.random() < 0.8 ? 0 : 1;
+            fruits = []; score = 0; gameOver = false; dropX = 150; canDrop = true; lastFruit = null;
+            nextFruit = Math.floor(Math.random() * 4);
             document.getElementById('score').textContent = '0';
             document.getElementById('record').textContent = Highscores.get('fruitmerge');
             draw();
@@ -48,23 +54,30 @@
         canvas.addEventListener('mousemove', (e) => {
             if (gameOver) return;
             const rect = canvas.getBoundingClientRect();
-            dropX = Math.max(RADII[0], Math.min(300-RADII[0], e.clientX - rect.left));
+            dropX = Math.max(RADII[nextFruit] + 2, Math.min(W - RADII[nextFruit] - 2, e.clientX - rect.left));
         });
         canvas.addEventListener('touchmove', (e) => {
             if (gameOver) return;
             e.preventDefault();
             const rect = canvas.getBoundingClientRect();
-            dropX = Math.max(RADII[0], Math.min(300-RADII[0], e.touches[0].clientX - rect.left));
+            dropX = Math.max(RADII[nextFruit] + 2, Math.min(W - RADII[nextFruit] - 2, e.touches[0].clientX - rect.left));
         });
 
         function spawnFruit() {
-            if (gameOver) return;
+            if (gameOver || !canDrop) return;
+            canDrop = false;
+            
             const level = nextFruit;
-            let x = dropX, y = RADII[level];
-            // Проверка переполнения при спавне
+            const x = dropX;
+            const y = DROP_Y + RADII[level];
+            const fruit = { x, y, r: RADII[level], level, vy: 0, vx: 0, settled: false };
+            
+            // Проверка — не пересекается ли с другими при спавне
             for (const f of fruits) {
-                const dx = x - f.x, dy = y - f.y;
-                if (Math.sqrt(dx*dx+dy*dy) < RADII[level] + f.r) {
+                const dx = fruit.x - f.x;
+                const dy = fruit.y - f.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < fruit.r + f.r) {
                     gameOver = true;
                     Highscores.save('fruitmerge', score);
                     document.getElementById('record').textContent = Highscores.get('fruitmerge');
@@ -72,73 +85,105 @@
                     return;
                 }
             }
-            fruits.push({ x, y, r: RADII[level], level, vy: 0, vx: 0, settled: false });
-            nextFruit = Math.random() < 0.8 ? 0 : 1;
+            
+            fruits.push(fruit);
+            lastFruit = fruit;
+            nextFruit = Math.floor(Math.random() * 5);
+            
+            setTimeout(() => { canDrop = true; }, 300);
         }
 
         function update() {
             if (gameOver) return;
             
-            const GRAVITY = 0.6;
-            const DAMPING = 0.7;
-            
-            fruits.forEach(f => {
-                if (f.settled) return;
+            // Гравитация и физика
+            for (const f of fruits) {
+                if (f.settled) continue;
+                
                 f.vy += GRAVITY;
                 f.y += f.vy;
                 f.x += f.vx;
-                f.vx *= 0.98;
+                f.vx *= 0.99;
                 
-                if (f.x - f.r < 0) { f.x = f.r; f.vx = Math.abs(f.vx)*DAMPING; }
-                if (f.x + f.r > 300) { f.x = 300-f.r; f.vx = -Math.abs(f.vx)*DAMPING; }
-                if (f.y + f.r > 400) { f.y = 400 - f.r; f.vy = 0; f.vx = 0; f.settled = true; }
-            });
+                // Стены
+                if (f.x - f.r < 0) {
+                    f.x = f.r;
+                    f.vx = Math.abs(f.vx) * DAMPING;
+                }
+                if (f.x + f.r > W) {
+                    f.x = W - f.r;
+                    f.vx = -Math.abs(f.vx) * DAMPING;
+                }
+                
+                // Пол
+                if (f.y + f.r > H) {
+                    f.y = H - f.r;
+                    f.vy = -Math.abs(f.vy) * DAMPING;
+                    f.vx *= 0.8;
+                    if (Math.abs(f.vy) < 0.5) {
+                        f.vy = 0;
+                        f.vx = 0;
+                        f.settled = true;
+                    }
+                }
+            }
             
-            // Коллизии — 5 проходов
+            // Круглые коллизии — 5 проходов
             for (let pass = 0; pass < 5; pass++) {
-                for (let i=0; i<fruits.length; i++) {
-                    for (let j=i+1; j<fruits.length; j++) {
-                        const fi = fruits[i], fj = fruits[j];
-                        const dx = fi.x - fj.x, dy = fi.y - fj.y;
-                        const dist = Math.sqrt(dx*dx+dy*dy);
-                        const minDist = fi.r + fj.r;
+                for (let i = 0; i < fruits.length; i++) {
+                    for (let j = i + 1; j < fruits.length; j++) {
+                        const a = fruits[i], b = fruits[j];
+                        const dx = b.x - a.x;
+                        const dy = b.y - a.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        const minDist = a.r + b.r;
                         
                         if (dist < minDist && dist > 0.001) {
-                            const nx = dx/dist, ny = dy/dist;
-                            const overlap = minDist - dist;
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            const overlap = (minDist - dist) / 2;
                             
-                            if (!fi.settled && !fj.settled) {
-                                fi.x += nx*overlap/2; fi.y += ny*overlap/2;
-                                fj.x -= nx*overlap/2; fj.y -= ny*overlap/2;
-                            } else if (!fi.settled) {
-                                fi.x += nx*overlap; fi.y += ny*overlap;
-                                fi.vx = 0; fi.vy = 0; fi.settled = true;
-                            } else if (!fj.settled) {
-                                fj.x -= nx*overlap; fj.y -= ny*overlap;
-                                fj.vx = 0; fj.vy = 0; fj.settled = true;
+                            a.x -= nx * overlap;
+                            a.y -= ny * overlap;
+                            b.x += nx * overlap;
+                            b.y += ny * overlap;
+                            
+                            // Обмен скоростями
+                            const relVel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+                            if (relVel < 0) {
+                                const impulse = relVel * 0.5;
+                                a.vx += impulse * nx;
+                                a.vy += impulse * ny;
+                                b.vx -= impulse * nx;
+                                b.vy -= impulse * ny;
                             }
                         }
                     }
                 }
             }
             
-            // Слияние — для всех фруктов
-            for (let i=0; i<fruits.length; i++) {
-                if (fruits[i].level >= FRUITS.length-1) continue;
-                for (let j=i+1; j<fruits.length; j++) {
-                    if (fruits[j].level >= FRUITS.length-1) continue;
+            // Слияние одинаковых фруктов
+            for (let i = 0; i < fruits.length; i++) {
+                if (fruits[i].level >= FRUITS.length - 1) continue;
+                for (let j = i + 1; j < fruits.length; j++) {
+                    if (fruits[j].level >= FRUITS.length - 1) continue;
                     if (fruits[i].level === fruits[j].level) {
-                        const dx = fruits[i].x - fruits[j].x;
-                        const dy = fruits[i].y - fruits[j].y;
-                        if (Math.sqrt(dx*dx+dy*dy) < (fruits[i].r + fruits[j].r) * 0.7) {
-                            fruits[i].x = (fruits[i].x + fruits[j].x)/2;
-                            fruits[i].y = (fruits[i].y + fruits[j].y)/2;
-                            fruits[i].level++;
-                            fruits[i].r = RADII[fruits[i].level];
-                            fruits[i].settled = true;
-                            fruits[i].vy = 0; fruits[i].vx = 0;
-                            fruits.splice(j,1);
-                            score += (fruits[i].level+1)*10;
+                        const dx = fruits[j].x - fruits[i].x;
+                        const dy = fruits[j].y - fruits[i].y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        // Слияние если перекрываются больше чем на 30%
+                        if (dist < (fruits[i].r + fruits[j].r) * 0.7) {
+                            const newLevel = fruits[i].level + 1;
+                            fruits[i].x = (fruits[i].x + fruits[j].x) / 2;
+                            fruits[i].y = (fruits[i].y + fruits[j].y) / 2;
+                            fruits[i].level = newLevel;
+                            fruits[i].r = RADII[newLevel];
+                            fruits[i].settled = false;
+                            fruits[i].vy = -3;
+                            fruits[i].vx = 0;
+                            fruits.splice(j, 1);
+                            score += (newLevel + 1) * 10;
                             document.getElementById('score').textContent = score;
                             SFX.coin();
                             j--;
@@ -149,7 +194,10 @@
             
             // Проверка переполнения
             for (const f of fruits) {
-                if (f.settled && f.y - f.r < 5) { gameOver = true; break; }
+                if (f.y - f.r < 0 && f.settled) {
+                    gameOver = true;
+                    break;
+                }
             }
             
             if (gameOver) {
@@ -157,28 +205,42 @@
                 document.getElementById('record').textContent = Highscores.get('fruitmerge');
                 setTimeout(() => Modal.show('💀 Переполнение!', `Очки: ${score}`).then(() => start()), 300);
             }
+            
             draw();
         }
 
         function draw() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.globalAlpha = 0.3;
-            ctx.font = `${RADII[nextFruit]*1.8}px sans-serif`;
-            ctx.fillText(FRUITS[nextFruit], dropX-RADII[nextFruit]*0.8, 35+RADII[nextFruit]*0.6);
+            ctx.clearRect(0, 0, W, H);
+            
+            // Следующий фрукт (предпросмотр сверху)
+            ctx.globalAlpha = 0.4;
+            const sz = RADII[nextFruit] * 1.6;
+            ctx.font = `${sz}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(FRUITS[nextFruit], dropX, DROP_Y + RADII[nextFruit]);
             ctx.globalAlpha = 1;
-            fruits.forEach(f => {
-                ctx.font = `${f.r*1.8}px sans-serif`;
-                ctx.fillText(FRUITS[f.level], f.x-f.r*0.8, f.y+f.r*0.6);
-            });
+            
+            // Нарисованные фрукты
+            for (const f of fruits) {
+                const sz = f.r * 1.6;
+                ctx.font = `${sz}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(FRUITS[f.level], f.x, f.y);
+            }
+            
+            ctx.textAlign = 'start';
+            ctx.textBaseline = 'alphabetic';
         }
 
         canvas.addEventListener('click', () => {
-            if (gameOver) return;
+            if (gameOver || !canDrop) return;
             spawnFruit();
             SFX.click();
         });
 
-        setInterval(update, 20);
+        setInterval(update, 16);
         document.getElementById('newGame').addEventListener('click', start);
         start();
     </script>
