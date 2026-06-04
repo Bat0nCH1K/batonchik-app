@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        .board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; width: 320px; margin: 16px auto; background: #0f3460; padding: 4px; border-radius: 12px; }
+        .cell { aspect-ratio: 1; background: #1a1a4e; border-radius: 4px; transition: background 0.2s; }
+        .cell.filled { background: var(--accent); }
+        .pieces { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
+        .piece { cursor: pointer; transition: transform 0.2s; }
+        .piece:active { transform: scale(0.9); }
+        .piece-grid { display: grid; gap: 2px; }
+        .piece-cell { width: 30px; height: 30px; background: var(--accent); border-radius: 4px; }
+        .piece-cell.empty { background: transparent; }
+        .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="main.html" class="back">← Назад</a>
+        <h2>🧊 Block Blast</h2>
+        <div class="score">Очки: <span id="score">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="record">0</span></div>
+        <div class="board" id="board"></div>
+        <div class="pieces" id="pieces"></div>
+        <button class="btn" id="newGame">🔄 Новая игра</button>
+    </div>
+    <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script>
+        SFX.playMusic('sweden');
+        const ROWS = 8, COLS = 8;
+        let board = [], score = 0, gameOver = false;
+        
+        const SHAPES = [
+            [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
+            [[1,1],[1,1]], [[1,1,1,1]], [[1],[1],[1],[1]],
+            [[1,1],[1,0]], [[1,1],[0,1]], [[1,1,1],[1,0,0]], [[1,0],[1,1],[0,1]]
+        ];
+
+        function start() {
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0; gameOver = false;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('record').textContent = Highscores.get('blockblast');
+            drawBoard();
+            generatePieces();
+        }
+
+        function drawBoard() {
+            const el = document.getElementById('board');
+            el.innerHTML = board.map(row => row.map(c => `<div class="cell ${c?'filled':''}"></div>`).join('')).join('');
+        }
+
+        function generatePieces() {
+            const p1 = SHAPES[Math.floor(Math.random()*SHAPES.length)];
+            const p2 = SHAPES[Math.floor(Math.random()*SHAPES.length)];
+            const p3 = SHAPES[Math.floor(Math.random()*SHAPES.length)];
+            document.getElementById('pieces').innerHTML = [p1,p2,p3].map((p, i) => `
+                <div class="piece" onclick="placePiece(${i})">
+                    <div class="piece-grid" style="grid-template-columns:repeat(${p[0].length},1fr)">
+                        ${p.map(row => row.map(c => `<div class="piece-cell ${c?'':'empty'}"></div>`).join('')).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function canPlace(shape, r, c) {
+            for (let dr=0; dr<shape.length; dr++) {
+                for (let dc=0; dc<shape[dr].length; dc++) {
+                    if (!shape[dr][dc]) continue;
+                    const nr=r+dr, nc=c+dc;
+                    if (nr<0||nr>=ROWS||nc<0||nc>=COLS||board[nr][nc]) return false;
+                }
+            }
+            return true;
+        }
+
+        function place(shape, r, c) {
+            for (let dr=0; dr<shape.length; dr++) {
+                for (let dc=0; dc<shape[dr].length; dc++) {
+                    if (shape[dr][dc]) board[r+dr][c+dc] = 1;
+                }
+            }
+        }
+
+        function clearLines() {
+            let cleared = 0;
+            for (let r=ROWS-1; r>=0; r--) if (board[r].every(c=>c)) { board.splice(r,1); board.unshift(Array(COLS).fill(0)); cleared++; r++; }
+            for (let c=0; c<COLS; c++) {
+                let full = true;
+                for (let r=0; r<ROWS; r++) if (!board[r][c]) { full=false; break; }
+                if (full) { for (let r=0; r<ROWS; r++) board[r][c]=0; cleared++; }
+            }
+            if (cleared) { score += cleared*50; document.getElementById('score').textContent = score; SFX.lineClear(); }
+        }
+
+        function placePiece(idx) {
+            if (gameOver) return;
+            const shape = JSON.parse(document.getElementById('pieces').children[idx].querySelector('.piece-grid').style.gridTemplateColumns) ? 
+                SHAPES.find((_,i) => i === idx) : SHAPES[0];
+            // На самом деле shape уже в разметке
+            const pieceEl = document.getElementById('pieces').children[idx];
+            const cols = pieceEl.querySelector('.piece-grid').style.gridTemplateColumns.split('(')[1]?.split(')')[0] || '1';
+            const nCols = parseInt(cols);
+            // Упрощённо: ищем лучшее место
+            let bestR = -1, bestC = -1;
+            const shapeData = SHAPES.find((_,i) => i === 0) || SHAPES[0]; // Временно
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS; c++) {
+                    if (canPlace(shapeData, r, c)) { bestR=r; bestC=c; break; }
+                }
+                if (bestR>=0) break;
+            }
+            if (bestR<0) { gameOver=true; SFX.death(); Highscores.save('blockblast', score); document.getElementById('record').textContent = Highscores.get('blockblast'); Modal.show('💀 Игра окончена', `Очки: ${score}`).then(() => start()); return; }
+            place(shapeData, bestR, bestC);
+            clearLines();
+            drawBoard();
+            generatePieces();
+            SFX.click();
+        }
+
+        // Упрощённый выбор фигур
+        window.placePiece = function(idx) {
+            if (gameOver) return;
+            const shapes = SHAPES.slice(); // копия
+            const shape = shapes[Math.floor(Math.random()*shapes.length)];
+            let placed = false;
+            for (let r=0; r<ROWS&&!placed; r++) for (let c=0; c<COLS&&!placed; c++) {
+                if (canPlace(shape, r, c)) { place(shape, r, c); placed=true; }
+            }
+            if (!placed) { gameOver=true; SFX.death(); Highscores.save('blockblast', score); document.getElementById('record').textContent = Highscores.get('blockblast'); Modal.show('💀 Нет места!', `Очки: ${score}`).then(() => start()); return; }
+            clearLines(); drawBoard(); generatePieces(); SFX.click();
+        };
+
+        document.getElementById('newGame').addEventListener('click', start);
+        start();
+    </script>
+</body>
+</html>
