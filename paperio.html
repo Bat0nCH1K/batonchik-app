@@ -53,129 +53,195 @@
     <script>
         SFX.playMusic('action');
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-        const SIZE = 300, CELL = 5, GRID = SIZE/CELL;
+        const SIZE = 300, CELL = 5, GRID = SIZE / CELL;
         let grid = [];
-        let p1 = { x:15, y:15, dir:'right', alive:true, trail:[] };
-        let p2 = { x:45, y:45, dir:'left', alive:true, trail:[] };
+        // 0 = пусто, 1 = территория P1, 2 = территория P2
+        // 3 = след P1 (хвост), 4 = след P2 (хвост)
+        let p1 = { x: 15, y: 15, dir: 'right', alive: true, trail: [] };
+        let p2 = { x: 45, y: 45, dir: 'left', alive: true, trail: [] };
         let dir1 = 'right', dir2 = 'left';
+        let gameRunning = true;
+
+        const OPPOSITE = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
 
         function start() {
             grid = Array(GRID).fill().map(() => Array(GRID).fill(0));
-            for (let r=10; r<20; r++) for (let c=10; c<20; c++) grid[r][c] = 1;
-            for (let r=40; r<50; r++) for (let c=40; c<50; c++) grid[r][c] = 2;
-            p1 = { x:15, y:15, dir:'right', alive:true, trail:[] };
-            p2 = { x:45, y:45, dir:'left', alive:true, trail:[] };
+            for (let r = 8; r < 18; r++) for (let c = 8; c < 18; c++) grid[r][c] = 1;
+            for (let r = 42; r < 52; r++) for (let c = 42; c < 52; c++) grid[r][c] = 2;
+            p1 = { x: 13, y: 13, dir: 'right', alive: true, trail: [] };
+            p2 = { x: 47, y: 47, dir: 'left', alive: true, trail: [] };
             dir1 = 'right'; dir2 = 'left';
+            gameRunning = true;
             updateScores();
             draw();
         }
 
         function movePlayer(p, dir, id) {
-            if (!p.alive) return;
+            if (!p.alive || !gameRunning) return;
+            
             const trailId = id === 1 ? 3 : 4;
             const colorId = id;
+            const enemyId = id === 1 ? 2 : 1;
+            const enemyTrailId = id === 1 ? 4 : 3;
+            
+            // Игнорируем разворот на 180° (самоподрез)
+            if (dir === OPPOSITE[p.dir]) {
+                dir = p.dir; // Оставляем текущее направление
+            }
+            
             p.dir = dir;
             let nx = p.x, ny = p.y;
-            if (dir === 'up') ny--; if (dir === 'down') ny++; if (dir === 'left') nx--; if (dir === 'right') nx++;
-            if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) { p.alive = false; return; }
+            if (dir === 'up') ny--;
+            if (dir === 'down') ny++;
+            if (dir === 'left') nx--;
+            if (dir === 'right') nx++;
             
-            // Врезался в чужой след или территорию → проигрыш
-            if (grid[ny][nx] === (id === 1 ? 2 : 1) || grid[ny][nx] === (id === 1 ? 4 : 3)) { p.alive = false; return; }
-            // Врезался в свой след → проигрыш
-            if (grid[ny][nx] === trailId) { p.alive = false; return; }
-            
-            if (grid[ny][nx] === 0) {
-                p.trail.push({x:nx, y:ny});
-                grid[ny][nx] = trailId;
-            }
-            else if (grid[ny][nx] === colorId && p.trail.length > 0) {
-                // Закрашиваем территорию
-                captureTerritory(p.trail, colorId);
-                p.trail = [];
-            }
-            
-            p.x = nx; p.y = ny;
-        }
-
-        function captureTerritory(trail, colorId) {
-            if (trail.length < 4) {
-                // Слишком маленький — просто стираем след
-                trail.forEach(t => grid[t.y][t.x] = 0);
+            // Вышел за границу
+            if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
+                p.alive = false;
                 return;
             }
             
-            // BFS от центра масс trail
-            let cx = 0, cy = 0;
-            trail.forEach(t => { cx += t.x; cy += t.y; });
-            cx = Math.floor(cx / trail.length);
-            cy = Math.floor(cy / trail.length);
+            const cell = grid[ny][nx];
             
-            // Ищем пустую клетку рядом с trail для старта BFS
-            let start = null;
+            // Врезался в чужую территорию или след — умирает тот, кто врезался
+            if (cell === enemyId || cell === enemyTrailId) {
+                p.alive = false;
+                return;
+            }
+            
+            // Врезался в свой след — самоподрез (умирает)
+            if (cell === trailId) {
+                p.alive = false;
+                return;
+            }
+            
+            // Наступил на пустую клетку — оставляем след
+            if (cell === 0) {
+                p.trail.push({ x: nx, y: ny });
+                grid[ny][nx] = trailId;
+            }
+            // Наступил на свою территорию — замыкаем
+            else if (cell === colorId) {
+                if (p.trail.length > 0) {
+                    captureTerritory(p.trail, colorId, trailId);
+                    p.trail = [];
+                }
+            }
+            
+            p.x = nx;
+            p.y = ny;
+        }
+
+        function captureTerritory(trail, colorId, trailId) {
+            if (trail.length < 4) {
+                trail.forEach(t => { if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0; });
+                return;
+            }
+            
+            // Создаём Set для быстрой проверки trail
             const trailSet = new Set(trail.map(t => `${t.x},${t.y}`));
             
-            // Пробуем 4 направления от центра
-            const dirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
-            for (const d of dirs) {
-                const sx = cx + d.x, sy = cy + d.y;
-                if (sx>=0 && sx<GRID && sy>=0 && sy<GRID && grid[sy][sx]===0 && !trailSet.has(`${sx},${sy}`)) {
-                    start = {x:sx, y:sy};
-                    break;
+            // Ищем стартовую точку для заливки — соседняя с trail с внутренней стороны
+            let start = null;
+            
+            // Вычисляем нормаль (перпендикуляр к направлению замыкания)
+            // Берём среднюю точку trail и смотрим по всем направлениям
+            const mid = trail[Math.floor(trail.length / 2)];
+            const neighbors = [
+                { x: mid.x + 1, y: mid.y },
+                { x: mid.x - 1, y: mid.y },
+                { x: mid.x, y: mid.y + 1 },
+                { x: mid.x, y: mid.y - 1 }
+            ];
+            
+            for (const n of neighbors) {
+                if (n.x >= 0 && n.x < GRID && n.y >= 0 && n.y < GRID) {
+                    if (grid[n.y][n.x] === 0 && !trailSet.has(`${n.x},${n.y}`)) {
+                        start = n;
+                        break;
+                    }
                 }
             }
             
             if (!start) {
-                trail.forEach(t => grid[t.y][t.x] = 0);
+                // Не нашли внутреннюю точку — ищем любую пустую внутри
+                // Строим bounding box trail и ищем внутри
+                let minX = GRID, maxX = 0, minY = GRID, maxY = 0;
+                trail.forEach(t => {
+                    minX = Math.min(minX, t.x); maxX = Math.max(maxX, t.x);
+                    minY = Math.min(minY, t.y); maxY = Math.max(maxY, t.y);
+                });
+                
+                for (let y = minY; y <= maxY && !start; y++) {
+                    for (let x = minX; x <= maxX && !start; x++) {
+                        if (grid[y][x] === 0 && !trailSet.has(`${x},${y}`)) {
+                            start = { x, y };
+                        }
+                    }
+                }
+            }
+            
+            if (!start) {
+                trail.forEach(t => { if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0; });
                 return;
             }
             
-            // BFS
+            // BFS заливка
             const visited = new Set();
             const queue = [start];
             visited.add(`${start.x},${start.y}`);
-            let inside = true;
             const captured = [];
+            let isInside = true;
             
-            while (queue.length > 0 && inside) {
-                const {x, y} = queue.shift();
-                captured.push({x, y});
+            while (queue.length > 0 && isInside) {
+                const { x, y } = queue.shift();
+                captured.push({ x, y });
                 
+                const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
                 for (const d of dirs) {
                     const nx = x + d.x, ny = y + d.y;
                     const key = `${nx},${ny}`;
                     
-                    if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
-                        inside = false; // Вышли за границу — не замкнуто
-                        break;
-                    }
                     if (visited.has(key)) continue;
-                    if (trailSet.has(key)) continue; // Не пересекаем след
-                    if (grid[ny][nx] === colorId) continue; // Уже своя территория
-                    if (grid[ny][nx] !== 0 && grid[ny][nx] !== colorId) {
-                        inside = false; // Уперлись в чужое
+                    if (trailSet.has(key)) continue;
+                    
+                    if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
+                        isInside = false;
                         break;
                     }
                     
+                    // Может заливать пустые клетки И вражескую территорию И вражеский след
+                    if (grid[ny][nx] === colorId) continue;
+                    
                     visited.add(key);
-                    queue.push({x:nx, y:ny});
+                    queue.push({ x: nx, y: ny });
                 }
             }
             
-            if (inside && captured.length > 0 && captured.length < (GRID*GRID/2)) {
-                // Закрашиваем!
-                captured.forEach(({x, y}) => grid[y][x] = colorId);
-                trail.forEach(t => grid[t.y][t.x] = colorId);
+            if (isInside && captured.length > 0 && captured.length < (GRID * GRID / 2)) {
+                captured.forEach(({ x, y }) => {
+                    grid[y][x] = colorId;
+                });
+                trail.forEach(t => {
+                    grid[t.y][t.x] = colorId;
+                });
             } else {
                 // Не замкнуто — стираем след
-                trail.forEach(t => grid[t.y][t.x] = 0);
+                trail.forEach(t => {
+                    if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
+                });
             }
         }
 
         function update() {
+            if (!gameRunning) return;
+            
             if (p1.alive) movePlayer(p1, dir1, 1);
             if (p2.alive) movePlayer(p2, dir2, 2);
             
             if (!p1.alive || !p2.alive) {
+                gameRunning = false;
                 const winner = !p1.alive ? '🔵 Игрок 2' : '🔴 Игрок 1';
                 setTimeout(() => Modal.show('Игра окончена', `${winner} победил!`).then(() => start()), 300);
                 return;
@@ -192,27 +258,49 @@
 
         function countTerritory(id) {
             let count = 0;
-            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) if (grid[r][c] === id) count++;
-            return Math.round(count/(GRID*GRID)*100);
+            for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) if (grid[r][c] === id) count++;
+            return Math.round(count / (GRID * GRID) * 100);
         }
 
         function draw() {
-            ctx.clearRect(0,0,SIZE,SIZE);
-            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
-                if (grid[r][c] === 1) { ctx.fillStyle = '#e94560'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
-                else if (grid[r][c] === 2) { ctx.fillStyle = '#4a90d9'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
-                else if (grid[r][c] === 3) { ctx.fillStyle = '#ff6b6b'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
-                else if (grid[r][c] === 4) { ctx.fillStyle = '#6b9fff'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+            ctx.clearRect(0, 0, SIZE, SIZE);
+            for (let r = 0; r < GRID; r++) {
+                for (let c = 0; c < GRID; c++) {
+                    if (grid[r][c] === 1) {
+                        ctx.fillStyle = '#e94560';
+                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                    } else if (grid[r][c] === 2) {
+                        ctx.fillStyle = '#4a90d9';
+                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                    } else if (grid[r][c] === 3) {
+                        ctx.fillStyle = '#ff8888';
+                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                    } else if (grid[r][c] === 4) {
+                        ctx.fillStyle = '#8888ff';
+                        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+                    }
+                }
             }
-            if (p1.alive) { ctx.fillStyle = '#fff'; ctx.fillRect(p1.x*CELL, p1.y*CELL, CELL, CELL); }
-            if (p2.alive) { ctx.fillStyle = '#fff'; ctx.fillRect(p2.x*CELL, p2.y*CELL, CELL, CELL); }
+            // Игроки
+            if (p1.alive) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(p1.x * CELL - 1, p1.y * CELL - 1, CELL + 2, CELL + 2);
+                ctx.fillStyle = '#e94560';
+                ctx.fillRect(p1.x * CELL, p1.y * CELL, CELL, CELL);
+            }
+            if (p2.alive) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(p2.x * CELL - 1, p2.y * CELL - 1, CELL + 2, CELL + 2);
+                ctx.fillStyle = '#4a90d9';
+                ctx.fillRect(p2.x * CELL, p2.y * CELL, CELL, CELL);
+            }
         }
 
         function setupJoystick(baseId, stickId, setDir) {
             const base = document.getElementById(baseId);
             const stick = document.getElementById(stickId);
             let active = false;
-            
+
             base.addEventListener('pointerdown', (e) => {
                 active = true;
                 base.setPointerCapture(e.pointerId);
@@ -227,43 +315,52 @@
                 stick.style.transform = 'translate(-50%, -50%)';
                 setDir(null);
             });
-            
+
             function moveStick(e) {
                 const rect = base.getBoundingClientRect();
-                const cx = rect.left + rect.width/2;
-                const cy = rect.top + rect.height/2;
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
                 const dx = e.clientX - cx;
                 const dy = e.clientY - cy;
-                const dist = Math.sqrt(dx*dx+dy*dy);
+                const dist = Math.sqrt(dx * dx + dy * dy);
                 const maxDist = 22;
-                
+
                 let mx = dx, my = dy;
-                if (dist > maxDist) { mx = dx/dist*maxDist; my = dy/dist*maxDist; }
-                
+                if (dist > maxDist) {
+                    mx = dx / dist * maxDist;
+                    my = dy / dist * maxDist;
+                }
+
                 stick.style.transform = `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`;
-                
+
                 if (dist > 10) {
-                    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 'right' : 'left');
-                    else setDir(dy > 0 ? 'down' : 'up');
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        setDir(dx > 0 ? 'right' : 'left');
+                    } else {
+                        setDir(dy > 0 ? 'down' : 'up');
+                    }
                 }
             }
         }
 
-        setupJoystick('joy1', 'stick1', (d) => { if (d) dir1 = d; });
-        setupJoystick('joy2', 'stick2', (d) => { if (d) dir2 = d; });
+        setupJoystick('joy1', 'stick1', (d) => { if (d && gameRunning) dir1 = d; });
+        setupJoystick('joy2', 'stick2', (d) => { if (d && gameRunning) dir2 = d; });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'w') dir1 = 'up';
-            if (e.key === 's') dir1 = 'down';
-            if (e.key === 'a') dir1 = 'left';
-            if (e.key === 'd') dir1 = 'right';
-            if (e.key === 'ArrowUp') dir2 = 'up';
-            if (e.key === 'ArrowDown') dir2 = 'down';
-            if (e.key === 'ArrowLeft') dir2 = 'left';
-            if (e.key === 'ArrowRight') dir2 = 'right';
+            if (!gameRunning) return;
+            const keyMap = {
+                'w': ['up', 1], 's': ['down', 1], 'a': ['left', 1], 'd': ['right', 1],
+                'ArrowUp': ['up', 2], 'ArrowDown': ['down', 2], 'ArrowLeft': ['left', 2], 'ArrowRight': ['right', 2]
+            };
+            const action = keyMap[e.key];
+            if (action) {
+                e.preventDefault();
+                if (action[1] === 1) dir1 = action[0];
+                else dir2 = action[0];
+            }
         });
 
-        setInterval(update, 120);
+        setInterval(update, 100);
         document.getElementById('newGame').addEventListener('click', start);
         start();
     </script>
