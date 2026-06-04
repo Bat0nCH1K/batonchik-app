@@ -33,7 +33,7 @@
         SFX.playMusic('sweden');
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
         const FRUITS = ['🍒','🍓','🍊','🍋','🍏','🍇','🍈','🍑','🥝','🍉','🍍'];
-        const RADII = [13,17,23,29,37,47,57,69,83,99,117];
+        const RADII = [12,16,22,28,36,46,56,68,82,98,116];
         let fruits = [], score = 0, gameOver = false;
         let dropX = 150, nextFruit = 0;
 
@@ -57,41 +57,67 @@
 
         function spawnFruit() {
             const level = nextFruit;
-            fruits.push({ x: dropX, y: RADII[level], level, vy: 0, vx: 0 });
+            // Проверяем, не пересекается ли с существующими
+            let x = dropX, y = RADII[level];
+            let attempts = 0;
+            while (attempts < 20) {
+                let overlap = false;
+                for (const f of fruits) {
+                    const dx = x - f.x, dy = y - f.y;
+                    if (Math.sqrt(dx*dx+dy*dy) < RADII[level] + f.r) { overlap = true; break; }
+                }
+                if (!overlap) break;
+                x += (Math.random()-0.5)*20;
+                attempts++;
+            }
+            fruits.push({ x, y, r: RADII[level], level, vy: 0, vx: 0, settled: false });
             nextFruit = Math.random() < 0.8 ? 0 : 1;
         }
 
         function update() {
             if (gameOver) return;
             
+            const GRAVITY = 0.6;
+            const DAMPING = 0.7;
+            
             fruits.forEach(f => {
-                f.vy += 0.5;
+                if (f.settled) return;
+                f.vy += GRAVITY;
                 f.y += f.vy;
                 f.x += f.vx;
                 f.vx *= 0.98;
                 
-                // Стены — отскок от радиуса
-                if (f.x - RADII[f.level] < 0) { f.x = RADII[f.level]; f.vx = Math.abs(f.vx)*0.3; }
-                if (f.x + RADII[f.level] > 300) { f.x = 300-RADII[f.level]; f.vx = -Math.abs(f.vx)*0.3; }
-                // Пол
-                if (f.y + RADII[f.level] > 400) { f.y = 400 - RADII[f.level]; f.vy = 0; f.vx = 0; }
+                // Стены — жёсткий отскок
+                if (f.x - f.r < 0) { f.x = f.r; f.vx = Math.abs(f.vx)*DAMPING; }
+                if (f.x + f.r > 300) { f.x = 300-f.r; f.vx = -Math.abs(f.vx)*DAMPING; }
+                // Пол — оседание
+                if (f.y + f.r > 400) { f.y = 400 - f.r; f.vy = 0; f.vx = 0; f.settled = true; }
             });
             
-            // Коллизии (hitbox = радиус)
-            for (let i=0; i<fruits.length; i++) {
-                for (let j=i+1; j<fruits.length; j++) {
-                    const dx = fruits[i].x - fruits[j].x;
-                    const dy = fruits[i].y - fruits[j].y;
-                    const dist = Math.sqrt(dx*dx+dy*dy);
-                    const minDist = RADII[fruits[i].level] + RADII[fruits[j].level];
-                    
-                    if (dist < minDist && dist > 0) {
-                        const nx = dx/dist, ny = dy/dist;
-                        const overlap = minDist - dist;
-                        fruits[i].x += nx*overlap/2;
-                        fruits[i].y += ny*overlap/2;
-                        fruits[j].x -= nx*overlap/2;
-                        fruits[j].y -= ny*overlap/2;
+            // Коллизии — многопроходный солвер
+            for (let pass = 0; pass < 5; pass++) {
+                for (let i=0; i<fruits.length; i++) {
+                    for (let j=i+1; j<fruits.length; j++) {
+                        const fi = fruits[i], fj = fruits[j];
+                        const dx = fi.x - fj.x, dy = fi.y - fj.y;
+                        const dist = Math.sqrt(dx*dx+dy*dy);
+                        const minDist = fi.r + fj.r;
+                        
+                        if (dist < minDist && dist > 0.001) {
+                            const nx = dx/dist, ny = dy/dist;
+                            const overlap = minDist - dist;
+                            
+                            if (!fi.settled && !fj.settled) {
+                                fi.x += nx*overlap/2; fi.y += ny*overlap/2;
+                                fj.x -= nx*overlap/2; fj.y -= ny*overlap/2;
+                            } else if (!fi.settled) {
+                                fi.x += nx*overlap; fi.y += ny*overlap;
+                                fi.vx = 0; fi.vy = 0; fi.settled = true;
+                            } else if (!fj.settled) {
+                                fj.x -= nx*overlap; fj.y -= ny*overlap;
+                                fj.vx = 0; fj.vy = 0; fj.settled = true;
+                            }
+                        }
                     }
                 }
             }
@@ -101,15 +127,16 @@
                 if (fruits[i].level >= FRUITS.length-1) continue;
                 for (let j=i+1; j<fruits.length; j++) {
                     if (fruits[j].level >= FRUITS.length-1) continue;
-                    if (fruits[i].level === fruits[j].level) {
+                    if (fruits[i].level === fruits[j].level && fruits[i].settled && fruits[j].settled) {
                         const dx = fruits[i].x - fruits[j].x;
                         const dy = fruits[i].y - fruits[j].y;
-                        if (Math.sqrt(dx*dx+dy*dy) < RADII[fruits[i].level]*0.8) {
+                        if (Math.sqrt(dx*dx+dy*dy) < fruits[i].r*0.8) {
                             fruits[i].x = (fruits[i].x + fruits[j].x)/2;
                             fruits[i].y = (fruits[i].y + fruits[j].y)/2;
                             fruits[i].level++;
-                            fruits[i].vy = -3;
-                            fruits[i].vx = (Math.random()-0.5)*4;
+                            fruits[i].r = RADII[fruits[i].level];
+                            fruits[i].settled = true;
+                            fruits[i].vy = 0; fruits[i].vx = 0;
                             fruits.splice(j,1);
                             score += (fruits[i].level+1)*10;
                             document.getElementById('score').textContent = score;
@@ -122,9 +149,7 @@
             
             // Переполнение
             for (const f of fruits) {
-                if (f.y - RADII[f.level] < -RADII[f.level] && f.vy <= 0 && Math.abs(f.vx) < 0.1) {
-                    gameOver = true;
-                }
+                if (f.settled && f.y - f.r < -10) { gameOver = true; break; }
             }
             
             if (gameOver) {
@@ -138,16 +163,15 @@
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             
-            // Следующий фрукт (сверху, полупрозрачный)
+            // Следующий фрукт
             ctx.globalAlpha = 0.3;
             ctx.font = `${RADII[nextFruit]*1.8}px sans-serif`;
             ctx.fillText(FRUITS[nextFruit], dropX-RADII[nextFruit]*0.8, 35+RADII[nextFruit]*0.6);
             ctx.globalAlpha = 1;
             
-            // Фрукты на поле
             fruits.forEach(f => {
-                ctx.font = `${RADII[f.level]*1.8}px sans-serif`;
-                ctx.fillText(FRUITS[f.level], f.x-RADII[f.level]*0.8, f.y+RADII[f.level]*0.6);
+                ctx.font = `${f.r*1.8}px sans-serif`;
+                ctx.fillText(FRUITS[f.level], f.x-f.r*0.8, f.y+f.r*0.6);
             });
         }
 
