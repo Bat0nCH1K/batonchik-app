@@ -18,7 +18,6 @@
             text-decoration: none; color: var(--text); transition: transform 0.2s;
         }
         .game-card:active { transform: scale(0.97); }
-        .game-card.locked { opacity: 0.4; pointer-events: none; }
         .game-icon { font-size: 36px; width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .game-icon.red { background: #e94560; } .game-icon.blue { background: #4a90d9; } .game-icon.green { background: #4caf84; } .game-icon.orange { background: #e09540; } .game-icon.gold { background: #f0c040; } .game-icon.purple { background: #8e44ad; }
         .game-info { text-align: left; flex: 1; } .game-name { font-size: 16px; font-weight: 600; } .game-desc { font-size: 12px; color: var(--text-secondary); } .game-arrow { font-size: 20px; color: var(--text-secondary); }
@@ -32,7 +31,6 @@
         <p class="subtitle">Выбери игру и начни играть!</p>
         
         <div class="games-grid">
-            <!-- Готовые -->
             <a href="clicker.html" class="game-card"><div class="game-icon red">🔴</div><div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div><div class="game-arrow">▶</div></a>
             <a href="quiz.html" class="game-card"><div class="game-icon blue">🧠</div><div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div><div class="game-arrow">▶</div></a>
             <a href="game2048.html" class="game-card"><div class="game-icon green">🧩</div><div class="game-info"><div class="game-name">2048</div><div class="game-desc">Собери 2048!</div></div><div class="game-arrow">▶</div></a>
@@ -48,36 +46,35 @@
             <a href="tetris.html" class="game-card"><div class="game-icon green">🧱</div><div class="game-info"><div class="game-name">Тетрис</div><div class="game-desc">Классика</div></div><div class="game-arrow">▶</div></a>
             <a href="memory.html" class="game-card"><div class="game-icon purple">🧠</div><div class="game-info"><div class="game-name">Цветовая память</div><div class="game-desc">Повтори последовательность</div></div><div class="game-arrow">▶</div></a>
             <a href="puzzle.html" class="game-card"><div class="game-icon green">🧩</div><div class="game-info"><div class="game-name">Пятнашки</div><div class="game-desc">Собери по порядку</div></div><div class="game-arrow">▶</div></a>
-            
-            <!-- Новые (locked пока) -->
-            <div class="game-card locked"><div class="game-icon green">🧊</div><div class="game-info"><div class="game-name">Block Blast</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon orange">🍉</div><div class="game-info"><div class="game-name">Fruit Merge</div><div class="game-desc">Скоро...</div></div><div class="game-card locked"><div class="game-icon blue">🗺️</div><div class="game-info"><div class="game-name">Paper.io</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon purple">🟪</div><div class="game-info"><div class="game-name">Cube Runner</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon gold">🏴</div><div class="game-info"><div class="game-name">State.io</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon red">💥</div><div class="game-info"><div class="game-name">Brick Blast</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon blue">🔵</div><div class="game-info"><div class="game-name">4 в ряд</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon orange">🚢</div><div class="game-info"><div class="game-name">Морской бой</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon purple">♟️</div><div class="game-info"><div class="game-name">Шахматы</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon red">🏎️</div><div class="game-info"><div class="game-name">Slot Cars</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon blue">🏃</div><div class="game-info"><div class="game-name">Gravity Run</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon green">🧠</div><div class="game-info"><div class="game-name">Memory Duo</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon orange">🎱</div><div class="game-info"><div class="game-name">Бильярд</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon purple">🏒</div><div class="game-info"><div class="game-name">Хоккей</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon red">🏃</div><div class="game-info"><div class="game-name">Паркур</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon blue">🌀</div><div class="game-info"><div class="game-name">Maze Dash</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon green">🧱</div><div class="game-info"><div class="game-name">Wall Kickers</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon orange">⚽</div><div class="game-info"><div class="game-name">Going Balls</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon gold">⚔️</div><div class="game-info"><div class="game-name">Magic Clash</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon purple">🏰</div><div class="game-info"><div class="game-name">Tower Defense</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon red">🦘</div><div class="game-info"><div class="game-name">Cyber Rush</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon blue">🌑</div><div class="game-info"><div class="game-name">Dark Walkers</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon green">🏛️</div><div class="game-info"><div class="game-name">Miners City</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon orange">⚔️</div><div class="game-info"><div class="game-name">Fantasy Hall</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
-            <div class="game-card locked"><div class="game-icon gold">📦</div><div class="game-info"><div class="game-name">Стек</div><div class="game-desc">Скоро...</div></div><div class="game-arrow">🔒</div></div>
+            <a href="blockblast.html" class="game-card"><div class="game-icon green">🧊</div><div class="game-info"><div class="game-name">Block Blast</div><div class="game-desc">Ставь блоки в сетку</div></div><div class="game-arrow">▶</div></a>
+            <a href="fruitmerge.html" class="game-card"><div class="game-icon orange">🍉</div><div class="game-info"><div class="game-name">Fruit Merge</div><div class="game-desc">Сливай фрукты</div></div><div class="game-arrow">▶</div></a>
+            <a href="paperio.html" class="game-card"><div class="game-icon blue">🗺️</div><div class="game-info"><div class="game-name">Paper.io</div><div class="game-desc">Захвати территорию</div></div><div class="game-arrow">▶</div></a>
+            <a href="cuberunner.html" class="game-card"><div class="game-icon purple">🟪</div><div class="game-info"><div class="game-name">Cube Runner</div><div class="game-desc">Беги и прыгай</div></div><div class="game-arrow">▶</div></a>
+            <a href="stateio.html" class="game-card"><div class="game-icon gold">🏴</div><div class="game-info"><div class="game-name">State.io</div><div class="game-desc">Захвати царства</div></div><div class="game-arrow">▶</div></a>
+            <a href="brickblast.html" class="game-card"><div class="game-icon red">💥</div><div class="game-info"><div class="game-name">Brick Blast</div><div class="game-desc">Отбивай мяч</div></div><div class="game-arrow">▶</div></a>
+            <a href="4row.html" class="game-card"><div class="game-icon blue">🔵</div><div class="game-info"><div class="game-name">4 в ряд</div><div class="game-desc">Собери 4 в ряд</div></div><div class="game-arrow">▶</div></a>
+            <a href="battleship.html" class="game-card"><div class="game-icon orange">🚢</div><div class="game-info"><div class="game-name">Морской бой</div><div class="game-desc">Потопи корабли</div></div><div class="game-arrow">▶</div></a>
+            <a href="chess.html" class="game-card"><div class="game-icon purple">♟️</div><div class="game-info"><div class="game-name">Шахматы</div><div class="game-desc">Играй с ИИ</div></div><div class="game-arrow">▶</div></a>
+            <a href="slotcars.html" class="game-card"><div class="game-icon red">🏎️</div><div class="game-info"><div class="game-name">Slot Cars</div><div class="game-desc">Гонки по трассе</div></div><div class="game-arrow">▶</div></a>
+            <a href="gravityrun.html" class="game-card"><div class="game-icon blue">🏃</div><div class="game-info"><div class="game-name">Gravity Run</div><div class="game-desc">Беги по стенам</div></div><div class="game-arrow">▶</div></a>
+            <a href="memoryduo.html" class="game-card"><div class="game-icon green">🧠</div><div class="game-info"><div class="game-name">Memory Duo</div><div class="game-desc">Найди пары</div></div><div class="game-arrow">▶</div></a>
+            <a href="pool.html" class="game-card"><div class="game-icon orange">🎱</div><div class="game-info"><div class="game-name">Бильярд</div><div class="game-desc">Забей все шары</div></div><div class="game-arrow">▶</div></a>
+            <a href="hockey.html" class="game-card"><div class="game-icon purple">🏒</div><div class="game-info"><div class="game-name">Хоккей</div><div class="game-desc">Забей шайбу</div></div><div class="game-arrow">▶</div></a>
+            <a href="parkour.html" class="game-card"><div class="game-icon red">🏃</div><div class="game-info"><div class="game-name">Паркур</div><div class="game-desc">Прыгай по крышам</div></div><div class="game-arrow">▶</div></a>
+            <a href="mazedash.html" class="game-card"><div class="game-icon blue">🌀</div><div class="game-info"><div class="game-name">Maze Dash</div><div class="game-desc">Беги по лабиринту</div></div><div class="game-arrow">▶</div></a>
+            <a href="wallkickers.html" class="game-card"><div class="game-icon green">🧱</div><div class="game-info"><div class="game-name">Wall Kickers</div><div class="game-desc">Прыгай по стенам</div></div><div class="game-arrow">▶</div></a>
+            <a href="goingballs.html" class="game-card"><div class="game-icon orange">⚽</div><div class="game-info"><div class="game-name">Going Balls</div><div class="game-desc">Катись по треку</div></div><div class="game-arrow">▶</div></a>
+            <a href="magicclash.html" class="game-card"><div class="game-icon gold">⚔️</div><div class="game-info"><div class="game-name">Magic Clash</div><div class="game-desc">Башенный бой</div></div><div class="game-arrow">▶</div></a>
+            <a href="towerdefense.html" class="game-card"><div class="game-icon purple">🏰</div><div class="game-info"><div class="game-name">Tower Defense</div><div class="game-desc">Защити крепость</div></div><div class="game-arrow">▶</div></a>
+            <a href="cyberrush.html" class="game-card"><div class="game-icon red">🦘</div><div class="game-info"><div class="game-name">Cyber Rush</div><div class="game-desc">Кибер-побег</div></div><div class="game-arrow">▶</div></a>
+            <a href="darkwalkers.html" class="game-card"><div class="game-icon blue">🌑</div><div class="game-info"><div class="game-name">Dark Walkers</div><div class="game-desc">Тёмное приключение</div></div><div class="game-arrow">▶</div></a>
+            <a href="minerscity.html" class="game-card"><div class="game-icon green">🏛️</div><div class="game-info"><div class="game-name">Miners City</div><div class="game-desc">Построй город</div></div><div class="game-arrow">▶</div></a>
+            <a href="fantasyhall.html" class="game-card"><div class="game-icon orange">⚔️</div><div class="game-info"><div class="game-name">Fantasy Hall</div><div class="game-desc">Геройское приключение</div></div><div class="game-arrow">▶</div></a>
+            <a href="stack.html" class="game-card"><div class="game-icon gold">📦</div><div class="game-info"><div class="game-name">Стек</div><div class="game-desc">Строй башню</div></div><div class="game-arrow">▶</div></a>
         </div>
         
         <a href="titles.html" class="footer-link">🏆 Титулы</a>
-        <div class="version">v7.0-dev — BatonCHIK Games</div>
+        <div class="version">v7.0 — BatonCHIK Games</div>
     </div>
     
     <script src="sfx.js"></script>
@@ -89,4 +86,4 @@
         });
     </script>
 </body>
-                                                                                                                                                                                                                        </html>
+    </html>
