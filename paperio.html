@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper.io — BatonCHIK Games</title>
+    <style>
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        .container { max-width: 500px; margin: 0 auto; }
+        h2 { font-size: 20px; margin-bottom: 10px; }
+        .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
+        .score-board { display: flex; justify-content: center; gap: 40px; margin: 10px 0; font-size: 16px; }
+        .score-board span { color: #f0c040; font-weight: bold; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        .joysticks { display: flex; justify-content: space-around; margin-top: 10px; }
+        .joystick { display: grid; grid-template-columns: repeat(3, 45px); gap: 4px; }
+        .joy-btn { width: 45px; height: 45px; border-radius: 10px; border: 2px solid var(--accent); background: var(--card); color: var(--text); font-size: 20px; cursor: pointer; }
+        .joy-btn:active { background: var(--accent); }
+        .joy-empty { visibility: hidden; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="main.html" class="back">← Назад</a>
+        <h2>🗺️ Paper.io</h2>
+        <div class="score-board">
+            <span>🔴 <span id="score1">0</span>%</span>
+            <span>🔵 <span id="score2">0</span>%</span>
+        </div>
+        <canvas id="canvas" width="300" height="300"></canvas>
+        <div class="joysticks">
+            <div>
+                <div class="label">Игрок 1 🔴</div>
+                <div class="joystick" id="joy1">
+                    <div class="joy-empty"></div><button class="joy-btn" data-p="1" data-d="up">↑</button><div class="joy-empty"></div>
+                    <button class="joy-btn" data-p="1" data-d="left">←</button><div class="joy-empty"></div><button class="joy-btn" data-p="1" data-d="right">→</button>
+                    <div class="joy-empty"></div><button class="joy-btn" data-p="1" data-d="down">↓</button><div class="joy-empty"></div>
+                </div>
+            </div>
+            <div>
+                <div class="label">Игрок 2 🔵</div>
+                <div class="joystick" id="joy2">
+                    <div class="joy-empty"></div><button class="joy-btn" data-p="2" data-d="up">↑</button><div class="joy-empty"></div>
+                    <button class="joy-btn" data-p="2" data-d="left">←</button><div class="joy-empty"></div><button class="joy-btn" data-p="2" data-d="right">→</button>
+                    <div class="joy-empty"></div><button class="joy-btn" data-p="2" data-d="down">↓</button><div class="joy-empty"></div>
+                </div>
+            </div>
+        </div>
+        <button class="btn" id="newGame">🔄 Новая игра</button>
+    </div>
+    <script src="sfx.js"></script>
+    <script src="highscores.js"></script>
+    <script src="modals.js"></script>
+    <script>
+        SFX.playMusic('action');
+        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        const SIZE = 300, CELL = 5, GRID = SIZE/CELL;
+        let grid = [];
+        let p1 = { x:10, y:10, dir:'right', alive:true, trail:[] };
+        let p2 = { x:50, y:50, dir:'left', alive:true, trail:[] };
+        let dir1 = 'right', dir2 = 'left';
+
+        function start() {
+            grid = Array(GRID).fill().map(() => Array(GRID).fill(0));
+            p1 = { x:10, y:10, dir:'right', alive:true, trail:[] };
+            p2 = { x:50, y:50, dir:'left', alive:true, trail:[] };
+            dir1 = 'right'; dir2 = 'left';
+            document.getElementById('score1').textContent = '0';
+            document.getElementById('score2').textContent = '0';
+            draw();
+        }
+
+        function movePlayer(p, dir, id) {
+            if (!p.alive) return;
+            const trailId = id === 1 ? 3 : 4;
+            const colorId = id;
+            
+            p.dir = dir;
+            let nx = p.x, ny = p.y;
+            if (dir === 'up') ny--;
+            if (dir === 'down') ny++;
+            if (dir === 'left') nx--;
+            if (dir === 'right') nx++;
+            
+            if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) { p.alive = false; return; }
+            
+            // Столкновение с чужим следом → проигрыш
+            if (grid[ny][nx] === (id === 1 ? 2 : 1) || grid[ny][nx] === (id === 1 ? 4 : 3)) { 
+                p.alive = false; 
+                return; 
+            }
+            
+            if (grid[ny][nx] === 0 || grid[ny][nx] === trailId) {
+                if (grid[ny][nx] === 0) p.trail.push({x:nx, y:ny});
+                grid[ny][nx] = trailId;
+            }
+            else if (grid[ny][nx] === colorId && p.trail.length > 0) {
+                p.trail.forEach(t => grid[t.y][t.x] = colorId);
+                p.trail = [];
+            }
+            
+            p.x = nx; p.y = ny;
+        }
+
+        function update() {
+            if (p1.alive) movePlayer(p1, dir1, 1);
+            if (p2.alive) movePlayer(p2, dir2, 2);
+            
+            if (!p1.alive && !p2.alive) {
+                setTimeout(() => {
+                    const s1 = countTerritory(1), s2 = countTerritory(2);
+                    const winner = s1 > s2 ? '🔴 Игрок 1' : s2 > s1 ? '🔵 Игрок 2' : 'Ничья';
+                    Modal.show('Игра окончена', `${winner} победил! (${s1}% vs ${s2}%)`).then(() => start());
+                }, 300);
+                return;
+            }
+            
+            if (!p1.alive) {
+                setTimeout(() => {
+                    Modal.show('Игрок 1 проиграл', '🔴 Врезался в след!').then(() => start());
+                }, 300);
+                return;
+            }
+            if (!p2.alive) {
+                setTimeout(() => {
+                    Modal.show('Игрок 2 проиграл', '🔵 Врезался в след!').then(() => start());
+                }, 300);
+                return;
+            }
+            
+            document.getElementById('score1').textContent = countTerritory(1);
+            document.getElementById('score2').textContent = countTerritory(2);
+            draw();
+        }
+
+        function countTerritory(id) {
+            let count = 0, total = 0;
+            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                total++;
+                if (grid[r][c] === id) count++;
+            }
+            return Math.round(count/total*100);
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,SIZE,SIZE);
+            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                if (grid[r][c] === 1) { ctx.fillStyle = '#e94560'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+                else if (grid[r][c] === 2) { ctx.fillStyle = '#4a90d9'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+                else if (grid[r][c] === 3) { ctx.fillStyle = '#ffaaaa'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+                else if (grid[r][c] === 4) { ctx.fillStyle = '#aaaaff'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+            }
+            if (p1.alive) { ctx.fillStyle = '#fff'; ctx.fillRect(p1.x*CELL, p1.y*CELL, CELL, CELL); }
+            if (p2.alive) { ctx.fillStyle = '#fff'; ctx.fillRect(p2.x*CELL, p2.y*CELL, CELL, CELL); }
+        }
+
+        // Джойстики
+        document.querySelectorAll('.joy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const p = parseInt(btn.dataset.p);
+                const d = btn.dataset.d;
+                if (p === 1) dir1 = d;
+                else dir2 = d;
+            });
+        });
+
+        // Клавиатура
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'w') dir1 = 'up';
+            if (e.key === 's') dir1 = 'down';
+            if (e.key === 'a') dir1 = 'left';
+            if (e.key === 'd') dir1 = 'right';
+            if (e.key === 'ArrowUp') dir2 = 'up';
+            if (e.key === 'ArrowDown') dir2 = 'down';
+            if (e.key === 'ArrowLeft') dir2 = 'left';
+            if (e.key === 'ArrowRight') dir2 = 'right';
+        });
+
+        setInterval(update, 120);
+        document.getElementById('newGame').addEventListener('click', start);
+        start();
+    </script>
+</body>
+</html>
