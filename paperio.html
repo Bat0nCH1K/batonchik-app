@@ -89,51 +89,86 @@
                 grid[ny][nx] = trailId;
             }
             else if (grid[ny][nx] === colorId && p.trail.length > 0) {
-                // Закрашиваем всю внутреннюю территорию
-                floodFill(p.trail, colorId);
+                // Закрашиваем территорию
+                captureTerritory(p.trail, colorId);
                 p.trail = [];
             }
             
             p.x = nx; p.y = ny;
         }
 
-        function floodFill(trail, colorId) {
-            // Создаём временную маску
-            const mask = Array(GRID).fill().map(() => Array(GRID).fill(false));
-            // Отмечаем границу (trail как стены)
-            trail.forEach(t => mask[t.y][t.x] = true);
-            // Отмечаем территорию игрока как недоступную для заливки
-            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) if (grid[r][c] === colorId) mask[r][c] = true;
-            
-            // Находим точку внутри (например, рядом с игроком)
-            const start = findInside(trail, colorId);
-            if (!start) return;
-            
-            // BFS заливка
-            const queue = [start];
-            const filled = [];
-            while (queue.length > 0) {
-                const {x, y} = queue.shift();
-                if (x<0||x>=GRID||y<0||y>=GRID||mask[y][x]) continue;
-                mask[y][x] = true;
-                filled.push({x, y});
-                queue.push({x:x+1, y}, {x:x-1, y}, {x, y:y+1}, {x, y:y-1});
+        function captureTerritory(trail, colorId) {
+            if (trail.length < 4) {
+                // Слишком маленький — просто стираем след
+                trail.forEach(t => grid[t.y][t.x] = 0);
+                return;
             }
             
-            // Закрашиваем
-            filled.forEach(({x, y}) => grid[y][x] = colorId);
-            trail.forEach(t => grid[t.y][t.x] = colorId);
-        }
-
-        function findInside(trail, colorId) {
-            // Ищем клетку, соседнюю с trail, которая не является trail и не занята
-            for (const t of trail) {
-                const neighbors = [{x:t.x+1,y:t.y},{x:t.x-1,y:t.y},{x:t.x,y:t.y+1},{x:t.x,y:t.y-1}];
-                for (const n of neighbors) {
-                    if (n.x>=0&&n.x<GRID&&n.y>=0&&n.y<GRID && grid[n.y][n.x]===0) return n;
+            // BFS от центра масс trail
+            let cx = 0, cy = 0;
+            trail.forEach(t => { cx += t.x; cy += t.y; });
+            cx = Math.floor(cx / trail.length);
+            cy = Math.floor(cy / trail.length);
+            
+            // Ищем пустую клетку рядом с trail для старта BFS
+            let start = null;
+            const trailSet = new Set(trail.map(t => `${t.x},${t.y}`));
+            
+            // Пробуем 4 направления от центра
+            const dirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
+            for (const d of dirs) {
+                const sx = cx + d.x, sy = cy + d.y;
+                if (sx>=0 && sx<GRID && sy>=0 && sy<GRID && grid[sy][sx]===0 && !trailSet.has(`${sx},${sy}`)) {
+                    start = {x:sx, y:sy};
+                    break;
                 }
             }
-            return null;
+            
+            if (!start) {
+                trail.forEach(t => grid[t.y][t.x] = 0);
+                return;
+            }
+            
+            // BFS
+            const visited = new Set();
+            const queue = [start];
+            visited.add(`${start.x},${start.y}`);
+            let inside = true;
+            const captured = [];
+            
+            while (queue.length > 0 && inside) {
+                const {x, y} = queue.shift();
+                captured.push({x, y});
+                
+                for (const d of dirs) {
+                    const nx = x + d.x, ny = y + d.y;
+                    const key = `${nx},${ny}`;
+                    
+                    if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
+                        inside = false; // Вышли за границу — не замкнуто
+                        break;
+                    }
+                    if (visited.has(key)) continue;
+                    if (trailSet.has(key)) continue; // Не пересекаем след
+                    if (grid[ny][nx] === colorId) continue; // Уже своя территория
+                    if (grid[ny][nx] !== 0 && grid[ny][nx] !== colorId) {
+                        inside = false; // Уперлись в чужое
+                        break;
+                    }
+                    
+                    visited.add(key);
+                    queue.push({x:nx, y:ny});
+                }
+            }
+            
+            if (inside && captured.length > 0 && captured.length < (GRID*GRID/2)) {
+                // Закрашиваем!
+                captured.forEach(({x, y}) => grid[y][x] = colorId);
+                trail.forEach(t => grid[t.y][t.x] = colorId);
+            } else {
+                // Не замкнуто — стираем след
+                trail.forEach(t => grid[t.y][t.x] = 0);
+            }
         }
 
         function update() {
@@ -166,14 +201,13 @@
             for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
                 if (grid[r][c] === 1) { ctx.fillStyle = '#e94560'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
                 else if (grid[r][c] === 2) { ctx.fillStyle = '#4a90d9'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
-                else if (grid[r][c] === 3) { ctx.fillStyle = '#ffaaaa'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
-                else if (grid[r][c] === 4) { ctx.fillStyle = '#aaaaff'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+                else if (grid[r][c] === 3) { ctx.fillStyle = '#ff6b6b'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
+                else if (grid[r][c] === 4) { ctx.fillStyle = '#6b9fff'; ctx.fillRect(c*CELL, r*CELL, CELL, CELL); }
             }
             if (p1.alive) { ctx.fillStyle = '#fff'; ctx.fillRect(p1.x*CELL, p1.y*CELL, CELL, CELL); }
             if (p2.alive) { ctx.fillStyle = '#fff'; ctx.fillRect(p2.x*CELL, p2.y*CELL, CELL, CELL); }
         }
 
-        // Круглые джойстики
         function setupJoystick(baseId, stickId, setDir) {
             const base = document.getElementById(baseId);
             const stick = document.getElementById(stickId);
@@ -218,7 +252,6 @@
         setupJoystick('joy1', 'stick1', (d) => { if (d) dir1 = d; });
         setupJoystick('joy2', 'stick2', (d) => { if (d) dir2 = d; });
 
-        // Клавиатура
         document.addEventListener('keydown', (e) => {
             if (e.key === 'w') dir1 = 'up';
             if (e.key === 's') dir1 = 'down';
