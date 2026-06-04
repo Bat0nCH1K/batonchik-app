@@ -32,8 +32,8 @@
     <script>
         SFX.playMusic('sweden');
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-        const FRUITS = ['🍒','🍓','🍊','🍋','🍏','🍇','🍈','🍑','🥝','🍉'];
-        const RADII = [14,18,24,30,38,48,58,70,84,100];
+        const FRUITS = ['🍒','🍓','🍊','🍋','🍏','🍇','🍈','🍑','🥝','🍉','🍍'];
+        const RADII = [12,16,22,28,36,46,56,68,82,98,116];
         let fruits = [], score = 0, gameOver = false;
         let dropX = 150;
 
@@ -47,18 +47,15 @@
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             dropX = Math.max(RADII[0], Math.min(300-RADII[0], e.clientX - rect.left));
-            draw();
         });
-        
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const rect = canvas.getBoundingClientRect();
             dropX = Math.max(RADII[0], Math.min(300-RADII[0], e.touches[0].clientX - rect.left));
-            draw();
         });
 
         function spawnFruit() {
-            const level = Math.random() < 0.85 ? 0 : (Math.random() < 0.8 ? 1 : 2);
+            const level = Math.random() < 0.8 ? 0 : 1;
             fruits.push({ x: dropX, y: 20, level, vy: 0, vx: 0 });
         }
 
@@ -66,30 +63,23 @@
             if (gameOver) return;
             
             fruits.forEach(f => {
-                f.vy += 0.4;
+                f.vy += 0.5;
                 f.y += f.vy;
                 f.x += f.vx;
                 f.vx *= 0.98;
                 
-                // Стены
-                if (f.x - RADII[f.level] < 0) { f.x = RADII[f.level]; f.vx = Math.abs(f.vx)*0.5; }
-                if (f.x + RADII[f.level] > 300) { f.x = 300-RADII[f.level]; f.vx = -Math.abs(f.vx)*0.5; }
-                
-                // Пол
-                if (f.y + RADII[f.level] > 400) { 
-                    f.y = 400 - RADII[f.level]; 
-                    f.vy = 0;
-                    f.vx = 0;
-                }
+                if (f.x - RADII[f.level] < 0) { f.x = RADII[f.level]; f.vx = Math.abs(f.vx)*0.3; }
+                if (f.x + RADII[f.level] > 300) { f.x = 300-RADII[f.level]; f.vx = -Math.abs(f.vx)*0.3; }
+                if (f.y + RADII[f.level] > 400) { f.y = 400 - RADII[f.level]; f.vy = 0; f.vx = 0; }
             });
             
-            // Коллизии между фруктами
+            // Коллизии (шарики сзади)
             for (let i=0; i<fruits.length; i++) {
                 for (let j=i+1; j<fruits.length; j++) {
                     const dx = fruits[i].x - fruits[j].x;
                     const dy = fruits[i].y - fruits[j].y;
                     const dist = Math.sqrt(dx*dx+dy*dy);
-                    const minDist = RADII[fruits[i].level] + RADII[fruits[j].level] - 2;
+                    const minDist = RADII[fruits[i].level] + RADII[fruits[j].level];
                     
                     if (dist < minDist && dist > 0) {
                         const nx = dx/dist, ny = dy/dist;
@@ -110,14 +100,12 @@
                     if (fruits[i].level === fruits[j].level) {
                         const dx = fruits[i].x - fruits[j].x;
                         const dy = fruits[i].y - fruits[j].y;
-                        if (Math.sqrt(dx*dx+dy*dy) < RADII[fruits[i].level]*0.9) {
-                            const mx = (fruits[i].x + fruits[j].x)/2;
-                            const my = (fruits[i].y + fruits[j].y)/2;
-                            fruits[i].x = mx;
-                            fruits[i].y = my;
+                        if (Math.sqrt(dx*dx+dy*dy) < RADII[fruits[i].level]*0.7) {
+                            fruits[i].x = (fruits[i].x + fruits[j].x)/2;
+                            fruits[i].y = (fruits[i].y + fruits[j].y)/2;
                             fruits[i].level++;
-                            fruits[i].vy = -2;
-                            fruits[i].vx = (Math.random()-0.5)*3;
+                            fruits[i].vy = -3;
+                            fruits[i].vx = (Math.random()-0.5)*4;
                             fruits.splice(j,1);
                             score += (fruits[i].level+1)*10;
                             document.getElementById('score').textContent = score;
@@ -128,36 +116,31 @@
                 }
             }
             
-            // Проверка на проигрыш
+            // Проигрыш
             fruits.forEach(f => {
-                if (f.y - RADII[f.level] < 0 && f.vy === 0 && f.vx === 0) { gameOver = true; }
+                if (f.y - RADII[f.level] < -10 && f.vy <= 0 && f.vx === 0) gameOver = true;
             });
             
             if (gameOver) {
                 Highscores.save('fruitmerge', score);
                 document.getElementById('record').textContent = Highscores.get('fruitmerge');
-                setTimeout(() => {
-                    Modal.show('💀 Переполнение!', `Очки: ${score}`).then(() => start());
-                }, 300);
+                setTimeout(() => Modal.show('💀 Переполнение!', `Очки: ${score}`).then(() => start()), 300);
             }
             draw();
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            
-            // Фрукты
             fruits.forEach(f => {
-                ctx.font = `${RADII[f.level]*2}px sans-serif`;
-                ctx.fillText(FRUITS[f.level], f.x-RADII[f.level], f.y+RADII[f.level]*0.7);
+                // Белый круг сзади
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, RADII[f.level], 0, Math.PI*2);
+                ctx.fill();
+                // Фрукт
+                ctx.font = `${RADII[f.level]*1.8}px sans-serif`;
+                ctx.fillText(FRUITS[f.level], f.x-RADII[f.level]*0.8, f.y+RADII[f.level]*0.6);
             });
-            
-            // Индикатор падения
-            const level = Math.random() < 0.85 ? 0 : 1;
-            ctx.globalAlpha = 0.3;
-            ctx.font = `${RADII[level]*2}px sans-serif`;
-            ctx.fillText(FRUITS[level], dropX-RADII[level], 30+RADII[level]*0.7);
-            ctx.globalAlpha = 1;
         }
 
         canvas.addEventListener('click', () => {
