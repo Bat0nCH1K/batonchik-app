@@ -1,4 +1,4 @@
-// Звуковая библиотека BatonCHIK Games v6.0
+// Звуковая библиотека BatonCHIK Games v7.0
 const SFX = {
     _ctx: null,
     _musicGain: null,
@@ -53,6 +53,15 @@ const SFX = {
         bonetrousle: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Bonetrousle_64962766.mp3',
         tetris: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Video_Game_Players_-_Tetris_Theme_48152782.mp3',
         ruins: 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/Toby_Fox_-_Ruins_64962741.mp3',
+        scheming: 'https://bat0nch1k.github.io/batonchik-app/music/Kevin_MacLeod_-_Scheming_Weasel_64951988.mp3',
+        aria: 'https://bat0nch1k.github.io/batonchik-app/music/C418.Aria.Math.mp3',
+        speedrun: 'https://bat0nch1k.github.io/batonchik-app/music/Dream_-_Speedrun_Music_73264908.mp3',
+        darkfantasy: 'https://bat0nch1k.github.io/batonchik-app/music/Dustum_-_dark_fantasy_79987719.mp3',
+        interstellar: 'https://bat0nch1k.github.io/batonchik-app/music/Hans_Zimmer_-_Interstellar_Theme_Song_71652021.mp3',
+        joyfulchess: 'https://bat0nch1k.github.io/batonchik-app/music/joyful_-_chess_79030573.mp3',
+        smeshariki: 'https://bat0nch1k.github.io/batonchik-app/music/Smeshariki_-_Muzyka_pogoni_66371495.mp3',
+        asgore: 'https://bat0nch1k.github.io/batonchik-app/music/undertale_077.ASGORE.mp3',
+        hopes: 'https://bat0nch1k.github.io/batonchik-app/music/undertale_087.Hopes.and.Dreams.mp3',
     },
     
     playMusic(track) {
