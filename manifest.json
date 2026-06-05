@@ -1,17 +1,19 @@
 {
   "name": "BatonCHIK Games",
   "short_name": "BatonCHIK",
-  "start_url": "/main.html",
+  "start_url": "https://bat0nch1k.github.io/batonchik-app/main.html",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#e94560",
   "icons": [{
     "src": "1000050389%20(1).jpg",
     "sizes": "192x192",
-    "type": "image/jpeg"
+    "type": "image/jpeg",
+    "purpose": "any"
   }, {
     "src": "1000050389.jpg",
     "sizes": "512x512",
-    "type": "image/jpeg"
+    "type": "image/jpeg",
+    "purpose": "any"
   }]
 }
