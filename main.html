@@ -62,111 +62,57 @@
             else SFX.playMusic('ruins');
         });
 
-        // Подробная отладка PWA
-        window.addEventListener('load', async () => {
-            const log = [];
-            log.push('🔍 PWA Debug v2');
-            log.push('────────────────');
-
-            // 1. Протокол
-            log.push(location.protocol === 'https:' ? '✅ 1/7 HTTPS' : '❌ 1/7 Нужен HTTPS');
+        // Кнопка установки как на airhorner.com
+        window.addEventListener('load', () => {
+            let deferredPrompt;
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
             
-            // 2. Манифест в HTML
-            const manifestLink = document.querySelector('link[rel="manifest"]');
-            if (manifestLink) {
-                log.push('✅ 2/7 Тег manifest в HTML');
-                // Проверка загрузки манифеста
-                try {
-                    const resp = await fetch(manifestLink.href);
-                    if (resp.ok) {
-                        const json = await resp.json();
-                        log.push('✅ 3/7 manifest.json загружен');
-                        log.push('   name: ' + (json.name || 'нет'));
-                        log.push('   display: ' + (json.display || 'нет'));
-                        log.push('   иконок: ' + ((json.icons || []).length || 0));
-                        if (json.icons && json.icons.length > 0) {
-                            // Проверка иконок
-                            for (const icon of json.icons) {
-                                try {
-                                    const ir = await fetch(icon.src);
-                                    log.push(ir.ok ? '   ✅ Иконка: ' + icon.src : '   ❌ Иконка 404: ' + icon.src);
-                                } catch(e) {
-                                    log.push('   ❌ Ошибка иконки: ' + icon.src);
-                                }
-                            }
-                        } else {
-                            log.push('   ⚠️ Нет иконок (нужно для PWA)');
-                        }
-                        if (json.start_url) log.push('   start_url: ' + json.start_url);
-                    } else {
-                        log.push('❌ 3/7 manifest.json вернул ' + resp.status);
-                    }
-                } catch(e) {
-                    log.push('❌ 3/7 manifest.json ошибка: ' + e.message);
-                }
-            } else {
-                log.push('❌ 2/7 manifest не подключен в HTML');
-            }
+            // Если уже в АПе — не показываем
+            if (isStandalone || isFullscreen) return;
             
-            // 4. Service Worker
-            if ('serviceWorker' in navigator) {
-                log.push('✅ 4/7 Service Worker API есть');
-                const reg = await navigator.serviceWorker.getRegistration();
-                if (reg) {
-                    log.push('✅ 5/7 SW зарегистрирован');
-                    log.push('   scope: ' + reg.scope);
-                    log.push('   active: ' + (reg.active ? 'да' : 'нет'));
-                } else {
-                    log.push('❌ 5/7 SW не зарегистрирован');
-                }
-            } else {
-                log.push('❌ 4/7 Service Worker не поддерживается');
-            }
-            
-            // 6. Режим отображения
-            const standalone = window.matchMedia('(display-mode: standalone)').matches;
-            const fullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
-            log.push(standalone ? '✅ 6/7 PWA (standalone)' : fullscreen ? '✅ 6/7 PWA (fullscreen)' : '⚠️ 6/7 Открыто в браузере');
-            
-            // 7. Событие установки
-            let installReady = false;
             window.addEventListener('beforeinstallprompt', (e) => {
-                installReady = true;
                 e.preventDefault();
-                window.deferredPrompt = e;
-                log.push('✅ 7/7 beforeinstallprompt сработал!');
-                // Показываем кнопку установки
-                const btn = document.createElement('button');
-                btn.textContent = '📲 Установить приложение';
-                btn.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:14px 24px;background:#e94560;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:bold;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
-                btn.onclick = () => { e.prompt(); btn.remove(); };
-                document.body.appendChild(btn);
+                deferredPrompt = e;
+                showBtn();
             });
             
-            // Ждём 4 секунды и показываем результат
+            // Если beforeinstallprompt не сработал — показываем кнопку с инструкцией
             setTimeout(() => {
-                if (!installReady) {
-                    log.push('❌ 7/7 beforeinstallprompt НЕ сработал');
-                    log.push('────────────────');
-                    log.push('🔧 Возможные причины:');
-                    log.push('• Манифест без иконок 192x192');
-                    log.push('• SW не обрабатывает fetch');
-                    log.push('• Сайт уже установлен');
-                    log.push('• Chrome требует 2+ визита за 24ч');
-                }
+                if (!deferredPrompt) showManualBtn();
+            }, 3000);
+            
+            function showBtn() {
+                const btn = document.createElement('button');
+                btn.textContent = '📲 Установить приложение';
+                btn.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:14px 24px;background:#4a90d9;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:bold;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);animation:pulse 2s infinite;';
+                btn.onclick = () => {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then(() => btn.remove());
+                };
+                document.body.appendChild(btn);
                 
-                const debug = document.createElement('div');
-                debug.style.cssText = 'position:fixed;bottom:20px;left:5px;right:5px;background:rgba(0,0,0,0.9);color:#0f0;padding:12px;border-radius:8px;font-size:9px;text-align:left;z-index:9999;font-family:monospace;max-height:60vh;overflow-y:auto;white-space:pre-wrap;';
-                debug.textContent = log.join('\n');
-                document.body.appendChild(debug);
-                
-                // Кнопка закрыть
-                const close = document.createElement('button');
-                close.textContent = '✕';
-                close.style.cssText = 'position:fixed;top:10px;right:10px;background:#333;color:#fff;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;z-index:10000;cursor:pointer;';
-                close.onclick = () => { debug.remove(); close.remove(); };
-                document.body.appendChild(close);
-            }, 4000);
+                // Добавляем анимацию
+                const style = document.createElement('style');
+                style.textContent = '@keyframes pulse { 0%,100% { transform:translateX(-50%) scale(1); } 50% { transform:translateX(-50%) scale(1.05); } }';
+                document.head.appendChild(style);
+            }
+            
+            function showManualBtn() {
+                const btn = document.createElement('button');
+                btn.textContent = '📲 Установить АП';
+                btn.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:14px 24px;background:#e94560;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:bold;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+                btn.onclick = () => {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+                    overlay.innerHTML = '<div style="color:#fff;text-align:center;font-size:18px;line-height:2;"><b>📱 Установка АП:</b><br><br>Нажми <b>⋮</b> в браузере<br>↓<br>Выбери<br><b>«Добавить на главный экран»</b><br><br><button style="padding:12px 30px;background:#4a90d9;color:#fff;border:none;border-radius:10px;font-size:16px;margin-top:10px;">Понятно</button></div>';
+                    overlay.querySelector('button').onclick = () => overlay.remove();
+                    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+                    document.body.appendChild(overlay);
+                    btn.remove();
+                };
+                document.body.appendChild(btn);
+            }
         });
     </script>
 </body>
