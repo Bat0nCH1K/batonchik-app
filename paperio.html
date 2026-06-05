@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paper.io — BatonCHIK Games</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,8 +17,8 @@
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
         .joysticks { display: flex; justify-content: space-around; margin-top: 10px; }
         .joy-container { display: flex; flex-direction: column; align-items: center; }
-        .joy-base { width: 80px; height: 80px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); position: relative; touch-action: none; }
-        .joy-stick { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.05s; }
+        .joy-base { width: 100px; height: 100px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); position: relative; touch-action: none; }
+        .joy-stick { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.05s; }
         .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
         .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
@@ -27,8 +28,8 @@
         <a href="main.html" class="back">← Назад</a>
         <h2>🗺️ Paper.io</h2>
         <div class="score-board">
-            <span>🔴 <span id="score1">10</span>%</span>
-            <span>🔵 <span id="score2">10</span>%</span>
+            <span>🔴 <span id="score1">4</span>%</span>
+            <span>🔵 <span id="score2">4</span>%</span>
         </div>
         <canvas id="canvas" width="300" height="300"></canvas>
         <div class="joysticks">
@@ -51,14 +52,15 @@
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
         SFX.playMusic('action');
-        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-        const SIZE = 300, CELL = 5, GRID = SIZE / CELL;
         
-        // grid: 0=пусто, 1=база P1, 2=база P2, 3=след P1, 4=след P2
+        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        const SIZE = 300, CELL = 6, GRID = 50;
         let grid = [];
         let p1 = null, p2 = null;
         let dir1 = 'right', dir2 = 'left';
+        let lastDir1 = 'right', lastDir2 = 'left';
         let gameRunning = true;
 
         const OPPOSITE = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
@@ -67,14 +69,12 @@
 
         function start() {
             grid = Array(GRID).fill().map(() => Array(GRID).fill(0));
-            // База P1
-            for (let r = 8; r < 18; r++) for (let c = 8; c < 18; c++) grid[r][c] = 1;
-            // База P2
-            for (let r = 42; r < 52; r++) for (let c = 42; c < 52; c++) grid[r][c] = 2;
-            
-            p1 = { x: 13, y: 13, trail: [], alive: true, onBase: true };
-            p2 = { x: 47, y: 47, trail: [], alive: true, onBase: true };
-            dir1 = 'right'; dir2 = 'left';
+            for (let r=8; r<13; r++) for (let c=8; c<13; c++) grid[r][c] = 1;
+            for (let r=37; r<42; r++) for (let c=37; c<42; c++) grid[r][c] = 2;
+            p1 = { x:10, y:10, trail:[], alive:true };
+            p2 = { x:39, y:39, trail:[], alive:true };
+            dir1 = 'right'; lastDir1 = 'right';
+            dir2 = 'left'; lastDir2 = 'left';
             gameRunning = true;
             updateScores();
             draw();
@@ -83,131 +83,95 @@
         function movePlayer(p, newDir, id) {
             if (!p || !p.alive || !gameRunning) return;
             
-            const trailId = id === 1 ? 3 : 4;
+            const trailId = id===1 ? 3 : 4;
             const baseId = id;
-            const enemyBaseId = id === 1 ? 2 : 1;
-            const enemyTrailId = id === 1 ? 4 : 3;
+            const enemyBaseId = id===1 ? 2 : 1;
+            const enemyTrailId = id===1 ? 4 : 3;
+            const lastDir = id===1 ? lastDir1 : lastDir2;
             
-            // Текущее направление (по последнему шагу)
-            let currentDir = newDir;
-            if (p.trail.length > 0) {
-                const last = p.trail[p.trail.length - 1];
-                if (last.x < p.x) currentDir = 'right';
-                else if (last.x > p.x) currentDir = 'left';
-                else if (last.y < p.y) currentDir = 'down';
-                else currentDir = 'up';
-            }
-            
-            // Не даём развернуться на 180°
-            if (newDir === OPPOSITE[currentDir] && p.trail.length > 0) {
-                newDir = currentDir;
-            }
+            if (newDir === OPPOSITE[lastDir]) newDir = lastDir;
+            if (id===1) lastDir1 = newDir; else lastDir2 = newDir;
             
             const nx = p.x + DX[newDir];
             const ny = p.y + DY[newDir];
             
-            // Вышел за границу
-            if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
-                killPlayer(p, id);
-                return;
-            }
+            if (nx<0 || nx>=GRID || ny<0 || ny>=GRID) { killPlayer(p, id); return; }
             
             const cell = grid[ny][nx];
             
-            // Наступил на вражеский след — враг умирает!
+            // Разрезал вражеский след
             if (cell === enemyTrailId) {
-                const enemy = id === 1 ? p2 : p1;
-                killPlayer(enemy, id === 1 ? 2 : 1);
-                // Продолжаем движение, оставляем след
+                const enemy = id===1 ? p2 : p1;
+                killPlayer(enemy, id===1?2:1);
             }
             
-            // Наступил на вражескую базу — МОЖНО ходить, оставляем след
-            // и можно отрезать кусок вражеской базы при замыкании
-            
-            // Если на своей базе и без следа — просто ходим
-            if (cell === baseId && p.trail.length === 0) {
-                p.x = nx; p.y = ny;
-                p.onBase = true;
-                return;
-            }
-            
-            // Возвращаемся на свою базу со следом — замыкаем!
+            // Замыкание на свою базу
             if (cell === baseId && p.trail.length > 0) {
                 captureTerritory(p, id);
                 p.trail = [];
                 p.x = nx; p.y = ny;
-                p.onBase = true;
                 return;
             }
             
-            // Наступил на свой след — самоподрез
-            if (cell === trailId) {
-                killPlayer(p, id);
+            // Самоподрез
+            if (cell === trailId) { killPlayer(p, id); return; }
+            
+            // Вражеская база или пустота или чужая территория → след
+            if (cell === enemyBaseId || cell === 0 || (cell !== baseId && cell !== trailId)) {
+                p.trail.push({x:nx, y:ny});
+                grid[ny][nx] = trailId;
+                p.x = nx; p.y = ny;
                 return;
             }
             
-            // Пустая клетка или вражеская база — оставляем след
-            p.trail.push({ x: nx, y: ny });
-            grid[ny][nx] = trailId;
+            // Своя база без следа
+            if (cell === baseId) { p.x = nx; p.y = ny; return; }
+            
             p.x = nx; p.y = ny;
-            p.onBase = false;
         }
 
         function killPlayer(p, id) {
             if (!p.alive) return;
             p.alive = false;
-            // Стираем его след
-            const trailId = id === 1 ? 3 : 4;
-            p.trail.forEach(t => {
-                if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
-            });
+            const trailId = id===1 ? 3 : 4;
+            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                if (grid[r][c] === trailId) grid[r][c] = 0;
+            }
             p.trail = [];
             SFX.death();
         }
 
         function captureTerritory(p, id) {
             if (p.trail.length < 4) {
-                const trailId = id === 1 ? 3 : 4;
-                p.trail.forEach(t => {
-                    if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
-                });
+                const trailId = id===1 ? 3 : 4;
+                for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                    if (grid[r][c] === trailId) grid[r][c] = 0;
+                }
                 return;
             }
             
             const trailSet = new Set(p.trail.map(t => `${t.x},${t.y}`));
+            let minX=GRID, maxX=-1, minY=GRID, maxY=-1;
+            p.trail.forEach(t => {
+                if (t.x<minX) minX=t.x; if (t.x>maxX) maxX=t.x;
+                if (t.y<minY) minY=t.y; if (t.y>maxY) maxY=t.y;
+            });
             
-            // Ищем внутреннюю точку для заливки
             let start = null;
-            
-            // Центр масс следа
-            let cx = 0, cy = 0;
-            p.trail.forEach(t => { cx += t.x; cy += t.y; });
-            cx = Math.floor(cx / p.trail.length);
-            cy = Math.floor(cy / p.trail.length);
-            
-            const dirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}];
-            
-            // Ищем пустую или вражескую клетку рядом с центром
-            for (let r = -5; r <= 5 && !start; r++) {
-                for (let c = -5; c <= 5 && !start; c++) {
-                    const sx = cx + c, sy = cy + r;
-                    if (sx >= 0 && sx < GRID && sy >= 0 && sy < GRID) {
-                        if (!trailSet.has(`${sx},${sy}`) && grid[sy][sx] !== id) {
-                            start = { x: sx, y: sy };
-                        }
-                    }
+            for (let y=minY; y<=maxY && !start; y++) {
+                for (let x=minX; x<=maxX && !start; x++) {
+                    if (!trailSet.has(`${x},${y}`) && grid[y][x] !== id) start = {x, y};
                 }
             }
             
             if (!start) {
-                const trailId = id === 1 ? 3 : 4;
-                p.trail.forEach(t => {
-                    if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
-                });
+                const trailId = id===1 ? 3 : 4;
+                for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                    if (grid[r][c] === trailId) grid[r][c] = 0;
+                }
                 return;
             }
             
-            // BFS — заливаем всё внутри, включая вражескую базу
             const visited = new Set();
             const queue = [start];
             visited.add(`${start.x},${start.y}`);
@@ -215,203 +179,101 @@
             let isInside = true;
             
             while (queue.length > 0 && isInside) {
-                const { x, y } = queue.shift();
-                captured.push({ x, y });
-                
-                for (const d of dirs) {
-                    const nx = x + d.x, ny = y + d.y;
-                    const key = `${nx},${ny}`;
-                    
+                const {x, y} = queue.shift();
+                captured.push({x, y});
+                for (const d of [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}]) {
+                    const nx = x+d.x, ny = y+d.y, key = `${nx},${ny}`;
                     if (visited.has(key)) continue;
                     if (trailSet.has(key)) continue;
-                    
-                    if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
-                        isInside = false;
-                        break;
-                    }
-                    
-                    // Можно закрашивать: пустые клетки, вражескую базу, вражеский след
+                    if (nx<0 || nx>=GRID || ny<0 || ny>=GRID) { isInside = false; break; }
                     if (grid[ny][nx] === id) continue;
-                    
                     visited.add(key);
-                    queue.push({ x: nx, y: ny });
+                    queue.push({x:nx, y:ny});
                 }
             }
             
-            const enemyId = id === 1 ? 2 : 1;
-            
-            if (isInside && captured.length > 0 && captured.length < (GRID * GRID / 2)) {
-                // Закрашиваем захваченные клетки
-                captured.forEach(({ x, y }) => {
-                    // Если захватили вражескую базу — проверяем, не последняя ли это клетка врага
-                    grid[y][x] = id;
-                });
-                // След тоже становится территорией
-                p.trail.forEach(t => {
-                    grid[t.y][t.x] = id;
-                });
-                
-                // Проверяем — осталась ли у врага хоть одна клетка базы
-                if (!grid.some(row => row.some(cell => cell === enemyId))) {
-                    // Враг полностью захвачен!
-                    const enemy = id === 1 ? p2 : p1;
-                    enemy.alive = false;
-                    gameRunning = false;
-                    const winner = id === 1 ? '🔴 Игрок 1' : '🔵 Игрок 2';
-                    setTimeout(() => Modal.show('🏆 Полный захват!', `${winner} победил!`).then(() => start()), 300);
-                    return;
-                }
-                
+            if (isInside && captured.length > 0 && captured.length < 2000) {
+                captured.forEach(({x,y}) => grid[y][x] = id);
+                p.trail.forEach(t => grid[t.y][t.x] = id);
                 SFX.win();
             } else {
-                // Не замкнуто — стираем след
-                const trailId = id === 1 ? 3 : 4;
-                p.trail.forEach(t => {
-                    if (grid[t.y][t.x] === trailId) grid[t.y][t.x] = 0;
-                });
+                const trailId = id===1 ? 3 : 4;
+                for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                    if (grid[r][c] === trailId) grid[r][c] = 0;
+                }
             }
         }
 
         function update() {
             if (!gameRunning) return;
-            
             movePlayer(p1, dir1, 1);
             movePlayer(p2, dir2, 2);
-            
-            if (!gameRunning) return; // Могли закончить игру внутри movePlayer
-            
             if (!p1.alive || !p2.alive) {
                 gameRunning = false;
-                let winner;
-                if (!p1.alive && !p2.alive) winner = 'Ничья!';
-                else winner = (!p1.alive ? '🔵 Игрок 2' : '🔴 Игрок 1') + ' победил!';
-                setTimeout(() => Modal.show('Игра окончена', winner).then(() => start()), 300);
+                let w = !p1.alive && !p2.alive ? 'Ничья!' : (!p1.alive ? '🔵 Игрок 2' : '🔴 Игрок 1') + ' победил!';
+                setTimeout(() => Modal.show('Игра окончена', w).then(() => start()), 300);
                 return;
             }
-            
-            updateScores();
-            draw();
+            updateScores(); draw();
         }
 
         function updateScores() {
-            document.getElementById('score1').textContent = countTerritory(1);
-            document.getElementById('score2').textContent = countTerritory(2);
-        }
-
-        function countTerritory(id) {
-            let count = 0;
-            for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) if (grid[r][c] === id) count++;
-            return Math.round(count / (GRID * GRID) * 100);
+            let c1=0, c2=0;
+            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                if (grid[r][c]===1) c1++; else if (grid[r][c]===2) c2++;
+            }
+            document.getElementById('score1').textContent = Math.round(c1/(GRID*GRID)*100);
+            document.getElementById('score2').textContent = Math.round(c2/(GRID*GRID)*100);
         }
 
         function draw() {
             ctx.clearRect(0, 0, SIZE, SIZE);
-            
-            // Фон
-            ctx.fillStyle = '#1a1a3e';
-            ctx.fillRect(0, 0, SIZE, SIZE);
-            
-            for (let r = 0; r < GRID; r++) {
-                for (let c = 0; c < GRID; c++) {
-                    const x = c * CELL, y = r * CELL;
-                    if (grid[r][c] === 1) {
-                        ctx.fillStyle = '#e94560';
-                        ctx.fillRect(x, y, CELL, CELL);
-                    } else if (grid[r][c] === 2) {
-                        ctx.fillStyle = '#4a90d9';
-                        ctx.fillRect(x, y, CELL, CELL);
-                    } else if (grid[r][c] === 3) {
-                        ctx.fillStyle = '#ffaaaa';
-                        ctx.fillRect(x, y, CELL, CELL);
-                    } else if (grid[r][c] === 4) {
-                        ctx.fillStyle = '#aaaaff';
-                        ctx.fillRect(x, y, CELL, CELL);
-                    }
-                }
+            ctx.fillStyle = '#1a1a3e'; ctx.fillRect(0, 0, SIZE, SIZE);
+            const cs = SIZE/GRID;
+            for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
+                const x=c*cs, y=r*cs;
+                if (grid[r][c]===1) { ctx.fillStyle='#e94560'; ctx.fillRect(x,y,cs,cs); }
+                else if (grid[r][c]===2) { ctx.fillStyle='#4a90d9'; ctx.fillRect(x,y,cs,cs); }
+                else if (grid[r][c]===3) { ctx.fillStyle='#ffaaaa'; ctx.fillRect(x,y,cs,cs); }
+                else if (grid[r][c]===4) { ctx.fillStyle='#aaaaff'; ctx.fillRect(x,y,cs,cs); }
             }
-            
-            // Игроки
-            if (p1 && p1.alive) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(p1.x * CELL, p1.y * CELL, CELL, CELL);
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(p1.x * CELL + 1, p1.y * CELL + 1, CELL - 2, CELL - 2);
-            }
-            if (p2 && p2.alive) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(p2.x * CELL, p2.y * CELL, CELL, CELL);
-                ctx.fillStyle = '#0066ff';
-                ctx.fillRect(p2.x * CELL + 1, p2.y * CELL + 1, CELL - 2, CELL - 2);
-            }
+            if (p1&&p1.alive) { ctx.fillStyle='#fff'; ctx.fillRect(p1.x*cs-1,p1.y*cs-1,cs+2,cs+2); ctx.fillStyle='#f00'; ctx.fillRect(p1.x*cs,p1.y*cs,cs,cs); }
+            if (p2&&p2.alive) { ctx.fillStyle='#fff'; ctx.fillRect(p2.x*cs-1,p2.y*cs-1,cs+2,cs+2); ctx.fillStyle='#00f'; ctx.fillRect(p2.x*cs,p2.y*cs,cs,cs); }
         }
 
-        function setupJoystick(baseId, stickId, setDir) {
-            const base = document.getElementById(baseId);
-            const stick = document.getElementById(stickId);
+        function setupJoystick(baseId, stickId, playerId) {
+            const base = document.getElementById(baseId), stick = document.getElementById(stickId);
             let active = false;
-
-            base.addEventListener('pointerdown', (e) => {
-                active = true;
-                base.setPointerCapture(e.pointerId);
-                moveStick(e);
-            });
-            base.addEventListener('pointermove', (e) => {
-                if (!active) return;
-                moveStick(e);
-            });
-            base.addEventListener('pointerup', () => {
-                active = false;
-                stick.style.transform = 'translate(-50%, -50%)';
-            });
-            base.addEventListener('pointerleave', () => {
-                active = false;
-                stick.style.transform = 'translate(-50%, -50%)';
-            });
-
+            base.addEventListener('pointerdown', e => { active=true; base.setPointerCapture(e.pointerId); moveStick(e); });
+            base.addEventListener('pointermove', e => { if (!active) return; moveStick(e); });
+            base.addEventListener('pointerup', () => { active=false; stick.style.transform='translate(-50%,-50%)'; });
+            base.addEventListener('pointerleave', () => { active=false; stick.style.transform='translate(-50%,-50%)'; });
             function moveStick(e) {
                 const rect = base.getBoundingClientRect();
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
-                const dx = e.clientX - cx;
-                const dy = e.clientY - cy;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const maxDist = 22;
-
-                let mx = dx, my = dy;
-                if (dist > maxDist) {
-                    mx = dx / dist * maxDist;
-                    my = dy / dist * maxDist;
-                }
-
+                const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+                const dx = e.clientX-cx, dy = e.clientY-cy;
+                const dist = Math.sqrt(dx*dx+dy*dy), maxDist = 30;
+                let mx=dx, my=dy;
+                if (dist>maxDist) { mx=dx/dist*maxDist; my=dy/dist*maxDist; }
                 stick.style.transform = `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`;
-
-                if (dist > 8) {
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        setDir(dx > 0 ? 'right' : 'left');
-                    } else {
-                        setDir(dy > 0 ? 'down' : 'up');
-                    }
+                if (dist>12) {
+                    let d = Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up');
+                    if (playerId===1) dir1=d; else dir2=d;
                 }
             }
         }
 
-        setupJoystick('joy1', 'stick1', (d) => { if (d) dir1 = d; });
-        setupJoystick('joy2', 'stick2', (d) => { if (d) dir2 = d; });
+        setupJoystick('joy1', 'stick1', 1);
+        setupJoystick('joy2', 'stick2', 2);
 
-        document.addEventListener('keydown', (e) => {
-            const keyMap = {
-                'w': 'up', 's': 'down', 'a': 'left', 'd': 'right',
-                'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right'
-            };
-            const dir = keyMap[e.key];
-            if (!dir) return;
+        document.addEventListener('keydown', e => {
+            const m = {w:'up',s:'down',a:'left',d:'right',ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};
+            const d = m[e.key]; if (!d) return;
             e.preventDefault();
-            
-            if (['w','s','a','d'].includes(e.key)) dir1 = dir;
-            else dir2 = dir;
+            if (['w','s','a','d'].includes(e.key)) dir1=d; else dir2=d;
         });
 
-        setInterval(update, 100);
+        setInterval(update, 150);
         document.getElementById('newGame').addEventListener('click', start);
         start();
     </script>
