@@ -30,7 +30,6 @@
     <div class="container">
         <h1>🎮 BatonCHIK Games</h1>
         <p class="subtitle">Выбери игру и начни играть!</p>
-        
         <div class="games-grid">
             <a href="clicker.html" class="game-card"><div class="game-icon red">🔴</div><div class="game-info"><div class="game-name">Кликер</div><div class="game-desc">Жми и зарабатывай очки!</div></div><div class="game-arrow">▶</div></a>
             <a href="quiz.html" class="game-card"><div class="game-icon blue">🧠</div><div class="game-info"><div class="game-name">ИИ-Викторина</div><div class="game-desc">Нейросеть задаёт вопросы</div></div><div class="game-arrow">▶</div></a>
@@ -73,11 +72,9 @@
             <a href="fantasyhall.html" class="game-card"><div class="game-icon orange">⚔️</div><div class="game-info"><div class="game-name">Fantasy Hall</div><div class="game-desc">Геройское приключение</div></div><div class="game-arrow">▶</div></a>
             <a href="stack.html" class="game-card"><div class="game-icon gold">📦</div><div class="game-info"><div class="game-name">Block Stack</div><div class="game-desc">Строй башню</div></div><div class="game-arrow">▶</div></a>
         </div>
-        
         <a href="titles.html" class="footer-link">🏆 Титулы</a>
         <div class="version">v7.0 — BatonCHIK Games</div>
     </div>
-    
     <script src="sfx.js"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
@@ -85,6 +82,21 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) SFX.stopMusic();
             else SFX.playMusic('ruins');
+        });
+        
+        // Кнопка установки PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.createElement('button');
+            btn.textContent = '📲 Установить приложение';
+            btn.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:14px 24px;background:#e94560;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:bold;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+            btn.addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => btn.remove());
+            });
+            document.body.appendChild(btn);
         });
     </script>
 </body>
