@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fruit Merge — BatonCHIK Games</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,22 +31,26 @@
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
         SFX.playMusic('sweden');
+        
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
         const W = 300, H = 400;
+        
         const FRUITS = ['🍒','🍓','🍊','🍋','🍏','🍇','🍈','🍑','🥝','🍉','🍍'];
-        const RADII = [14, 18, 24, 30, 38, 48, 58, 70, 84, 100, 118];
-        const GRAVITY = 0.4;
-        const DAMPING = 0.4;
-        const DROP_Y = 20;
+        const RADII = [14, 20, 28, 36, 46, 58, 72, 88, 106, 126, 148];
+        
+        const GRAVITY = 0.25;
+        const DAMPING = 0.2;
+        const DROP_Y = 50;
+        
         let fruits = [], score = 0, gameOver = false;
         let dropX = 150, nextFruit = 0;
         let canDrop = true;
-        let maxSpawnLevel = 4; // До какого уровня фрукты могут выпадать (0-вишня ... 4-яблоко)
 
         function start() {
-            fruits = []; score = 0; gameOver = false; dropX = 150; canDrop = true; maxSpawnLevel = 4;
-            nextFruit = Math.floor(Math.random() * Math.min(5, maxSpawnLevel + 1));
+            fruits = []; score = 0; gameOver = false; dropX = 150; canDrop = true;
+            nextFruit = 0;
             document.getElementById('score').textContent = '0';
             document.getElementById('record').textContent = Highscores.get('fruitmerge');
             draw();
@@ -71,16 +76,13 @@
             
             const level = nextFruit;
             const r = RADII[level];
-            const x = dropX;
-            const y = DROP_Y + r;
-            const fruit = { x, y, r, level, vy: 0, vx: 0, settled: false };
+            const fruit = { x: dropX, y: DROP_Y, r, level, vy: 0, vx: 0, settled: false };
             
-            // Проверка — не пересекается ли с другими при спавне
             for (const f of fruits) {
                 const dx = fruit.x - f.x;
                 const dy = fruit.y - f.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < fruit.r + f.r - 2) {
+                if (dist < fruit.r + f.r - 4) {
                     gameOver = true;
                     Highscores.save('fruitmerge', score);
                     document.getElementById('record').textContent = Highscores.get('fruitmerge');
@@ -90,54 +92,37 @@
             }
             
             fruits.push(fruit);
-            
-            // Выбираем следующий фрукт
-            nextFruit = Math.floor(Math.random() * Math.min(5, maxSpawnLevel + 1));
-            
-            setTimeout(() => { canDrop = true; }, 250);
+            nextFruit = Math.random() < 0.85 ? 0 : 1;
+            setTimeout(() => { canDrop = true; }, 200);
         }
 
         function update() {
             if (gameOver) return;
             
-            // Гравитация
             for (const f of fruits) {
                 if (f.settled) continue;
                 f.vy += GRAVITY;
                 f.y += f.vy;
                 f.x += f.vx;
-                f.vx *= 0.99;
+                f.vx *= 0.98;
                 
-                // Стены
-                if (f.x - f.r < 0) {
-                    f.x = f.r;
-                    f.vx = Math.abs(f.vx) * DAMPING;
-                }
-                if (f.x + f.r > W) {
-                    f.x = W - f.r;
-                    f.vx = -Math.abs(f.vx) * DAMPING;
-                }
+                if (f.x - f.r < 0) { f.x = f.r; f.vx = Math.abs(f.vx) * DAMPING; }
+                if (f.x + f.r > W) { f.x = W - f.r; f.vx = -Math.abs(f.vx) * DAMPING; }
                 
-                // Пол — жёсткое ограничение, не продавливаем
                 if (f.y + f.r >= H) {
                     f.y = H - f.r;
                     f.vy = -Math.abs(f.vy) * DAMPING;
-                    f.vx *= 0.7;
-                    if (Math.abs(f.vy) < 0.3) {
-                        f.vy = 0;
-                        f.vx = 0;
-                        f.settled = true;
-                    }
+                    f.vx *= 0.5;
+                    if (Math.abs(f.vy) < 0.2) { f.vy = 0; f.vx = 0; f.settled = true; }
                 }
                 
-                // Потолок
-                if (f.y - f.r < 0) {
-                    f.y = f.r;
+                if (f.y - f.r < DROP_Y - 10) {
+                    f.y = DROP_Y - 10 + f.r;
                     f.vy = Math.abs(f.vy) * DAMPING;
                 }
             }
             
-            // Круглые коллизии
+            // Коллизии — 3 прохода, большие тяжелее
             for (let pass = 0; pass < 3; pass++) {
                 for (let i = 0; i < fruits.length; i++) {
                     for (let j = i + 1; j < fruits.length; j++) {
@@ -150,30 +135,29 @@
                         if (dist < minDist && dist > 0.001) {
                             const nx = dx / dist;
                             const ny = dy / dist;
-                            const overlap = (minDist - dist) / 2;
+                            const overlap = minDist - dist;
                             
-                            // Раздвигаем
-                            a.x -= nx * overlap;
-                            a.y -= ny * overlap;
-                            b.x += nx * overlap;
-                            b.y += ny * overlap;
+                            const totalMass = a.r + b.r;
+                            const ratioA = b.r / totalMass;
+                            const ratioB = a.r / totalMass;
                             
-                            // Не даём уйти за границы при раздвигании
-                            a.y = Math.min(a.y, H - a.r);
-                            b.y = Math.min(b.y, H - b.r);
-                            a.y = Math.max(a.y, a.r);
-                            b.y = Math.max(b.y, b.r);
-                            a.x = Math.max(a.r, Math.min(W - a.r, a.x));
-                            b.x = Math.max(b.r, Math.min(W - b.r, b.x));
+                            a.x -= nx * overlap * ratioA;
+                            a.y -= ny * overlap * ratioA;
+                            b.x += nx * overlap * ratioB;
+                            b.y += ny * overlap * ratioB;
                             
-                            // Обмен скоростями
+                            for (const f of [a, b]) {
+                                f.y = Math.min(H - f.r, Math.max(f.r, f.y));
+                                f.x = Math.max(f.r, Math.min(W - f.r, f.x));
+                            }
+                            
                             const relVel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
                             if (relVel < 0) {
-                                const impulse = relVel * 0.4;
-                                a.vx += impulse * nx;
-                                a.vy += impulse * ny;
-                                b.vx -= impulse * nx;
-                                b.vy -= impulse * ny;
+                                const impulse = relVel * 0.3;
+                                a.vx += impulse * nx * ratioA;
+                                a.vy += impulse * ny * ratioA;
+                                b.vx -= impulse * nx * ratioB;
+                                b.vy -= impulse * ny * ratioB;
                             }
                         }
                     }
@@ -190,25 +174,18 @@
                         const dy = fruits[j].y - fruits[i].y;
                         const dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        // Слияние при 60% перекрытии
-                        if (dist < (fruits[i].r + fruits[j].r) * 0.6) {
+                        if (dist < (fruits[i].r + fruits[j].r) * 0.5) {
                             const newLevel = fruits[i].level + 1;
                             fruits[i].x = (fruits[i].x + fruits[j].x) / 2;
                             fruits[i].y = (fruits[i].y + fruits[j].y) / 2;
                             fruits[i].level = newLevel;
                             fruits[i].r = RADII[newLevel];
                             fruits[i].settled = false;
-                            fruits[i].vy = -3;
-                            fruits[i].vx = (Math.random() - 0.5) * 2;
+                            fruits[i].vy = -2;
+                            fruits[i].vx = 0;
                             fruits.splice(j, 1);
                             score += (newLevel + 1) * 10;
                             document.getElementById('score').textContent = score;
-                            
-                            // Повышаем максимальный уровень спавна
-                            if (newLevel > maxSpawnLevel) {
-                                maxSpawnLevel = Math.min(newLevel, FRUITS.length - 2);
-                            }
-                            
                             SFX.coin();
                             j--;
                         }
@@ -216,12 +193,8 @@
                 }
             }
             
-            // Проверка переполнения
             for (const f of fruits) {
-                if (f.y - f.r < 5 && f.settled) {
-                    gameOver = true;
-                    break;
-                }
+                if (f.settled && f.y - f.r < DROP_Y - 5) { gameOver = true; break; }
             }
             
             if (gameOver) {
@@ -236,14 +209,24 @@
         function draw() {
             ctx.clearRect(0, 0, W, H);
             
-            // Следующий фрукт (предпросмотр)
+            // Линия переполнения
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, DROP_Y);
+            ctx.lineTo(W, DROP_Y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Предпросмотр
             if (!gameOver && canDrop) {
-                ctx.globalAlpha = 0.35;
+                ctx.globalAlpha = 0.3;
                 const sz = RADII[nextFruit] * 1.6;
                 ctx.font = `${sz}px serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(FRUITS[nextFruit], dropX, DROP_Y + RADII[nextFruit]);
+                ctx.fillText(FRUITS[nextFruit], dropX, DROP_Y);
                 ctx.globalAlpha = 1;
             }
             
