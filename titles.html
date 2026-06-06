@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Титулы — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --gold: #f0c040; --radius: 14px; }
@@ -30,13 +30,11 @@
         <a href="main.html" class="back">← Назад</a>
         <h2>🏆 Титулы</h2>
         <p style="color:var(--text-secondary);margin-bottom:16px;">Выполни достижения или введи секретный код</p>
-        
         <div class="input-group">
             <input type="text" id="codeInput" placeholder="Введи промокод...">
             <button class="btn" id="submitCode">OK</button>
         </div>
         <p class="feedback" id="codeFeedback"></p>
-
         <h3 style="margin-top:24px;">Твои титулы:</h3>
         <div class="titles-list" id="titlesList"></div>
         <div class="stats" id="stats"></div>
@@ -44,7 +42,7 @@
     <script src="highscores.js"></script>
     <script>
         const TITLES = [
-            { id: 'APP-INSTALLER', name: 'Истинный Геймер', emoji: '📲', desc: 'Установить приложение', check: () => localStorage.getItem('title-app-installer') === '1' },
+            { id: 'APP-INSTALLER', name: 'Истинный Геймер', emoji: '📲', desc: 'Установить приложение', check: () => localStorage.getItem('pwa-installed') === '1' || localStorage.getItem('title-app-installer') === '1' },
             { id: 'CLICK-MASTER', name: 'Клик-мастер', emoji: '🔴', desc: '10 000 000 очков в Кликере', check: () => parseInt(localStorage.getItem('hs_clicker')||'0') >= 10000000 },
             { id: 'SNAKE-KING', name: 'Змеиный король', emoji: '🐍', desc: '500 очков в Змейке', check: () => parseInt(localStorage.getItem('hs_snake')||'0') >= 500 },
             { id: 'INVADER-HERO', name: 'Герой галактики', emoji: '👾', desc: 'Победить на Ультрахардкоре', check: () => localStorage.getItem('earned_INVADER-HERO') === '1' },
@@ -64,10 +62,7 @@
             { id: 'PERFECTIONIST', name: 'Перфекционист', emoji: '🌟', desc: 'Собрать все 12 игровых титулов', check: () => TITLES.filter(t => !t.secret && t.id !== 'COLLECTOR' && t.id !== 'PERFECTIONIST' && t.id !== 'APP-INSTALLER').every(t => t.check()) },
         ];
 
-        const PROMOCODES = {
-            'BATONCHIK': 'code_BatonCHIK',
-            'VIBECODING': 'code_vibecoding',
-        };
+        const PROMOCODES = { 'BATONCHIK': 'code_BatonCHIK', 'VIBECODING': 'code_vibecoding' };
 
         function render() {
             const list = document.getElementById('titlesList');
@@ -76,10 +71,8 @@
                 const has = title.check();
                 if (has) owned++;
                 return `<div class="title-item ${has ? '' : 'locked'} ${title.secret && !has ? 'secret' : ''}">
-                    <div>
-                        <span class="title-name">${title.emoji} ${title.name}</span>
-                        <div style="font-size:12px;color:var(--text-secondary);">${has ? title.desc : (title.secret ? '???' : title.desc)}</div>
-                    </div>
+                    <div><span class="title-name">${title.emoji} ${title.name}</span>
+                    <div style="font-size:12px;color:var(--text-secondary);">${has ? title.desc : (title.secret ? '???' : title.desc)}</div></div>
                     <span class="title-status">${has ? '✅ Получен' : '🔒 Закрыт'}</span>
                 </div>`;
             }).join('');
@@ -89,21 +82,11 @@
         document.getElementById('submitCode').addEventListener('click', () => {
             const input = document.getElementById('codeInput').value.trim().toUpperCase();
             const fb = document.getElementById('codeFeedback');
-            if (PROMOCODES[input]) {
-                localStorage.setItem(PROMOCODES[input], '1');
-                fb.textContent = '✅ Титул получен!';
-                render();
-                return;
-            }
+            if (PROMOCODES[input]) { localStorage.setItem(PROMOCODES[input], '1'); fb.textContent = '✅ Титул получен!'; render(); return; }
             if (input === 'ICOUNT' || !isNaN(input)) {
                 const scores = Highscores.getAll();
                 const total = Object.values(scores).reduce((a, b) => a + b, 0);
-                if (parseInt(input) === total && total > 0) {
-                    localStorage.setItem('code_ICOUNT', '1');
-                    fb.textContent = '✅ Титул "I can count!" получен!';
-                    render();
-                    return;
-                }
+                if (parseInt(input) === total && total > 0) { localStorage.setItem('code_ICOUNT', '1'); fb.textContent = '✅ Титул "I can count!" получен!'; render(); return; }
             }
             fb.textContent = '❌ Неверный код';
         });
