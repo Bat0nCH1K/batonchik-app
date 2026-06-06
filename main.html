@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BatonCHIK Games</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="BatonCHIK Games">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="BatonCHIK">
+    <meta name="theme-color" content="#e94560">
+    <script src="https://unpkg.com/pwacompat@2.0.17/pwacompat.min.js" async></script>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --radius: 16px; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,6 +31,17 @@
         .game-info { text-align: left; flex: 1; } .game-name { font-size: 16px; font-weight: 600; } .game-desc { font-size: 12px; color: var(--text-secondary); } .game-arrow { font-size: 20px; color: var(--text-secondary); }
         .version { text-align: center; color: #555; font-size: 11px; margin-top: 30px; }
         .footer-link { display: block; margin-top: 16px; color: var(--gold); text-decoration: none; font-weight: bold; font-size: 15px; }
+        #install-btn {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            padding: 14px 24px; background: #4a90d9; color: #fff; border: none;
+            border-radius: 14px; font-size: 16px; font-weight: bold; z-index: 9999;
+            cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: none; animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%,100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+        }
     </style>
 </head>
 <body>
@@ -53,6 +71,9 @@
         <a href="titles.html" class="footer-link">🏆 Титулы</a>
         <div class="version">v7.0 — BatonCHIK Games</div>
     </div>
+    
+    <button id="install-btn">📲 Установить</button>
+    
     <script src="sfx.js"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
@@ -62,58 +83,37 @@
             else SFX.playMusic('ruins');
         });
 
-        // Кнопка установки как на airhorner.com
-        window.addEventListener('load', () => {
+        (function() {
+            const btn = document.getElementById('install-btn');
             let deferredPrompt;
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-            const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
-            
-            // Если уже в АПе — не показываем
-            if (isStandalone || isFullscreen) return;
             
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                showBtn();
+                btn.style.display = 'block';
             });
             
-            // Если beforeinstallprompt не сработал — показываем кнопку с инструкцией
-            setTimeout(() => {
-                if (!deferredPrompt) showManualBtn();
-            }, 3000);
-            
-            function showBtn() {
-                const btn = document.createElement('button');
-                btn.textContent = '📲 Установить приложение';
-                btn.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:14px 24px;background:#4a90d9;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:bold;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);animation:pulse 2s infinite;';
-                btn.onclick = () => {
+            btn.addEventListener('click', () => {
+                if (deferredPrompt) {
                     deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then(() => btn.remove());
-                };
-                document.body.appendChild(btn);
-                
-                // Добавляем анимацию
-                const style = document.createElement('style');
-                style.textContent = '@keyframes pulse { 0%,100% { transform:translateX(-50%) scale(1); } 50% { transform:translateX(-50%) scale(1.05); } }';
-                document.head.appendChild(style);
+                    deferredPrompt.userChoice.then(() => {
+                        btn.style.display = 'none';
+                    });
+                } else {
+                    alert('Нажми ⋮ (меню) → «Добавить на главный экран»');
+                }
+            });
+            
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                btn.style.display = 'none';
             }
             
-            function showManualBtn() {
-                const btn = document.createElement('button');
-                btn.textContent = '📲 Установить АП';
-                btn.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:14px 24px;background:#e94560;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:bold;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
-                btn.onclick = () => {
-                    const overlay = document.createElement('div');
-                    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
-                    overlay.innerHTML = '<div style="color:#fff;text-align:center;font-size:18px;line-height:2;"><b>📱 Установка АП:</b><br><br>Нажми <b>⋮</b> в браузере<br>↓<br>Выбери<br><b>«Добавить на главный экран»</b><br><br><button style="padding:12px 30px;background:#4a90d9;color:#fff;border:none;border-radius:10px;font-size:16px;margin-top:10px;">Понятно</button></div>';
-                    overlay.querySelector('button').onclick = () => overlay.remove();
-                    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-                    document.body.appendChild(overlay);
-                    btn.remove();
-                };
-                document.body.appendChild(btn);
-            }
-        });
+            setTimeout(() => {
+                if (!deferredPrompt && btn.style.display === 'none') {
+                    btn.style.display = 'block';
+                }
+            }, 2000);
+        })();
     </script>
 </body>
 </html>
