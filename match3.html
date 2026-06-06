@@ -2,191 +2,138 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Три в ряд — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
-        .combo { font-size: 16px; color: #ff9800; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>💎 Три в ряд</h2>
         <div class="score">Очки: <span id="m3Score">0</span></div>
-        <div class="combo">🔥 Комбо: <span id="m3Combo">0</span></div>
         <div class="record">🏆 Рекорд: <span id="m3Record">0</span></div>
-        <canvas id="m3Canvas" width="320" height="320"></canvas>
+        <canvas id="m3Canvas" width="300" height="300"></canvas>
+        <button class="btn" id="m3NewGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script>
         SFX.playMusic('papers');
-        
         const canvas = document.getElementById('m3Canvas'), ctx = canvas.getContext('2d');
-        const ROWS = 8, COLS = 8, CELL = 40;
-        const colors = ['#e94560','#4a90d9','#4caf84','#f0c040','#8e44ad'];
-        let board = [], selected = null, score = 0, processing = false, reverting = false;
-        let comboCount = 0;
-        let animating = false, animFrom = null, animTo = null, animStart = 0;
-        const ANIM_DURATION = 150;
+        const ROWS = 8, COLS = 8, CELL = 37.5;
+        const COLORS = ['#e94560','#4a90d9','#4caf84','#f0c040','#ff9800','#8e44ad'];
+        let grid = [], selected = null, score = 0, gameOver = false;
 
         document.getElementById('m3Record').textContent = Highscores.get('match3');
 
         function start() {
-            score = 0; comboCount = 0;
+            grid = []; score = 0; gameOver = false; selected = null;
             document.getElementById('m3Score').textContent = '0';
-            document.getElementById('m3Combo').textContent = '0';
-            board = Array(ROWS).fill().map(() => Array(COLS).fill().map(() => Math.floor(Math.random()*5)));
-            let matches = getMatches();
-            while (matches.length > 0) { matches.forEach(({r,c}) => board[r][c] = Math.floor(Math.random()*5)); matches = getMatches(); }
+            for (let r=0; r<ROWS; r++) {
+                grid[r] = [];
+                for (let c=0; c<COLS; c++) {
+                    let color;
+                    do { color = Math.floor(Math.random()*COLORS.length); }
+                    while ((r>=2 && grid[r-1][c]===color && grid[r-2][c]===color) || (c>=2 && grid[r][c-1]===color && grid[r][c-2]===color));
+                    grid[r][c] = color;
+                }
+            }
             draw();
         }
 
-        function draw(animProgress) {
+        function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
-                if (board[r][c] === -1) continue;
-                let x = c*CELL+CELL/2, y = r*CELL+CELL/2;
-                
-                if (animating && animFrom && animTo && animProgress !== undefined) {
-                    const fr = animFrom.r, fc = animFrom.c, tr = animTo.r, tc = animTo.c;
-                    if ((r===fr && c===fc) || (r===tr && c===tc)) {
-                        const dx = (tc-fc)*CELL, dy = (tr-fr)*CELL;
-                        if (r===fr && c===fc) { x += dx*animProgress; y += dy*animProgress; }
-                        else if (r===tr && c===tc) { x -= dx*(1-animProgress); y -= dy*(1-animProgress); }
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS; c++) {
+                    const x = c*CELL+CELL/2, y = r*CELL+CELL/2, r2 = CELL/2-3;
+                    ctx.fillStyle = COLORS[grid[r][c]];
+                    ctx.beginPath(); ctx.arc(x, y, r2, 0, 6.28); ctx.fill();
+                    if (selected && selected.r===r && selected.c===c) {
+                        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+                        ctx.beginPath(); ctx.arc(x, y, r2+2, 0, 6.28); ctx.stroke();
                     }
                 }
-                
-                ctx.fillStyle = colors[board[r][c]];
-                ctx.beginPath();
-                ctx.arc(x, y, CELL/2-4, 0, Math.PI*2);
-                ctx.fill();
-                
-                // Тёмная обводка
-                ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.arc(x, y, CELL/2-4, 0, Math.PI*2);
-                ctx.stroke();
-                
-                if (selected && selected.r===r && selected.c===c && !animating) {
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.arc(x, y, CELL/2-1, 0, Math.PI*2);
-                    ctx.stroke();
-                }
             }
         }
 
-        function getMatches() {
-            const matches = [];
-            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS-2; c++) if (board[r][c]!==-1 && board[r][c]===board[r][c+1] && board[r][c]===board[r][c+2]) matches.push({r,c},{r,c:c+1},{r,c:c+2});
-            for (let c=0; c<COLS; c++) for (let r=0; r<ROWS-2; r++) if (board[r][c]!==-1 && board[r][c]===board[r+1][c] && board[r][c]===board[r+2][c]) matches.push({r,c},{r:r+1,c},{r:r+2,c});
-            const seen = new Set();
-            const filtered = matches.filter(m => { const key = `${m.r},${m.c}`; if (seen.has(key)) return false; seen.add(key); return true; });
-            if (filtered.length > 0) { comboCount++; document.getElementById('m3Combo').textContent = comboCount; if (filtered.length >= 7) localStorage.setItem('earned_MATCH-STRIKE', '1'); }
-            else { comboCount = 0; document.getElementById('m3Combo').textContent = '0'; }
-            return filtered;
-        }
+        canvas.addEventListener('click', (e) => {
+            if (gameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const c = Math.floor((e.clientX-rect.left)/CELL);
+            const r = Math.floor((e.clientY-rect.top)/CELL);
+            if (r<0||r>=ROWS||c<0||c>=COLS) return;
+            
+            if (!selected) { selected = {r,c}; draw(); return; }
+            if (selected.r===r && selected.c===c) { selected = null; draw(); return; }
+            
+            const dr = Math.abs(selected.r-r), dc = Math.abs(selected.c-c);
+            if ((dr===1&&dc===0) || (dr===0&&dc===1)) {
+                [grid[selected.r][selected.c], grid[r][c]] = [grid[r][c], grid[selected.r][selected.c]];
+                const matches = findMatches();
+                if (matches.length > 0) {
+                    SFX.match();
+                    processMatches(matches);
+                } else {
+                    [grid[selected.r][selected.c], grid[r][c]] = [grid[r][c], grid[selected.r][selected.c]];
+                }
+            }
+            selected = null; draw();
+        });
 
-        function gravity() {
+        function findMatches() {
+            const matched = new Set();
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS-2; c++) {
+                    if (grid[r][c]===grid[r][c+1]&&grid[r][c]===grid[r][c+2]) {
+                        matched.add(`${r},${c}`); matched.add(`${r},${c+1}`); matched.add(`${r},${c+2}`);
+                    }
+                }
+            }
             for (let c=0; c<COLS; c++) {
-                let write = ROWS-1;
-                for (let r=ROWS-1; r>=0; r--) { if (board[r][c] !== -1) { board[write][c] = board[r][c]; if (write !== r) board[r][c] = -1; write--; } }
-                while (write >= 0) { board[write][c] = Math.floor(Math.random()*5); write--; }
-            }
-        }
-
-        function processMatches() {
-            processing = true;
-            let matches = getMatches();
-            function step() {
-                if (matches.length === 0) { processing = false; draw(); Highscores.save('match3', score); document.getElementById('m3Record').textContent = Highscores.get('match3'); return; }
-                score += matches.length * 10 * (1 + Math.floor(comboCount/3));
-                document.getElementById('m3Score').textContent = score;
-                SFX.match();
-                matches.forEach(({r,c}) => board[r][c] = -1);
-                draw();
-                setTimeout(() => { gravity(); draw(); setTimeout(() => { matches = getMatches(); step(); }, 200); }, 200);
-            }
-            step();
-        }
-
-        function swap(r1,c1,r2,c2) { [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]]; }
-
-        function animateSwap(fr, fc, tr, tc, callback) {
-            animating = true; animFrom = {r:fr, c:fc}; animTo = {r:tr, c:tc}; animStart = performance.now();
-            function animFrame(time) {
-                const progress = Math.min(1, (time-animStart)/ANIM_DURATION);
-                draw(progress);
-                if (progress < 1) { requestAnimationFrame(animFrame); }
-                else { animating = false; animFrom = null; animTo = null; draw(); if (callback) callback(); }
-            }
-            requestAnimationFrame(animFrame);
-        }
-
-        // Свайп + тап
-        let touchStartX = 0, touchStartY = 0;
-        canvas.addEventListener('touchstart', (e) => {
-            if (processing || reverting || animating) return;
-            const rect = canvas.getBoundingClientRect();
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        });
-
-        canvas.addEventListener('touchend', (e) => {
-            if (processing || reverting || animating) return;
-            const rect = canvas.getBoundingClientRect();
-            const endX = e.changedTouches[0].clientX;
-            const endY = e.changedTouches[0].clientY;
-            const dx = endX - touchStartX;
-            const dy = endY - touchStartY;
-            const r = Math.floor((endY - rect.top) / CELL);
-            const c = Math.floor((endX - rect.left) / CELL);
-            
-            if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
-                // Тап
-                if (r<0||r>=ROWS||c<0||c>=COLS) return;
-                if (!selected) { selected = {r,c}; draw(); }
-                else if (selected.r===r && selected.c===c) { selected = null; draw(); }
-                else { selected = {r,c}; draw(); }
-                return;
-            }
-            
-            // Свайп
-            if (!selected) return;
-            const sr = selected.r, sc = selected.c;
-            let tr = sr, tc = sc;
-            if (Math.abs(dx) > Math.abs(dy)) { tc += dx > 0 ? 1 : -1; }
-            else { tr += dy > 0 ? 1 : -1; }
-            if (tr<0||tr>=ROWS||tc<0||tc>=COLS) return;
-            
-            selected = null;
-            animateSwap(sr, sc, tr, tc, () => {
-                swap(sr, sc, tr, tc);
-                if (getMatches().length > 0) { processMatches(); }
-                else {
-                    reverting = true;
-                    animateSwap(sr, sc, tr, tc, () => {
-                        swap(sr, sc, tr, tc);
-                        reverting = false;
-                        comboCount = 0;
-                        document.getElementById('m3Combo').textContent = '0';
-                    });
+                for (let r=0; r<ROWS-2; r++) {
+                    if (grid[r][c]===grid[r+1][c]&&grid[r][c]===grid[r+2][c]) {
+                        matched.add(`${r},${c}`); matched.add(`${r+1},${c}`); matched.add(`${r+2},${c}`);
+                    }
                 }
-            });
-        });
+            }
+            return [...matched].map(s => { const [r,c] = s.split(',').map(Number); return {r,c}; });
+        }
 
+        function processMatches(matches) {
+            const count = matches.length;
+            matches.forEach(({r,c}) => grid[r][c] = -1);
+            score += count * 10;
+            document.getElementById('m3Score').textContent = score;
+            Highscores.save('match3', score);
+            document.getElementById('m3Record').textContent = Highscores.get('match3');
+            if (count >= 7) localStorage.setItem('earned_MATCH-STRIKE', '1');
+            setTimeout(() => { collapse(); draw(); }, 200);
+        }
+
+        function collapse() {
+            for (let c=0; c<COLS; c++) {
+                let writeRow = ROWS-1;
+                for (let r=ROWS-1; r>=0; r--) {
+                    if (grid[r][c] !== -1) { grid[writeRow][c] = grid[r][c]; writeRow--; }
+                }
+                for (let r=writeRow; r>=0; r--) grid[r][c] = Math.floor(Math.random()*COLORS.length);
+            }
+            const newMatches = findMatches();
+            if (newMatches.length > 0) { processMatches(newMatches); }
+        }
+
+        document.getElementById('m3NewGame').addEventListener('click', start);
         start();
     </script>
 </body>
