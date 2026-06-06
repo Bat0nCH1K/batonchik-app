@@ -4,125 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Титулы — BatonCHIK Games</title>
+    <link rel="manifest" href="manifest.json">
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --gold: #f0c040; --radius: 14px; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
         .container { max-width: 500px; margin: 0 auto; }
-        h2 { font-size: 20px; margin-bottom: 10px; }
+        h2 { font-size: 20px; margin-bottom: 16px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 20px; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--accent); background: var(--card); color: var(--text); font-size: 16px; }
-        .btn { padding: 12px 20px; border-radius: 10px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; }
-        .btn:active { opacity: 0.8; }
-        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
-        .titles-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; text-align: left; }
-        .title-item { background: var(--card); padding: 14px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .title-item.locked { opacity: 0.5; }
-        .title-item.secret { border: 2px dashed var(--gold); }
-        .title-name { font-weight: bold; }
-        .title-status { font-size: 12px; color: var(--gold); }
-        .stats { margin-top: 20px; color: var(--text-secondary); font-size: 14px; }
+        .title-card {
+            background: var(--card); border-radius: 14px; padding: 16px; margin: 10px 0;
+            display: flex; align-items: center; gap: 12px; text-align: left;
+        }
+        .title-card.locked { opacity: 0.4; }
+        .title-icon { font-size: 32px; }
+        .title-info { flex: 1; }
+        .title-name { font-size: 16px; font-weight: bold; }
+        .title-desc { font-size: 12px; color: var(--text-secondary); }
+        .title-status { font-size: 12px; color: #f0c040; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🏆 Титулы</h2>
-        <p style="color:var(--text-secondary);margin-bottom:16px;">Выполни достижения или введи секретный код</p>
-        
-        <div class="input-group">
-            <input type="text" id="codeInput" placeholder="Введи промокод...">
-            <button class="btn" id="submitCode">OK</button>
-        </div>
-        <p class="feedback" id="codeFeedback"></p>
-
-        <h3 style="margin-top:24px;">Твои титулы:</h3>
-        <div class="titles-list" id="titlesList"></div>
-        <div class="stats" id="stats"></div>
+        <div id="titlesList"></div>
     </div>
-    <script src="highscores.js"></script>
     <script>
-        const TITLES = [
-            // Игровые достижения
-            { id: 'CLICK-MASTER', name: 'Клик-мастер', emoji: '🔴', desc: '10 000 000 очков в Кликере', check: () => parseInt(localStorage.getItem('hs_clicker')||'0') >= 10000000 },
-            { id: 'SNAKE-KING', name: 'Змеиный король', emoji: '🐍', desc: '500 очков в Змейке', check: () => parseInt(localStorage.getItem('hs_snake')||'0') >= 500 },
-            { id: 'INVADER-HERO', name: 'Герой галактики', emoji: '👾', desc: 'Победить на Ультрахардкоре', check: () => localStorage.getItem('earned_INVADER-HERO') === '1' },
-            { id: 'TICKET-LEGEND', name: 'Невозможный', emoji: '👑', desc: 'Победить ИИ в крестиках-ноликах', check: () => localStorage.getItem('earned_TICKET-LEGEND') === '1' },
-            { id: 'FLAPPY-PILOT', name: 'Пилот', emoji: '🐦', desc: '50 очков в Flappy Bird', check: () => parseInt(localStorage.getItem('hs_flappy')||'0') >= 50 },
-            { id: 'PACMAN-SPEED', name: 'Спидраннер', emoji: '🟡', desc: 'Собрать все точки за 60 секунд', check: () => localStorage.getItem('earned_PACMAN-SPEED') === '1' },
-            { id: 'RACER', name: 'Гонщик', emoji: '🏎️', desc: '100 очков в Гонках', check: () => parseInt(localStorage.getItem('hs_race')||'0') >= 100 },
-            { id: 'TETRIS-MASTER', name: 'Тетрис-мастер', emoji: '🧱', desc: '1000 очков в Тетрисе', check: () => parseInt(localStorage.getItem('hs_tetris')||'0') >= 1000 },
-            { id: 'MATCH-STRIKE', name: 'Комбо', emoji: '💎', desc: 'Уничтожить 7+ камней за ход', check: () => localStorage.getItem('earned_MATCH-STRIKE') === '1' },
-            { id: 'MEMORY-KING', name: 'Король памяти', emoji: '🧠', desc: '20 уровень в Цветовой памяти', check: () => localStorage.getItem('earned_MEMORY-KING') === '1' },
-            { id: 'MINESWEEPER-PRO', name: 'Сапёр-профи', emoji: '💣', desc: 'Победить на поле 12×12 за 120 сек', check: () => localStorage.getItem('earned_MINESWEEPER-PRO') === '1' },
-            { id: 'PUZZLE-MASTER', name: 'Мастер пятнашек', emoji: '🧩', desc: 'Собрать за 50 ходов', check: () => localStorage.getItem('earned_PUZZLE-MASTER') === '1' },
-            // Секретные промокоды
-            { id: 'CODE-ADMIN', name: 'Admin', emoji: '🔧', desc: 'Секретный промокод', check: () => localStorage.getItem('code_BatonCHIK') === '1', secret: true },
-            { id: 'CODE-DEEPSEEK', name: 'DeepSeek', emoji: '🤖', desc: 'Секретный промокод', check: () => localStorage.getItem('code_vibecoding') === '1', secret: true },
-            { id: 'CODE-COUNT', name: 'I can count!', emoji: '🔢', desc: 'Секретный промокод', check: () => localStorage.getItem('code_ICOUNT') === '1', secret: true },
-            // Специальные
-            { id: 'COLLECTOR', name: 'Коллекционер', emoji: '🏅', desc: 'Собрать 5 любых титулов', check: () => {
-                const earned = TITLES.filter(t => t.id !== 'COLLECTOR' && t.id !== 'PERFECTIONIST' && t.check());
-                return earned.length >= 5;
-            }},
-            { id: 'PERFECTIONIST', name: 'Перфекционист', emoji: '🌟', desc: 'Собрать все 12 игровых титулов', check: () => {
-                const gameTitles = TITLES.filter(t => !t.secret && t.id !== 'COLLECTOR' && t.id !== 'PERFECTIONIST');
-                return gameTitles.every(t => t.check());
-            }},
+        const titles = [
+            { id: 'app-installer', name: 'Истинный Геймер', desc: 'Титул за установку приложения', icon: '📲' }
         ];
-
-        // Промокоды
-        const PROMOCODES = {
-            'BATONCHIK': 'code_BatonCHIK',
-            'VIBECODING': 'code_vibecoding',
-        };
-
-        function render() {
-            const list = document.getElementById('titlesList');
-            let owned = 0;
-            list.innerHTML = TITLES.map(title => {
-                const has = title.check();
-                if (has) owned++;
-                return `<div class="title-item ${has ? '' : 'locked'} ${title.secret && !has ? 'secret' : ''}">
-                    <div>
-                        <span class="title-name">${title.emoji} ${title.name}</span>
-                        <div style="font-size:12px;color:var(--text-secondary);">${has ? title.desc : (title.secret ? '???' : title.desc)}</div>
+        
+        const list = document.getElementById('titlesList');
+        titles.forEach(t => {
+            const unlocked = localStorage.getItem('title-' + t.id) === '1';
+            list.innerHTML += `
+                <div class="title-card ${unlocked ? '' : 'locked'}">
+                    <div class="title-icon">${t.icon}</div>
+                    <div class="title-info">
+                        <div class="title-name">${t.name}</div>
+                        <div class="title-desc">${t.desc}</div>
                     </div>
-                    <span class="title-status">${has ? '✅ Получен' : '🔒 Закрыт'}</span>
-                </div>`;
-            }).join('');
-            document.getElementById('stats').textContent = `Получено: ${owned} из ${TITLES.length}`;
-        }
-
-        document.getElementById('submitCode').addEventListener('click', () => {
-            const input = document.getElementById('codeInput').value.trim().toUpperCase();
-            const fb = document.getElementById('codeFeedback');
-            
-            // Проверка промокодов
-            if (PROMOCODES[input]) {
-                localStorage.setItem(PROMOCODES[input], '1');
-                fb.textContent = '✅ Титул получен!';
-                render();
-                return;
-            }
-            
-            // Проверка "I can count!" — сумма всех рекордов
-            if (input === 'ICOUNT' || !isNaN(input)) {
-                const scores = Highscores.getAll();
-                const total = Object.values(scores).reduce((a, b) => a + b, 0);
-                if (parseInt(input) === total && total > 0) {
-                    localStorage.setItem('code_ICOUNT', '1');
-                    fb.textContent = '✅ Титул "I can count!" получен!';
-                    render();
-                    return;
-                }
-            }
-            
-            fb.textContent = '❌ Неверный код';
+                    <div class="title-status">${unlocked ? '✅' : '🔒'}</div>
+                </div>
+            `;
         });
-
-        render();
     </script>
 </body>
 </html>
