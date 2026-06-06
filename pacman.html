@@ -13,7 +13,7 @@
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         .canvas-wrap { position: relative; display: inline-block; }
-        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #000; display: block; margin: 10px auto; touch-action: none; }
         .start-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
@@ -51,28 +51,27 @@
     <script>
         SFX.playMusic('snowy');
         const canvas = document.getElementById('pmCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:7, y:7 }, dir = 'right', nextDir = 'right';
+        const CELL = 20, GRID = 15;
+        let player = { x:7, y:11 }, dir = 'right', nextDir = 'right';
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null, ghostInterval = null, running = false;
         let timeElapsed = 0, timerInterval = null;
-        let px = 7*20, py = 7*20;
-        let moveCooldown = 0;
-        let ghostPX = [7*20, 7*20], ghostPY = [6*20, 8*20];
 
+        // Карта как в оригинальном Pac-Man
         const maze = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,1,0,1,1,0,1,0,1,1,0,1,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
+            [1,0,0,0,1,1,1,0,1,1,1,0,0,0,1],
+            [1,1,0,0,1,0,0,0,0,0,1,0,0,1,1],
+            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,1,1,0,0,0,1,1,0,1,0,1],
+            [1,0,1,0,0,1,0,1,0,1,0,0,1,0,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
             [1,0,1,0,1,0,0,0,0,0,1,0,1,0,1],
-            [1,0,0,0,1,0,1,1,1,0,1,0,0,0,1],
-            [1,0,1,0,1,0,0,0,0,0,1,0,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],
+            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
@@ -80,17 +79,18 @@
         document.getElementById('pmRecord').textContent = Highscores.get('pacman');
 
         function start() {
-            score = 0; lives = 3; running = false; timeElapsed = 0; moveCooldown = 0;
+            score = 0; lives = 3; running = false; timeElapsed = 0;
             document.getElementById('pmScore').textContent = '0';
             document.getElementById('pmLives').textContent = '❤️❤️❤️';
             document.getElementById('pmTimer').textContent = '0';
             document.getElementById('pmStart').style.display = 'block';
-            player = { x:7, y:7 }; dir = 'right'; nextDir = 'right';
-            px = 7*20; py = 7*20;
-            ghostPX = [7*20, 7*20]; ghostPY = [6*20, 8*20];
+            player = { x:7, y:11 }; dir = 'right'; nextDir = 'right';
             dots = []; walls = []; ghosts = [];
-            for (let r=0; r<15; r++) { walls[r]=[]; for (let c=0; c<15; c++) { walls[r][c]=maze[r][c]===1; if (!walls[r][c]&&!(c===7&&r===7)&&!(c===7&&r===8)) dots.push({x:c,y:r}); } }
-            ghosts = [{x:7,y:6,color:'#ff6b6b',dir:'up'},{x:7,y:8,color:'#6bff6b',dir:'down'}];
+            for (let r=0; r<GRID; r++) { walls[r]=[]; for (let c=0; c<GRID; c++) { walls[r][c]=maze[r][c]===1; if (!walls[r][c]&&!(c===7&&r===11)) dots.push({x:c,y:r}); } }
+            ghosts = [
+                {x:7,y:5,color:'#ff0000',dir:'up'},
+                {x:7,y:6,color:'#ff8888',dir:'right'}
+            ];
             if (interval) clearInterval(interval);
             if (ghostInterval) clearInterval(ghostInterval);
             if (timerInterval) clearInterval(timerInterval);
@@ -99,8 +99,8 @@
 
         function launch() {
             running = true; document.getElementById('pmStart').style.display = 'none';
-            interval = setInterval(update, 120);
-            ghostInterval = setInterval(updateGhosts, 250);
+            interval = setInterval(update, 150);
+            ghostInterval = setInterval(updateGhosts, 280);
             timerInterval = setInterval(() => { timeElapsed++; document.getElementById('pmTimer').textContent = timeElapsed; }, 1000);
         }
 
@@ -119,22 +119,22 @@
             }
         }
 
+        function canMove(x, y, d) {
+            let nx = x, ny = y;
+            if (d==='up') ny--; if (d==='down') ny++; if (d==='left') nx--; if (d==='right') nx++;
+            if (nx<0) nx=GRID-1; if (nx>=GRID) nx=0;
+            return ny>=0 && ny<GRID && !walls[ny][nx];
+        }
+
         function update() {
             if (!running) return;
             
-            let nx = player.x, ny = player.y;
-            if (nextDir === 'up') ny--; if (nextDir === 'down') ny++; if (nextDir === 'left') nx--; if (nextDir === 'right') nx++;
-            if (nx < 0) nx = 14; if (nx > 14) nx = 0;
-            if (!walls[ny]?.[nx]) { dir = nextDir; player.x = nx; player.y = ny; }
-            else {
-                nx = player.x; ny = player.y;
-                if (dir === 'up') ny--; if (dir === 'down') ny++; if (dir === 'left') nx--; if (dir === 'right') nx++;
-                if (nx < 0) nx = 14; if (nx > 14) nx = 0;
-                if (!walls[ny]?.[nx]) { player.x = nx; player.y = ny; }
+            // Игрок — плавное перемещение
+            if (canMove(player.x, player.y, nextDir)) dir = nextDir;
+            if (canMove(player.x, player.y, dir)) {
+                if (dir==='up') player.y--; if (dir==='down') player.y++; if (dir==='left') player.x--; if (dir==='right') player.x++;
+                if (player.x<0) player.x=GRID-1; if (player.x>=GRID) player.x=0;
             }
-            
-            px += (player.x*20 - px) * 0.4;
-            py += (player.y*20 - py) * 0.4;
             
             const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
             if (di !== -1) { dots.splice(di,1); score+=10; document.getElementById('pmScore').textContent=score; SFX.eat(); }
@@ -147,19 +147,16 @@
             if (!running) return;
             ghosts.forEach((g, i) => {
                 const moves = [];
-                if (!walls[g.y-1]?.[g.x]) moves.push('up');
-                if (!walls[g.y+1]?.[g.x]) moves.push('down');
-                if (!walls[g.y]?.[g.x-1]) moves.push('left');
-                if (!walls[g.y]?.[g.x+1]) moves.push('right');
-                if (moves.length > 0) {
-                    const opp = {up:'down',down:'up',left:'right',right:'left'};
-                    const filtered = moves.filter(m => m !== opp[g.dir]);
-                    g.dir = filtered.length > 0 ? filtered[Math.floor(Math.random()*filtered.length)] : moves[Math.floor(Math.random()*moves.length)];
-                    if (g.dir==='up') g.y--; if (g.dir==='down') g.y++; if (g.dir==='left') g.x--; if (g.dir==='right') g.x++;
-                    if (g.x<0) g.x=14; if (g.x>14) g.x=0;
-                }
-                ghostPX[i] += (g.x*20 - ghostPX[i]) * 0.5;
-                ghostPY[i] += (g.y*20 - ghostPY[i]) * 0.5;
+                if (canMove(g.x, g.y, 'up')) moves.push('up');
+                if (canMove(g.x, g.y, 'down')) moves.push('down');
+                if (canMove(g.x, g.y, 'left')) moves.push('left');
+                if (canMove(g.x, g.y, 'right')) moves.push('right');
+                const opp = {up:'down',down:'up',left:'right',right:'left'};
+                const filtered = moves.filter(m => m !== opp[g.dir]);
+                if (filtered.length > 0) g.dir = filtered[Math.floor(Math.random()*filtered.length)];
+                else if (moves.length > 0) g.dir = moves[Math.floor(Math.random()*moves.length)];
+                if (g.dir==='up') g.y--; if (g.dir==='down') g.y++; if (g.dir==='left') g.x--; if (g.dir==='right') g.x++;
+                if (g.x<0) g.x=GRID-1; if (g.x>=GRID) g.x=0;
             });
             checkCollision(); draw();
         }
@@ -169,33 +166,44 @@
                 if (g.x === player.x && g.y === player.y) {
                     lives--; document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives));
                     if (lives<=0) { endGame(false); return; }
-                    player={x:7,y:7}; dir='right'; nextDir='right'; px=7*20; py=7*20;
-                    ghosts=[{x:7,y:6,color:'#ff6b6b',dir:'up'},{x:7,y:8,color:'#6bff6b',dir:'down'}];
-                    ghostPX=[7*20,7*20]; ghostPY=[6*20,8*20];
+                    player={x:7,y:11}; dir='right'; nextDir='right';
+                    ghosts=[
+                        {x:7,y:5,color:'#ff0000',dir:'up'},
+                        {x:7,y:6,color:'#ff8888',dir:'right'}
+                    ];
                 }
             });
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle='#3333ff';
-            for (let r=0;r<15;r++) for (let c=0;c<15;c++) if (walls[r][c]) ctx.fillRect(c*20,r*20,20,20);
-            ctx.fillStyle='#fff';
-            dots.forEach(d=>ctx.fillRect(d.x*20+8,d.y*20+8,4,4));
-            ghosts.forEach((g, i) => {
-                ctx.fillStyle = g.color;
-                ctx.fillRect(ghostPX[i]+3, ghostPY[i]+2, 14, 16);
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(ghostPX[i]+5, ghostPY[i]+5, 4, 4);
-                ctx.fillRect(ghostPX[i]+11, ghostPY[i]+5, 4, 4);
-                ctx.fillStyle = '#000';
-                ctx.fillRect(ghostPX[i]+6, ghostPY[i]+5, 2, 3);
-                ctx.fillRect(ghostPX[i]+12, ghostPY[i]+5, 2, 3);
+            // Стены
+            ctx.fillStyle='#2121de';
+            for (let r=0;r<GRID;r++) for (let c=0;c<GRID;c++) if (walls[r][c]) ctx.fillRect(c*CELL+1,r*CELL+1,CELL-2,CELL-2);
+            // Точки
+            ctx.fillStyle='#ffb8ae';
+            dots.forEach(d=>{ctx.beginPath();ctx.arc(d.x*CELL+CELL/2,d.y*CELL+CELL/2,3,0,6.28);ctx.fill();});
+            // Призраки
+            ghosts.forEach(g => {
+                const gx=g.x*CELL, gy=g.y*CELL;
+                ctx.fillStyle=g.color;
+                ctx.beginPath(); ctx.arc(gx+CELL/2, gy+CELL/2, CELL/2-2, 0, Math.PI, false);
+                ctx.fillRect(gx+3, gy+CELL/2-2, CELL-6, CELL/2);
+                for (let w=0; w<5; w++) ctx.fillRect(gx+3+w*3, gy+CELL-5, 2, 4);
+                ctx.fillStyle='#fff';
+                ctx.beginPath(); ctx.arc(gx+6, gy+6, 3, 0, 6.28); ctx.fill();
+                ctx.beginPath(); ctx.arc(gx+14, gy+6, 3, 0, 6.28); ctx.fill();
+                ctx.fillStyle='#00f';
+                ctx.beginPath(); ctx.arc(gx+6+g.dir==='right'?2:g.dir==='left'?-2:0, gy+6+g.dir==='down'?2:g.dir==='up'?-2:0, 1.5, 0, 6.28); ctx.fill();
+                ctx.beginPath(); ctx.arc(gx+14+g.dir==='right'?2:g.dir==='left'?-2:0, gy+6+g.dir==='down'?2:g.dir==='up'?-2:0, 1.5, 0, 6.28); ctx.fill();
             });
+            // Пакман
+            const px=player.x*CELL+CELL/2, py=player.y*CELL+CELL/2;
             ctx.fillStyle='#ffff00';
             ctx.beginPath();
-            ctx.arc(px+10, py+10, 8, 0.2, Math.PI*2-0.2);
-            ctx.lineTo(px+10, py+10);
+            const ang = {right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2}[dir]||0;
+            ctx.arc(px, py, CELL/2-2, ang+0.3, ang+Math.PI*2-0.3);
+            ctx.lineTo(px, py);
             ctx.fill();
         }
 
