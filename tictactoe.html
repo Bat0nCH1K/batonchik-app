@@ -2,81 +2,101 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Крестики-нолики — BatonCHIK Games</title>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --gold: #f0c040; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
-        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 240px; margin: 16px auto; }
-        .cell { width: 76px; height: 76px; background: var(--card); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; cursor: pointer; }
-        .cell:active { background: var(--accent); }
-        .feedback { margin-top: 14px; font-size: 17px; font-weight: bold; }
-        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .score { font-size: 20px; margin: 10px 0; }
+        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 240px; margin: 16px auto; }
+        .cell { aspect-ratio: 1; background: var(--card); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); }
+        .cell.x { color: #4a90d9; }
+        .cell.o { color: #e94560; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>❌ Крестики-нолики</h2>
-        <p style="color:var(--text-secondary);margin-bottom:10px;">Ты: ❌ | ИИ: ⭕</p>
+        <div class="score" id="tttStatus">Твой ход (X)</div>
+        <div class="record">🏆 Рекорд: <span id="tttRecord">0</span></div>
         <div class="board" id="tttBoard"></div>
-        <p class="feedback" id="tttFeedback">Твой ход</p>
-        <div class="record">🏆 Побед: <span id="tttWins">0</span></div>
-        <button class="btn" id="resetTTT">🔄 Новая игра</button>
+        <button class="btn" id="tttNewGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('papers');
-        let board, gameOver, wins = parseInt(localStorage.getItem('ttt_wins') || '0');
-        const HU = '❌', AI = '⭕';
-
-        document.getElementById('tttWins').textContent = wins;
+        let board = [], gameOver = false, playerTurn = true;
+        let wins = parseInt(localStorage.getItem('ttt_wins') || '0');
+        document.getElementById('tttRecord').textContent = wins;
 
         function start() {
-            board = Array(9).fill(''); gameOver = false;
-            document.getElementById('tttFeedback').textContent = 'Твой ход';
+            board = Array(9).fill(null);
+            gameOver = false; playerTurn = true;
+            document.getElementById('tttStatus').textContent = 'Твой ход (X)';
             draw();
         }
 
-        function draw() { document.getElementById('tttBoard').innerHTML = board.map((v, i) => `<div class="cell" onclick="move(${i})">${v}</div>`).join(''); }
-
-        function win(p, b) { const w = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; return w.some(w => w.every(i => (b||board)[i] === p)); }
-
-        function minimax(b, depth, isMax) {
-            if (win(AI, b)) return 10 - depth;
-            if (win(HU, b)) return depth - 10;
-            if (b.every(v => v !== '')) return 0;
-            if (isMax) { let best = -Infinity; for (let i=0; i<9; i++) { if (b[i]!=='') continue; b[i]=AI; best=Math.max(best,minimax(b,depth+1,false)); b[i]=''; } return best; }
-            else { let best = Infinity; for (let i=0; i<9; i++) { if (b[i]!=='') continue; b[i]=HU; best=Math.min(best,minimax(b,depth+1,true)); b[i]=''; } return best; }
+        function draw() {
+            const el = document.getElementById('tttBoard');
+            el.innerHTML = board.map((v, i) => {
+                let cls = 'cell';
+                if (v === 'X') cls += ' x';
+                if (v === 'O') cls += ' o';
+                return `<div class="${cls}" onclick="move(${i})">${v || ''}</div>`;
+            }).join('');
         }
-
-        function bestMove() { let bestScore=-Infinity, move=0; for (let i=0; i<9; i++) { if (board[i]!=='') continue; board[i]=AI; const score=minimax(board,0,false); board[i]=''; if (score>bestScore) { bestScore=score; move=i; } } return move; }
 
         function move(i) {
-            if (board[i]!=='' || gameOver) return;
-            board[i]=HU; draw(); SFX.click();
-            if (win(HU)) {
-                document.getElementById('tttFeedback').textContent = 'Ты победил! 🎉';
-                wins++; localStorage.setItem('ttt_wins', wins);
-                document.getElementById('tttWins').textContent = wins;
-                Highscores.save('tictactoe', wins);
-                localStorage.setItem('earned_TICKET-LEGEND', '1');
-                gameOver=true; SFX.win(); return;
-            }
-            if (board.every(v=>v!=='')) { document.getElementById('tttFeedback').textContent='Ничья!'; gameOver=true; return; }
-            board[bestMove()]=AI; draw();
-            if (win(AI)) { document.getElementById('tttFeedback').textContent='ИИ победил!'; gameOver=true; SFX.lose(); return; }
-            if (board.every(v=>v!=='')) { document.getElementById('tttFeedback').textContent='Ничья!'; gameOver=true; }
+            if (gameOver || board[i] || !playerTurn) return;
+            board[i] = 'X'; playerTurn = false;
+            SFX.click(); draw();
+            if (checkWin('X')) { gameOver = true; wins++; localStorage.setItem('ttt_wins', wins); document.getElementById('tttRecord').textContent = wins; document.getElementById('tttStatus').textContent = 'Ты победил! 🎉'; return; }
+            if (board.every(c => c)) { gameOver = true; document.getElementById('tttStatus').textContent = 'Ничья!'; return; }
+            setTimeout(aiMove, 400);
         }
 
-        document.getElementById('resetTTT').addEventListener('click', start);
+        function aiMove() {
+            if (gameOver) return;
+            // Умный ИИ: победить, заблокировать, центр, угол, случайно
+            const win = findWinningMove('O');
+            if (win !== -1) { board[win] = 'O'; endAI(); return; }
+            const block = findWinningMove('X');
+            if (block !== -1) { board[block] = 'O'; endAI(); return; }
+            const priority = [4, 0, 2, 6, 8, 1, 3, 5, 7];
+            for (const p of priority) { if (!board[p]) { board[p] = 'O'; endAI(); return; } }
+        }
+
+        function endAI() {
+            playerTurn = true; SFX.click(); draw();
+            if (checkWin('O')) { gameOver = true; document.getElementById('tttStatus').textContent = 'ИИ победил! 🤖'; return; }
+            if (board.every(c => c)) { gameOver = true; document.getElementById('tttStatus').textContent = 'Ничья!'; }
+        }
+
+        function findWinningMove(player) {
+            const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            for (const [a,b,c] of lines) {
+                if (board[a] === player && board[b] === player && !board[c]) return c;
+                if (board[a] === player && board[c] === player && !board[b]) return b;
+                if (board[b] === player && board[c] === player && !board[a]) return a;
+            }
+            return -1;
+        }
+
+        function checkWin(p) {
+            const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return lines.some(([a,b,c]) => board[a]===p && board[b]===p && board[c]===p);
+        }
+
+        document.getElementById('tttNewGame').addEventListener('click', start);
         start();
     </script>
 </body>
