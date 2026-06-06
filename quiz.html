@@ -6,8 +6,8 @@
     <title>ИИ-Викторина — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --green: #4caf84; --text: #fff; --text-secondary: #b0b0b0; --radius: 14px; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 16px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
@@ -41,143 +41,98 @@
     <script src="highscores.js"></script>
     <script>
         SFX.playMusic('bonetrousle');
-        let correct = 0, total = 0, answered = false, question = null;
+        let correct=0, total=0, answered=false, question=null;
         document.getElementById('quizRecord').textContent = Highscores.get('quiz');
 
         document.getElementById('newQuestionBtn').addEventListener('click', getQuestion);
 
-        // Расширенный список тем для разнообразия вопросов
-        const topics = [
-            'история', 'география', 'наука', 'космос', 'животные',
-            'математика', 'литература', 'кино', 'музыка', 'спорт',
-            'технологии', 'еда', 'искусство', 'мифология', 'биология',
-            'химия', 'физика', 'философия', 'экономика', 'психология',
-            'программирование', 'медицина', 'архитектура', 'транспорт'
-        ];
-
-        function randomTopic() {
-            return topics[Math.floor(Math.random() * topics.length)];
-        }
-
         async function getQuestion() {
             const btn = document.getElementById('newQuestionBtn');
             const card = document.getElementById('quizCard');
-            btn.disabled = true; btn.textContent = '⏳ Генерирую...';
+            btn.disabled = true; btn.textContent = '⏳';
             card.style.display = 'block';
-            document.getElementById('questionText').textContent = 'ИИ придумывает вопрос...';
+            document.getElementById('questionText').textContent = 'ИИ думает...';
             document.getElementById('optionsGrid').innerHTML = '';
             document.getElementById('feedback').textContent = '';
             answered = false;
             question = null;
 
-            // Три попытки с разными темами
-            for (let attempt = 0; attempt < 3; attempt++) {
+            const topics = ['история','география','наука','космос','животные','спорт','кино','музыка','технологии','еда'];
+            const topic = topics[Math.floor(Math.random()*topics.length)];
+
+            const prompt = `Ты — ведущий викторины. Придумай ОДИН вопрос на русском языке на тему "${topic}".
+4 варианта ответа, из них только ОДИН правильный.
+ОТВЕТЬ ТОЛЬКО валидным JSON, без markdown, без пояснений. Формат:
+{"q":"Текст вопроса?","o":["Ответ1","Ответ2","Ответ3","Ответ4"],"c":0}
+Где "c" — индекс правильного ответа (0, 1, 2 или 3).`;
+
+            for (let attempt=0; attempt<4; attempt++) {
                 try {
-                    const topic = randomTopic();
-                    const prompt = `Придумай интересный вопрос для викторины на русском языке на тему "${topic}".
-Вопрос должен быть с 4 вариантами ответа, только один правильный.
-Ответь СТРОГО в формате JSON без лишнего текста:
-{"q":"вопрос?","o":["ответ1","ответ2","ответ3","ответ4"],"c":0}
-
-Правильный ответ укажи индексом в "c" (0, 1, 2 или 3).
-Варианты ответов должны быть разумной длины (до 60 символов).
-НЕ используй markdown, НЕ пиши ничего кроме JSON.`;
-
                     const resp = await fetch('https://text.pollinations.ai/openai', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            model: 'openai',
-                            messages: [{ role: 'user', content: prompt }],
-                            temperature: 1.2,
-                            max_tokens: 300
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({
+                            model:'openai',
+                            messages:[{role:'user',content:prompt}],
+                            temperature:1.3,
+                            max_tokens:250
                         })
                     });
-
-                    if (!resp.ok) continue;
-
                     const data = await resp.json();
-                    const raw = data.choices?.[0]?.message?.content?.trim();
-                    if (!raw) continue;
-
-                    // Ищем JSON в ответе (может быть с переносами строк)
-                    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) continue;
-
-                    const parsed = JSON.parse(jsonMatch[0]);
-                    const qText = parsed.q || parsed.question;
-                    const opts = parsed.o || parsed.options;
-                    const correctIdx = parsed.c !== undefined ? parsed.c : parsed.correctIndex;
-
-                    if (!qText || !opts || opts.length !== 4 || correctIdx === undefined || correctIdx < 0 || correctIdx > 3) {
-                        continue;
-                    }
-
-                    // Проверка что варианты не пустые и не одинаковые
-                    if (opts.some(o => !o || o.length < 1)) continue;
-                    if (new Set(opts).size < 4) continue;
-
-                    question = {
-                        question: qText,
-                        options: opts,
-                        correctIndex: correctIdx
-                    };
-                    break; // Успешно!
-
-                } catch (e) {
-                    console.warn('Попытка ' + (attempt + 1) + ' не удалась:', e.message);
-                    continue;
-                }
+                    const raw = (data.choices?.[0]?.message?.content || '').trim();
+                    
+                    const m = raw.match(/\{[\s\S]*\}/);
+                    if (!m) continue;
+                    let p;
+                    try { p = JSON.parse(m[0]); } catch(e) { continue; }
+                    
+                    const q = p.q || p.question;
+                    const o = p.o || p.options;
+                    const c = p.c !== undefined ? p.c : p.correctIndex;
+                    
+                    if (!q || !o || o.length!==4 || c===undefined || c<0 || c>3) continue;
+                    if (o.some(x=>!x||x.length<1)) continue;
+                    if (new Set(o).size < 4) continue;
+                    
+                    question = { question:q, options:o, correctIndex:c };
+                    break;
+                } catch(e) { continue; }
             }
 
             if (!question) {
-                document.getElementById('questionText').textContent = '😵 ИИ сейчас перегружен. Нажми кнопку ещё раз!';
-                document.getElementById('optionsGrid').innerHTML = '';
-                btn.disabled = false;
-                btn.textContent = '🎲 Попробовать снова';
+                document.getElementById('questionText').textContent = '😵 ИИ перегружен. Попробуй ещё раз!';
+                btn.disabled = false; btn.textContent = '🎲 Попробовать снова';
                 return;
             }
 
-            // Показываем вопрос
             document.getElementById('questionText').textContent = question.question;
-            document.getElementById('optionsGrid').innerHTML = question.options.map((o, i) =>
-                `<button class="option-btn" data-idx="${i}">${o}</button>`
-            ).join('');
+            document.getElementById('optionsGrid').innerHTML = question.options.map((o,i) =>
+                '<button class="option-btn" data-idx="'+i+'">'+o+'</button>').join('');
             document.querySelectorAll('.option-btn').forEach(b => {
-                b.addEventListener('click', function() {
-                    checkAnswer(parseInt(this.dataset.idx), this);
-                });
+                b.addEventListener('click', function(){ checkAnswer(parseInt(this.dataset.idx), this); });
             });
-
-            btn.disabled = false;
-            btn.textContent = '🎲 Новый вопрос';
+            btn.disabled = false; btn.textContent = '🎲 Новый вопрос';
         }
 
         function checkAnswer(i, btn) {
             if (answered || !question) return;
-            answered = true;
-            total++;
-
+            answered = true; total++;
             const allBtns = document.querySelectorAll('.option-btn');
-            allBtns.forEach(b => b.disabled = true);
-
-            if (i === question.correctIndex) {
+            allBtns.forEach(b=>b.disabled=true);
+            if (i===question.correctIndex) {
                 btn.classList.add('correct');
                 document.getElementById('feedback').textContent = '✅ Правильно!';
-                correct++;
-                SFX.coin();
+                correct++; SFX.coin();
             } else {
                 btn.classList.add('wrong');
                 allBtns[question.correctIndex].classList.add('correct');
                 document.getElementById('feedback').textContent = '❌ Неправильно!';
             }
-
-            document.getElementById('stats').textContent = `Правильных: ${correct} | Всего: ${total}`;
+            document.getElementById('stats').textContent = 'Правильных: '+correct+' | Всего: '+total;
             Highscores.save('quiz', correct);
             document.getElementById('quizRecord').textContent = Highscores.get('quiz');
         }
 
-        // Загружаем первый вопрос при открытии
         getQuestion();
     </script>
 </body>
