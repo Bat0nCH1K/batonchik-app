@@ -105,11 +105,8 @@
                     deferredPrompt.userChoice.then((result) => {
                         if (result.outcome === 'accepted') {
                             localStorage.setItem('pwa-installed', '1');
-                            // Бонус за установку
-                            alert('🎁 Бонус: +100 очков в Кликере!');
-                            let bonus = parseInt(localStorage.getItem('clicker_save') || '0');
-                            bonus += 100;
-                            localStorage.setItem('clicker_save', bonus);
+                            localStorage.setItem('title-app-installer', '1');
+                            alert('🏆 Получен титул: Истинный Геймер! (за установку приложения)');
                         }
                         btn.style.display = 'none';
                     });
