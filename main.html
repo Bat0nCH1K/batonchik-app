@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="application-name" content="BatonCHIK Games">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="BatonCHIK">
+    <meta name="apple-mobile-web-app-title" content="BatonCHIK Games">
     <meta name="theme-color" content="#e94560">
     <script src="https://unpkg.com/pwacompat@2.0.17/pwacompat.min.js" async></script>
     <style>
@@ -72,7 +72,7 @@
         <div class="version">v7.0 — BatonCHIK Games</div>
     </div>
     
-    <button id="install-btn">📲 Установить</button>
+    <button id="install-btn">📲 Скачай на телефон — получи бонусы!</button>
     
     <script src="sfx.js"></script>
     <script>
@@ -87,6 +87,12 @@
             const btn = document.getElementById('install-btn');
             let deferredPrompt;
             
+            if (localStorage.getItem('pwa-installed') === '1' || 
+                window.matchMedia('(display-mode: standalone)').matches) {
+                btn.style.display = 'none';
+                return;
+            }
+            
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
@@ -96,7 +102,15 @@
             btn.addEventListener('click', () => {
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then(() => {
+                    deferredPrompt.userChoice.then((result) => {
+                        if (result.outcome === 'accepted') {
+                            localStorage.setItem('pwa-installed', '1');
+                            // Бонус за установку
+                            alert('🎁 Бонус: +100 очков в Кликере!');
+                            let bonus = parseInt(localStorage.getItem('clicker_save') || '0');
+                            bonus += 100;
+                            localStorage.setItem('clicker_save', bonus);
+                        }
                         btn.style.display = 'none';
                     });
                 } else {
@@ -104,15 +118,12 @@
                 }
             });
             
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                btn.style.display = 'none';
-            }
-            
             setTimeout(() => {
-                if (!deferredPrompt && btn.style.display === 'none') {
+                if (!deferredPrompt && btn.style.display === 'none' && 
+                    localStorage.getItem('pwa-installed') !== '1') {
                     btn.style.display = 'block';
                 }
-            }, 2000);
+            }, 10000);
         })();
     </script>
 </body>
