@@ -2,13 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fruit Merge — BatonCHIK Games</title>
     <link rel="manifest" href="manifest.json">
     <style>
         :root { --bg: #1a1a2e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; user-select: none; -webkit-user-select: none; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
@@ -23,185 +23,208 @@
         <h2>🍉 Fruit Merge</h2>
         <div class="score">Очки: <span id="score">0</span></div>
         <div class="record">🏆 Рекорд: <span id="record">0</span></div>
-        <div id="game"></div>
+        <canvas id="canvas" width="300" height="400" style="touch-action: none;"></canvas>
         <button class="btn" id="newGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
-    <script src="phaser.min.js"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
         SFX.playMusic('sweden');
-
+        
+        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        const W = 300, H = 400;
+        
         const FRUITS = ['🍒','🍓','🍊','🍋','🍏','🍇','🍈','🍑','🥝','🍉','🍍'];
-        const RADII = [14, 20, 28, 36, 46, 58, 72, 88, 106, 126, 148];
-        const DROP_Y = 60;
-        const W = 400, H = 600;
-
-        let score = 0;
-        let nextIdx = 0;
-        let dropX = W/2;
-        let gameOver = false;
+        const RADII = [13, 18, 25, 33, 42, 53, 66, 81, 98, 117, 138];
+        const GRAVITY = 0.3;
+        const DAMP = 0.15;
+        const DROP_Y = 45;
+        
+        let fruits = [], score = 0, gameOver = false;
+        let dropX = 150, nextIdx = 0;
         let canDrop = true;
-        let game;
 
-        class FruitMerge extends Phaser.Scene {
-            constructor() { super('FruitMerge'); }
+        function start() {
+            fruits = []; score = 0; gameOver = false; dropX = 150; canDrop = true;
+            nextIdx = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('record').textContent = Highscores.get('fruitmerge');
+            draw();
+        }
 
-            create() {
-                this.matter.world.setBounds(0, 0, W, H);
-                this.matter.world.setGravity(0, 1.5);
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameOver || !canDrop) return;
+            const rect = canvas.getBoundingClientRect();
+            const r = RADII[nextIdx];
+            dropX = Math.max(r+2, Math.min(W-r-2, e.clientX - rect.left));
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            if (gameOver || !canDrop) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const r = RADII[nextIdx];
+            dropX = Math.max(r+2, Math.min(W-r-2, e.touches[0].clientX - rect.left));
+        });
 
-                // Линия переполнения
-                const g = this.add.graphics();
-                g.lineStyle(2, 0xe94560, 0.8);
-                for (let x = 0; x < W; x += 10) g.lineBetween(x, DROP_Y, x + 5, DROP_Y);
-
-                // Предпросмотр
-                this.preview = this.add.text(W/2, DROP_Y, FRUITS[0], {
-                    fontSize: '24px', fontFamily: 'serif'
-                }).setOrigin(0.5).setAlpha(0.35);
-
-                this.fruits = [];
-
-                // Слияние
-                this.matter.world.on('collisionstart', (event) => {
-                    event.pairs.forEach(pair => {
-                        const a = pair.bodyA.gameObject;
-                        const b = pair.bodyB.gameObject;
-                        if (a && b && a.getData('level') !== undefined && b.getData('level') !== undefined) {
-                            this.tryMerge(a, b);
-                        }
-                    });
-                });
-
-                // Управление мышью
-                this.input.on('pointermove', (ptr) => {
-                    if (gameOver || !canDrop) return;
-                    dropX = Phaser.Math.Clamp(ptr.x, RADII[nextIdx] + 5, W - RADII[nextIdx] - 5);
-                    this.preview.setPosition(dropX, DROP_Y);
-                });
-
-                // Спавн по клику
-                this.input.on('pointerdown', (ptr) => {
-                    if (gameOver || !canDrop) return;
-                    dropX = Phaser.Math.Clamp(ptr.x, RADII[nextIdx] + 5, W - RADII[nextIdx] - 5);
-                    this.preview.setPosition(dropX, DROP_Y);
-                    this.spawnFruit();
-                    SFX.click();
-                });
-            }
-
-            spawnFruit() {
-                canDrop = false;
-                const r = RADII[nextIdx];
-                const fruit = this.matter.add.circle(dropX, DROP_Y, r, {
-                    restitution: 0.05,
-                    friction: 0.8,
-                    density: 0.001
-                });
-                fruit.setData('level', nextIdx);
-                fruit.setData('merged', false);
-
-                const txt = this.add.text(dropX, DROP_Y, FRUITS[nextIdx], {
-                    fontSize: `${r * 1.8}px`, fontFamily: 'serif'
-                }).setOrigin(0.5);
-                fruit.textObj = txt;
-
-                this.fruits.push(fruit);
-
-                nextIdx = Math.random() < 0.85 ? 0 : 1;
-                this.preview.setText(FRUITS[nextIdx]);
-                this.preview.setFontSize(RADII[nextIdx] * 1.8);
-
-                this.time.delayedCall(200, () => { canDrop = true; });
-            }
-
-            tryMerge(a, b) {
-                if (gameOver) return;
-                const la = a.getData('level'), lb = b.getData('level');
-                if (la === undefined || lb === undefined || la !== lb) return;
-                if (la >= FRUITS.length - 1) return;
-                if (a.getData('merged') || b.getData('merged')) return;
-
-                a.setData('merged', true);
-                b.setData('merged', true);
-
-                const nl = la + 1;
-                const nx = (a.x + b.x) / 2;
-                const ny = (a.y + b.y) / 2;
-                const nr = RADII[nl];
-
-                if (a.textObj) a.textObj.destroy();
-                if (b.textObj) b.textObj.destroy();
-
-                this.fruits = this.fruits.filter(f => f !== a && f !== b);
-                this.matter.world.remove(a);
-                this.matter.world.remove(b);
-
-                const nf = this.matter.add.circle(nx, ny, nr, {
-                    restitution: 0.05, friction: 0.8, density: 0.001
-                });
-                nf.setData('level', nl);
-                nf.setData('merged', false);
-                nf.setVelocity(0, -4);
-
-                const txt = this.add.text(nx, ny, FRUITS[nl], {
-                    fontSize: `${nr * 1.8}px`, fontFamily: 'serif'
-                }).setOrigin(0.5);
-                nf.textObj = txt;
-                this.fruits.push(nf);
-
-                score += (nl + 1) * 10;
-                document.getElementById('score').textContent = score;
-                SFX.coin();
-            }
-
-            update() {
-                if (gameOver) return;
-                for (const f of this.fruits) {
-                    if (f.textObj) f.textObj.setPosition(f.x, f.y);
+        function spawnFruit() {
+            if (gameOver || !canDrop) return;
+            canDrop = false;
+            
+            const level = nextIdx;
+            const f = { x: dropX, y: DROP_Y, r: RADII[level], level, vy: 0, vx: 0, settled: false };
+            
+            for (const o of fruits) {
+                const dx = f.x - o.x, dy = f.y - o.y;
+                if (Math.sqrt(dx*dx+dy*dy) < f.r + o.r - 2) {
+                    gameOver = true;
+                    Highscores.save('fruitmerge', score);
+                    document.getElementById('record').textContent = Highscores.get('fruitmerge');
+                    setTimeout(() => Modal.show('💀 Переполнение!', `Очки: ${score}`).then(() => start()), 300);
+                    return;
                 }
-                for (const f of this.fruits) {
-                    const spd = Math.sqrt(f.velocity.x**2 + f.velocity.y**2);
-                    if (f.y - f.circleRadius < DROP_Y - 10 && spd < 0.5) {
-                        this.endGame();
-                        return;
+            }
+            
+            fruits.push(f);
+            nextIdx = Math.random() < 0.85 ? 0 : 1;
+            setTimeout(() => { canDrop = true; }, 200);
+        }
+
+        function update() {
+            if (gameOver) return;
+            
+            for (const f of fruits) {
+                if (f.settled) continue;
+                f.vy += GRAVITY;
+                f.y += f.vy;
+                f.x += f.vx;
+                f.vx *= 0.98;
+                
+                if (f.x - f.r < 0) { f.x = f.r; f.vx = Math.abs(f.vx)*DAMP; }
+                if (f.x + f.r > W) { f.x = W-f.r; f.vx = -Math.abs(f.vx)*DAMP; }
+                
+                if (f.y + f.r >= H) {
+                    f.y = H - f.r;
+                    if (Math.abs(f.vy) > 1) f.vy = -f.vy*DAMP;
+                    else { f.vy = 0; f.settled = true; }
+                    f.vx *= 0.5;
+                }
+                
+                if (f.y - f.r < DROP_Y - 8) { f.y = DROP_Y-8+f.r; f.vy = Math.abs(f.vy)*DAMP; }
+            }
+            
+            for (let pass=0; pass<3; pass++) {
+                for (let i=0; i<fruits.length; i++) {
+                    for (let j=i+1; j<fruits.length; j++) {
+                        const a = fruits[i], b = fruits[j];
+                        const dx = b.x-a.x, dy = b.y-a.y;
+                        const dist = Math.sqrt(dx*dx+dy*dy);
+                        const min = a.r+b.r;
+                        if (dist < min && dist > 0.001) {
+                            const nx = dx/dist, ny = dy/dist;
+                            const over = min-dist;
+                            const total = a.r+b.r;
+                            const ra = b.r/total, rb = a.r/total;
+                            a.x -= nx*over*ra; a.y -= ny*over*ra;
+                            b.x += nx*over*rb; b.y += ny*over*rb;
+                            [a,b].forEach(f => {
+                                f.y = Math.min(H-f.r, Math.max(f.r, f.y));
+                                f.x = Math.max(f.r, Math.min(W-f.r, f.x));
+                            });
+                            const rv = (b.vx-a.vx)*nx + (b.vy-a.vy)*ny;
+                            if (rv < 0) {
+                                const imp = rv*0.3;
+                                a.vx += imp*nx*ra; a.vy += imp*ny*ra;
+                                b.vx -= imp*nx*rb; b.vy -= imp*ny*rb;
+                            }
+                        }
                     }
                 }
             }
-
-            endGame() {
-                if (gameOver) return;
-                gameOver = true;
+            
+            for (let i=0; i<fruits.length; i++) {
+                if (fruits[i].level >= FRUITS.length-1) continue;
+                for (let j=i+1; j<fruits.length; j++) {
+                    if (fruits[j].level >= FRUITS.length-1) continue;
+                    if (fruits[i].level === fruits[j].level) {
+                        const dx = fruits[j].x-fruits[i].x;
+                        const dy = fruits[j].y-fruits[i].y;
+                        const dist = Math.sqrt(dx*dx+dy*dy);
+                        const min = fruits[i].r+fruits[j].r;
+                        const touching = dist < min*1.05;
+                        const overlapping = dist < min*0.7;
+                        const slow = Math.abs(fruits[i].vy) < 1.5 && Math.abs(fruits[j].vy) < 1.5;
+                        
+                        if ((touching && slow) || overlapping) {
+                            const nl = fruits[i].level+1;
+                            fruits[i].x = (fruits[i].x+fruits[j].x)/2;
+                            fruits[i].y = (fruits[i].y+fruits[j].y)/2;
+                            fruits[i].level = nl;
+                            fruits[i].r = RADII[nl];
+                            fruits[i].settled = false;
+                            fruits[i].vy = -2.5;
+                            fruits[i].vx = 0;
+                            fruits.splice(j,1);
+                            score += (nl+1)*10;
+                            document.getElementById('score').textContent = score;
+                            SFX.coin();
+                            j--;
+                        }
+                    }
+                }
+            }
+            
+            for (const f of fruits) {
+                if (f.settled && f.y-f.r < DROP_Y-5) { gameOver = true; break; }
+            }
+            
+            if (gameOver) {
                 Highscores.save('fruitmerge', score);
                 document.getElementById('record').textContent = Highscores.get('fruitmerge');
-                this.time.delayedCall(300, () => {
-                    Modal.show('💀 Переполнение!', `Очки: ${score}`).then(() => location.reload());
-                });
+                setTimeout(() => Modal.show('💀 Переполнение!', `Очки: ${score}`).then(() => start()), 300);
             }
+            
+            draw();
         }
 
-        const config = {
-            type: Phaser.AUTO,
-            width: W, height: H,
-            parent: 'game',
-            backgroundColor: '#0a0a1a',
-            physics: {
-                default: 'matter',
-                matter: {
-                    gravity: { y: 1.5 },
-                    debug: false
-                }
-            },
-            scene: FruitMerge
-        };
+        function draw() {
+            ctx.clearRect(0,0,W,H);
+            
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8,4]);
+            ctx.beginPath(); ctx.moveTo(0,DROP_Y); ctx.lineTo(W,DROP_Y); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            if (!gameOver && canDrop) {
+                ctx.globalAlpha = 0.3;
+                const sz = RADII[nextIdx]*1.6;
+                ctx.font = `${sz}px serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(FRUITS[nextIdx], dropX, DROP_Y);
+                ctx.globalAlpha = 1;
+            }
+            
+            for (const f of fruits) {
+                const sz = f.r*1.6;
+                ctx.font = `${sz}px serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(FRUITS[f.level], f.x, f.y);
+            }
+            
+            ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+        }
 
-        game = new Phaser.Game(config);
+        canvas.addEventListener('click', () => {
+            if (gameOver || !canDrop) return;
+            spawnFruit();
+            SFX.click();
+        });
 
-        document.getElementById('newGame').addEventListener('click', () => location.reload());
-        document.getElementById('record').textContent = Highscores.get('fruitmerge');
+        setInterval(update, 16);
+        document.getElementById('newGame').addEventListener('click', start);
+        start();
     </script>
 </body>
 </html>
