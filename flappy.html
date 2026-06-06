@@ -2,18 +2,18 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flappy Bird — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
         .canvas-wrap { position: relative; display: inline-block; }
-        canvas { border: 3px solid var(--accent); border-radius: 12px; display: block; margin: 16px auto; }
+        canvas { border: 3px solid var(--accent); border-radius: 12px; display: block; margin: 16px auto; touch-action: none; }
         .start-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
@@ -24,7 +24,7 @@
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🐦 Flappy Bird</h2>
         <div class="score">Очки: <span id="flappyScore">0</span></div>
         <div class="record">🏆 Рекорд: <span id="flappyRecord">0</span></div>
@@ -94,7 +94,6 @@
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             
-            // Фон
             if (BG_IMG.complete && BG_IMG.naturalWidth > 0) {
                 ctx.drawImage(BG_IMG, bgX, 0, 300, 400);
                 ctx.drawImage(BG_IMG, bgX + 300, 0, 300, 400);
@@ -103,13 +102,11 @@
                 ctx.fillRect(0, 0, 300, 400);
             }
             
-            // Трубы
             ctx.fillStyle = '#4caf84';
             pipes.forEach(p => { ctx.fillRect(p.x, 0, PW, p.y); ctx.fillRect(p.x, p.y+PG, PW, 400-p.y-PG); });
             
-            // Птица
             if (BIRD_IMG.complete && BIRD_IMG.naturalWidth > 0) {
-                const birdSize = 80;
+                const birdSize = 100;
                 ctx.drawImage(BIRD_IMG, bird.x-birdSize/2, bird.y-birdSize/2, birdSize, birdSize);
             } else {
                 ctx.fillStyle = '#e94560';
