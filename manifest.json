@@ -1,7 +1,7 @@
 {
   "name": "BatonCHIK Games",
   "short_name": "BatonCHIK",
-  "start_url": "https://bat0nch1k.github.io/batonchik-app/main.html",
+  "start_url": "https://bat0nch1k.github.io/batonchik-app/index.html",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#e94560",
