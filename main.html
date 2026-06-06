@@ -13,7 +13,21 @@
     <meta name="theme-color" content="#e94560">
     <script src="https://unpkg.com/pwacompat@2.0.17/pwacompat.min.js" async></script>
     <style>
-        :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --text-secondary: #b0b0b0; --radius: 16px; }
+        :root {
+            --bg: #1a1a2e;
+            --card: #16213e;
+            --accent: #e94560;
+            --text: #fff;
+            --text-secondary: #b0b0b0;
+            --radius: 16px;
+        }
+        .light {
+            --bg: #f0f0f0;
+            --card: #ffffff;
+            --accent: #e94560;
+            --text: #1a1a2e;
+            --text-secondary: #666;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -30,7 +44,7 @@
         .game-icon.red { background: #e94560; } .game-icon.blue { background: #4a90d9; } .game-icon.green { background: #4caf84; } .game-icon.orange { background: #e09540; } .game-icon.gold { background: #f0c040; } .game-icon.purple { background: #8e44ad; }
         .game-info { text-align: left; flex: 1; } .game-name { font-size: 16px; font-weight: 600; } .game-desc { font-size: 12px; color: var(--text-secondary); } .game-arrow { font-size: 20px; color: var(--text-secondary); }
         .version { text-align: center; color: #555; font-size: 11px; margin-top: 30px; }
-        .footer-link { display: block; margin-top: 16px; color: var(--gold); text-decoration: none; font-weight: bold; font-size: 15px; }
+        .footer-link { display: block; margin-top: 16px; color: #f0c040; text-decoration: none; font-weight: bold; font-size: 15px; }
         #install-btn {
             position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
             padding: 14px 24px; background: #4a90d9; color: #fff; border: none;
@@ -42,6 +56,30 @@
             0%,100% { transform: translateX(-50%) scale(1); }
             50% { transform: translateX(-50%) scale(1.05); }
         }
+        .settings-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); z-index: 9998;
+            display: none; align-items: center; justify-content: center;
+        }
+        .settings-overlay.open { display: flex; }
+        .settings-panel {
+            background: var(--card); color: var(--text);
+            border-radius: 16px; padding: 24px; width: 90%; max-width: 400px;
+            max-height: 80vh; overflow-y: auto; text-align: left;
+        }
+        .settings-panel h3 { text-align: center; margin-bottom: 16px; }
+        .settings-panel label { display: block; margin: 10px 0 4px; font-weight: bold; }
+        .settings-panel select, .settings-panel input[type=range], .settings-panel input[type=color] {
+            width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--accent);
+            background: var(--bg); color: var(--text); font-family: inherit;
+        }
+        .settings-panel .btn { margin-top: 12px; width: 100%; }
+        .settings-panel .changelog {
+            background: var(--bg); border-radius: 8px; padding: 10px;
+            font-size: 12px; max-height: 150px; overflow-y: auto; margin-top: 8px;
+            line-height: 1.6;
+        }
+        .settings-panel .changelog b { color: var(--accent); }
     </style>
 </head>
 <body>
@@ -69,10 +107,83 @@
             <a href="paperio.html" class="game-card"><div class="game-icon blue">🗺️</div><div class="game-info"><div class="game-name">Paper.io</div><div class="game-desc">Захвати территорию</div></div><div class="game-arrow">▶</div></a>
         </div>
         <a href="titles.html" class="footer-link">🏆 Титулы</a>
+        <button class="btn" id="settingsBtn" style="margin-top:8px;">⚙️ Настройки</button>
+        <button class="btn" id="supportBtn" style="margin-top:4px;">💬 Поддержка</button>
         <div class="version">v7.0 — BatonCHIK Games</div>
     </div>
     
     <button id="install-btn">📲 Скачай на телефон — получи бонусы!</button>
+    
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <h3>⚙️ Настройки</h3>
+            
+            <label>🎨 Тема</label>
+            <select id="themeSelect">
+                <option value="dark">Тёмная</option>
+                <option value="light">Светлая</option>
+            </select>
+            
+            <label>🎨 Свой цвет акцента</label>
+            <input type="color" id="accentColor" value="#e94560">
+            
+            <label>🔊 Громкость музыки</label>
+            <input type="range" id="musicVolume" min="0" max="100" value="50">
+            
+            <label>🔔 Громкость SFX</label>
+            <input type="range" id="sfxVolume" min="0" max="100" value="80">
+            
+            <label>📋 Патчноуты v7.0</label>
+            <div class="changelog">
+<b>✅ v7.0-dev (текущая):</b><br>
+• PWA — установка как приложение<br>
+• Титул «Истинный Геймер» за установку<br>
+• Настройки: тема, цвет, громкость<br>
+• Fruit Merge (Phaser → чистый JS)<br>
+• Paper.io (замыкание, джойстики)<br>
+• Block Blast (перетаскивание)<br>
+• Запрет выделения текста во всех играх<br>
+• Кнопка поддержки в Telegram<br><br>
+
+<b>🔜 Планируемые патчи:</b><br>
+• Новые SFX: merge, capture, levelUp<br>
+• Новые musics: ruins (Toby fox), Aria Math (C418), speedrun (dream), dark fantazy (Dustum), Interstellar (Hans Zimmer), Chess (joyful), Asgore (Toby Fox), Hopes and dreams (Toby fox).<br>
+• Cube Runner (геометри даш)<br>
+• State.io (захват территорий)<br>
+• Brick Blast (PvP пинг-понг)<br>
+• 4 в ряд<br>
+• Морской бой<br>
+• Шахматы (ИИ)<br>
+• Slot Cars<br>
+• Gravity Run<br>
+• Memory Duo<br>
+• Бильярд<br>
+• Хоккей<br>
+• City Parkour<br>
+• Maze Dash<br>
+• Wall Climbers<br>
+• Going Marbles<br>
+• Magic Clash<br>
+• Tower Defense<br>
+• Cyber Rush<br>
+• Dark Walkers<br>
+• Miners City<br>
+• Fantasy Hall<br>
+• Block Stack<br>
+• Игры на двоих (сплит-скрин)<br>
+• Свои цвета тем (кастом)<br>
+• Фикс викторины<br>
+• Фикс кликера для айфонов<br>
+• Интеграция Three.js<br>
+• Улучшение стабильности<br>
+• Главный экран перенесен в Main.html<br>
+• Фикс системных ошибок<br>
+• Удален Херобрин<br>
+            </div>
+            
+            <button class="btn" id="closeSettingsBtn">Закрыть</button>
+        </div>
+    </div>
     
     <script src="sfx.js"></script>
     <script>
@@ -83,6 +194,73 @@
             else SFX.playMusic('ruins');
         });
 
+        // === НАСТРОЙКИ ===
+        (function() {
+            const overlay = document.getElementById('settingsOverlay');
+            const themeSelect = document.getElementById('themeSelect');
+            const accentColor = document.getElementById('accentColor');
+            const musicVol = document.getElementById('musicVolume');
+            const sfxVol = document.getElementById('sfxVolume');
+            
+            const savedTheme = localStorage.getItem('bg-theme') || 'dark';
+            const savedAccent = localStorage.getItem('bg-accent') || '#e94560';
+            const savedMusic = parseFloat(localStorage.getItem('bg-music-vol') || '0.5');
+            const savedSfx = parseFloat(localStorage.getItem('bg-sfx-vol') || '0.8');
+            
+            applyTheme(savedTheme);
+            applyAccent(savedAccent);
+            themeSelect.value = savedTheme;
+            accentColor.value = savedAccent;
+            musicVol.value = savedMusic * 100;
+            sfxVol.value = savedSfx * 100;
+            
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                overlay.classList.add('open');
+            });
+            
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+                overlay.classList.remove('open');
+            });
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('open');
+            });
+            
+            themeSelect.addEventListener('change', () => {
+                const val = themeSelect.value;
+                localStorage.setItem('bg-theme', val);
+                applyTheme(val);
+            });
+            
+            accentColor.addEventListener('input', () => {
+                const val = accentColor.value;
+                localStorage.setItem('bg-accent', val);
+                applyAccent(val);
+            });
+            
+            musicVol.addEventListener('input', () => {
+                const val = musicVol.value / 100;
+                localStorage.setItem('bg-music-vol', val);
+                if (SFX._currentMusic) {
+                    SFX._currentMusic.volume = val * 0.08;
+                }
+            });
+            
+            sfxVol.addEventListener('input', () => {
+                const val = sfxVol.value / 100;
+                localStorage.setItem('bg-sfx-vol', val);
+            });
+            
+            function applyTheme(theme) {
+                document.body.classList.remove('light');
+                if (theme === 'light') document.body.classList.add('light');
+            }
+            
+            function applyAccent(color) {
+                document.documentElement.style.setProperty('--accent', color);
+            }
+        })();
+
+        // === PWA КНОПКА ===
         (function() {
             const btn = document.getElementById('install-btn');
             let deferredPrompt;
@@ -122,6 +300,11 @@
                 }
             }, 10000);
         })();
+
+        // === ПОДДЕРЖКА ===
+        document.getElementById('supportBtn').addEventListener('click', () => {
+            window.open('https://t.me/TexnoDDepZHka_BexoJlDepa_bot', '_blank');
+        });
     </script>
 </body>
-</html>
+                </html>
