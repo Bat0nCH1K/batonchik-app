@@ -2,172 +2,95 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Змейка — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .canvas-wrap { position: relative; display: inline-block; }
-        canvas { border: 3px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 16px auto; }
-        .start-overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
-            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
-        }
-        .controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; }
-        .row { display: flex; gap: 8px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; touch-action: manipulation; }
         .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🐍 Змейка</h2>
         <div class="score">Очки: <span id="snakeScore">0</span></div>
         <div class="record">🏆 Рекорд: <span id="snakeRecord">0</span></div>
-        <div class="canvas-wrap">
-            <canvas id="snakeCanvas" width="300" height="300"></canvas>
-            <div class="start-overlay" id="snakeStart">▶ Старт</div>
-        </div>
+        <canvas id="snakeCanvas" width="300" height="300"></canvas>
         <div class="controls">
-            <div class="row"><button class="ctrl" id="snakeUp">↑</button></div>
-            <div class="row">
-                <button class="ctrl" id="snakeLeft">←</button>
-                <button class="ctrl" id="snakeDown">↓</button>
-                <button class="ctrl" id="snakeRight">→</button>
-            </div>
+            <button class="ctrl" id="snakeUp">↑</button>
+            <button class="ctrl" id="snakeDown">↓</button>
+            <button class="ctrl" id="snakeLeft">←</button>
+            <button class="ctrl" id="snakeRight">→</button>
         </div>
+        <button class="btn" id="snakeRestart">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('subway');
-        const APPLE_IMG = new Image();
-        APPLE_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531095447.png';
-        
-        const grid = 15, cell = 20;
-        let snake = [], food = {}, dir = 'right', interval = null, score = 0, running = false;
         const canvas = document.getElementById('snakeCanvas'), ctx = canvas.getContext('2d');
-        let smoothSnake = [];
-        let dirQueue = [];
-
+        const GRID = 15, CELL = 20;
+        let snake = [], food = {}, dir = 'right', nextDir = 'right', score = 0, interval = null, running = false;
         document.getElementById('snakeRecord').textContent = Highscores.get('snake');
 
-        function reset() {
-            score = 0; document.getElementById('snakeScore').textContent = '0';
-            snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right'; running = false;
-            smoothSnake = snake.map(s => ({ x: s.x * cell, y: s.y * cell }));
-            dirQueue = [];
+        function start() {
+            snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}];
+            dir = 'right'; nextDir = 'right'; score = 0; running = true;
+            document.getElementById('snakeScore').textContent = '0';
+            placeFood();
             if (interval) clearInterval(interval);
-            placeFood(); draw();
-            document.getElementById('snakeStart').style.display = 'block';
+            interval = setInterval(update, 100);
+            draw();
         }
 
-        document.getElementById('snakeStart').addEventListener('click', () => {
-            running = true; document.getElementById('snakeStart').style.display = 'none';
-            score = 0; document.getElementById('snakeScore').textContent = '0';
-            snake = [{x:7,y:7},{x:6,y:7},{x:5,y:7}]; dir = 'right';
-            smoothSnake = snake.map(s => ({ x: s.x * cell, y: s.y * cell }));
-            dirQueue = [];
-            placeFood(); if (interval) clearInterval(interval);
-            interval = setInterval(update, 130);
-            requestAnimationFrame(animateLoop);
-        });
-
-        function placeFood() { do { food = { x: Math.floor(Math.random()*grid), y: Math.floor(Math.random()*grid) }; } while (snake.some(s => s.x===food.x&&s.y===food.y)); }
+        function placeFood() {
+            do { food = {x:Math.floor(Math.random()*GRID), y:Math.floor(Math.random()*GRID)}; }
+            while (snake.some(s=>s.x===food.x&&s.y===food.y));
+        }
 
         function update() {
             if (!running) return;
-            
-            while (dirQueue.length > 0) {
-                const nd = dirQueue.shift();
-                if (nd === 'up' && dir !== 'down') { dir = 'up'; break; }
-                if (nd === 'down' && dir !== 'up') { dir = 'down'; break; }
-                if (nd === 'left' && dir !== 'right') { dir = 'left'; break; }
-                if (nd === 'right' && dir !== 'left') { dir = 'right'; break; }
-            }
-            
-            const head = { ...snake[0] };
-            if (dir==='up') head.y--; if (dir==='down') head.y++; if (dir==='left') head.x--; if (dir==='right') head.x++;
-            if (head.x<0||head.x>=grid||head.y<0||head.y>=grid||snake.some(s=>s.x===head.x&&s.y===head.y)) {
+            dir = nextDir;
+            const head = snake[0];
+            let nx = head.x, ny = head.y;
+            if (dir==='up') ny--; if (dir==='down') ny++; if (dir==='left') nx--; if (dir==='right') nx++;
+            if (nx<0||nx>=GRID||ny<0||ny>=GRID||snake.some(s=>s.x===nx&&s.y===ny)) {
                 clearInterval(interval); running = false;
                 const isNew = Highscores.save('snake', score);
                 document.getElementById('snakeRecord').textContent = Highscores.get('snake');
-                Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => reset());
+                Modal.show('💀 Конец игры', `Очки: ${score}${isNew?'\n🏆 Новый рекорд!':''}`).then(() => start());
                 return;
             }
-            snake.unshift(head);
-            smoothSnake.unshift({ x: head.x * cell, y: head.y * cell });
-            if (smoothSnake.length > snake.length) smoothSnake.pop();
-            if (head.x===food.x&&head.y===food.y) { score+=10; document.getElementById('snakeScore').textContent = score; placeFood(); SFX.eat(); }
-            else { snake.pop(); }
-        }
-
-        function animateLoop() {
-            if (!running) return;
-            for (let i = 0; i < snake.length; i++) {
-                const target = snake[i];
-                const smooth = smoothSnake[i];
-                if (!smooth) continue;
-                smooth.x += (target.x * cell - smooth.x) * 0.5;
-                smooth.y += (target.y * cell - smooth.y) * 0.5;
-            }
+            snake.unshift({x:nx,y:ny});
+            if (nx===food.x&&ny===food.y) { score+=10; document.getElementById('snakeScore').textContent=score; SFX.eat(); placeFood(); }
+            else snake.pop();
             draw();
-            requestAnimationFrame(animateLoop);
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            
-            if (APPLE_IMG.complete && APPLE_IMG.naturalWidth > 0) {
-                ctx.drawImage(APPLE_IMG, food.x*cell-3, food.y*cell-3, cell+6, cell+6);
-            } else {
-                ctx.fillStyle = '#4caf84';
-                ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4);
-            }
-            
-            for (let i = smoothSnake.length - 1; i >= 0; i--) {
-                const s = smoothSnake[i];
-                const t = i / Math.max(1, smoothSnake.length - 1);
-                const r = Math.floor(30 + t * 100);
-                const g = Math.floor(180 - t * 100);
-                const b = Math.floor(60 - t * 40);
-                ctx.fillStyle = `rgb(${r},${g},${b})`;
-                
-                if (i === 0) {
-                    ctx.fillRect(s.x+0.5, s.y+0.5, cell-1, cell-1);
-                    ctx.fillStyle = '#fff';
-                    let ex1, ey1, ex2, ey2;
-                    if (dir === 'right') { ex1 = s.x+12; ey1 = s.y+5; ex2 = s.x+12; ey2 = s.y+13; }
-                    else if (dir === 'left') { ex1 = s.x+3; ey1 = s.y+5; ex2 = s.x+3; ey2 = s.y+13; }
-                    else if (dir === 'up') { ex1 = s.x+5; ey1 = s.y+3; ex2 = s.x+13; ey2 = s.y+3; }
-                    else { ex1 = s.x+5; ey1 = s.y+14; ex2 = s.x+13; ey2 = s.y+14; }
-                    ctx.beginPath(); ctx.arc(ex1, ey1, 3, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(ex2, ey2, 3, 0, Math.PI*2); ctx.fill();
-                    // Зрачки
-                    ctx.fillStyle = '#000';
-                    ctx.beginPath(); ctx.arc(ex1+1, ey1, 1.5, 0, Math.PI*2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(ex2+1, ey2, 1.5, 0, Math.PI*2); ctx.fill();
-                } else {
-                    ctx.fillRect(s.x+1, s.y+1, cell-2, cell-2);
-                }
-            }
+            ctx.fillStyle = '#e94560'; ctx.fillRect(food.x*CELL, food.y*CELL, CELL, CELL);
+            snake.forEach((s,i) => { ctx.fillStyle = i===0 ? '#4caf84' : '#4a90d9'; ctx.fillRect(s.x*CELL, s.y*CELL, CELL, CELL); });
         }
 
-        document.getElementById('snakeUp').addEventListener('click', () => dirQueue.push('up'));
-        document.getElementById('snakeDown').addEventListener('click', () => dirQueue.push('down'));
-        document.getElementById('snakeLeft').addEventListener('click', () => dirQueue.push('left'));
-        document.getElementById('snakeRight').addEventListener('click', () => dirQueue.push('right'));
-
-        reset();
+        document.getElementById('snakeUp').addEventListener('click', ()=>{ if (dir!=='down') nextDir='up'; });
+        document.getElementById('snakeDown').addEventListener('click', ()=>{ if (dir!=='up') nextDir='down'; });
+        document.getElementById('snakeLeft').addEventListener('click', ()=>{ if (dir!=='right') nextDir='left'; });
+        document.getElementById('snakeRight').addEventListener('click', ()=>{ if (dir!=='left') nextDir='right'; });
+        document.getElementById('snakeRestart').addEventListener('click', start);
+        start();
     </script>
 </body>
 </html>
