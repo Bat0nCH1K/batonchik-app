@@ -2,12 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pac-Man — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
@@ -19,16 +19,17 @@
             background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
             font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
         }
-        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; }
-        .ctrl:active { background: var(--accent); }
+        .joystick-wrap { display: flex; justify-content: center; margin-top: 10px; }
+        .joy-base { width: 110px; height: 110px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); position: relative; touch-action: none; }
+        .joy-stick { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: 0.05s; pointer-events: none; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
         .timer { font-size: 20px; color: #ff9800; margin: 5px 0; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🟡 Pac-Man</h2>
         <div class="score">Очки: <span id="pmScore">0</span> | Жизни: <span id="pmLives">❤️❤️❤️</span></div>
         <div class="timer">⏱ <span id="pmTimer">0</span>с</div>
@@ -37,14 +38,12 @@
             <canvas id="pmCanvas" width="300" height="300"></canvas>
             <div class="start-overlay" id="pmStart">▶ Старт</div>
         </div>
-        <div class="controls">
-            <button class="ctrl" id="pmUp">↑</button>
+        <div class="joystick-wrap">
+            <div class="joy-base" id="joyBase">
+                <div class="joy-stick" id="joyStick"></div>
+            </div>
         </div>
-        <div class="controls" style="margin-top:5px;">
-            <button class="ctrl" id="pmLeft">←</button>
-            <button class="ctrl" id="pmDown">↓</button>
-            <button class="ctrl" id="pmRight">→</button>
-        </div>
+        <button class="btn" id="pmNewGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
@@ -56,7 +55,6 @@
         let dots = [], walls = [], ghosts = [];
         let score = 0, lives = 3, interval = null, ghostInterval = null, running = false;
         let timeElapsed = 0, timerInterval = null;
-        let mouthAngle = 0;
         let px = 7*20, py = 7*20;
         let moveCooldown = 0;
         let ghostPX = [7*20, 7*20], ghostPY = [6*20, 8*20];
@@ -92,7 +90,7 @@
             ghostPX = [7*20, 7*20]; ghostPY = [6*20, 8*20];
             dots = []; walls = []; ghosts = [];
             for (let r=0; r<15; r++) { walls[r]=[]; for (let c=0; c<15; c++) { walls[r][c]=maze[r][c]===1; if (!walls[r][c]&&!(c===7&&r===7)&&!(c===7&&r===8)) dots.push({x:c,y:r}); } }
-            ghosts = [{x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6,dir:'up'},{x:7,y:8,color:'#6bff6b',homeX:7,homeY:8,dir:'down'}];
+            ghosts = [{x:7,y:6,color:'#ff6b6b',dir:'up'},{x:7,y:8,color:'#6bff6b',dir:'down'}];
             if (interval) clearInterval(interval);
             if (ghostInterval) clearInterval(ghostInterval);
             if (timerInterval) clearInterval(timerInterval);
@@ -101,12 +99,9 @@
 
         function launch() {
             running = true; document.getElementById('pmStart').style.display = 'none';
-            interval = setInterval(update, 80);
-            ghostInterval = setInterval(updateGhosts, 300);
-            timerInterval = setInterval(() => {
-                timeElapsed++;
-                document.getElementById('pmTimer').textContent = timeElapsed;
-            }, 1000);
+            interval = setInterval(update, 120);
+            ghostInterval = setInterval(updateGhosts, 250);
+            timerInterval = setInterval(() => { timeElapsed++; document.getElementById('pmTimer').textContent = timeElapsed; }, 1000);
         }
 
         function endGame(won = false) {
@@ -126,29 +121,24 @@
 
         function update() {
             if (!running) return;
-            moveCooldown--;
-            if (moveCooldown > 0) { draw(); return; }
             
             let nx = player.x, ny = player.y;
             if (nextDir === 'up') ny--; if (nextDir === 'down') ny++; if (nextDir === 'left') nx--; if (nextDir === 'right') nx++;
             if (nx < 0) nx = 14; if (nx > 14) nx = 0;
-            if (!walls[ny]?.[nx]) { dir = nextDir; player.x = nx; player.y = ny; moveCooldown = 2; }
+            if (!walls[ny]?.[nx]) { dir = nextDir; player.x = nx; player.y = ny; }
             else {
                 nx = player.x; ny = player.y;
                 if (dir === 'up') ny--; if (dir === 'down') ny++; if (dir === 'left') nx--; if (dir === 'right') nx++;
                 if (nx < 0) nx = 14; if (nx > 14) nx = 0;
-                if (!walls[ny]?.[nx]) { player.x = nx; player.y = ny; moveCooldown = 2; }
+                if (!walls[ny]?.[nx]) { player.x = nx; player.y = ny; }
             }
             
-            const tx = player.x * 20, ty = player.y * 20;
-            px += (tx - px) * 0.5;
-            py += (ty - py) * 0.5;
+            px += (player.x*20 - px) * 0.4;
+            py += (player.y*20 - py) * 0.4;
             
             const di = dots.findIndex(d => d.x===player.x && d.y===player.y);
             if (di !== -1) { dots.splice(di,1); score+=10; document.getElementById('pmScore').textContent=score; SFX.eat(); }
             if (dots.length === 0) { endGame(true); return; }
-            
-            mouthAngle += 0.3;
             checkCollision();
             draw();
         }
@@ -162,68 +152,73 @@
                 if (!walls[g.y]?.[g.x-1]) moves.push('left');
                 if (!walls[g.y]?.[g.x+1]) moves.push('right');
                 if (moves.length > 0) {
-                    g.dir = moves[Math.floor(Math.random()*moves.length)];
+                    const opp = {up:'down',down:'up',left:'right',right:'left'};
+                    const filtered = moves.filter(m => m !== opp[g.dir]);
+                    g.dir = filtered.length > 0 ? filtered[Math.floor(Math.random()*filtered.length)] : moves[Math.floor(Math.random()*moves.length)];
                     if (g.dir==='up') g.y--; if (g.dir==='down') g.y++; if (g.dir==='left') g.x--; if (g.dir==='right') g.x++;
                     if (g.x<0) g.x=14; if (g.x>14) g.x=0;
                 }
-                ghostPX[i] += (g.x*20 - ghostPX[i]) * 0.6;
-                ghostPY[i] += (g.y*20 - ghostPY[i]) * 0.6;
+                ghostPX[i] += (g.x*20 - ghostPX[i]) * 0.5;
+                ghostPY[i] += (g.y*20 - ghostPY[i]) * 0.5;
             });
             checkCollision(); draw();
         }
 
         function checkCollision() {
-            ghosts.forEach((g,idx)=>{if(Math.abs(player.x-g.x)<0.7&&Math.abs(player.y-g.y)<0.7){lives--;document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives)); if(lives<=0){clearInterval(interval);clearInterval(ghostInterval);clearInterval(timerInterval);running=false; const isNew = Highscores.save('pacman', score); document.getElementById('pmRecord').textContent = Highscores.get('pacman'); Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return;} player={x:7,y:7};dir='right';nextDir='right';px=7*20;py=7*20;moveCooldown=0;ghosts[0]={x:7,y:6,color:'#ff6b6b',homeX:7,homeY:6,dir:'up'};ghosts[1]={x:7,y:8,color:'#6bff6b',homeX:7,homeY:8,dir:'down'};ghostPX=[7*20,7*20];ghostPY=[6*20,8*20];}});
+            ghosts.forEach((g,idx)=>{
+                if (g.x === player.x && g.y === player.y) {
+                    lives--; document.getElementById('pmLives').textContent='❤️'.repeat(Math.max(0,lives));
+                    if (lives<=0) { endGame(false); return; }
+                    player={x:7,y:7}; dir='right'; nextDir='right'; px=7*20; py=7*20;
+                    ghosts=[{x:7,y:6,color:'#ff6b6b',dir:'up'},{x:7,y:8,color:'#6bff6b',dir:'down'}];
+                    ghostPX=[7*20,7*20]; ghostPY=[6*20,8*20];
+                }
+            });
         }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             ctx.fillStyle='#3333ff';
-            for(let r=0;r<15;r++)for(let c=0;c<15;c++)if(walls[r][c])ctx.fillRect(c*20,r*20,20,20);
+            for (let r=0;r<15;r++) for (let c=0;c<15;c++) if (walls[r][c]) ctx.fillRect(c*20,r*20,20,20);
             ctx.fillStyle='#fff';
             dots.forEach(d=>ctx.fillRect(d.x*20+8,d.y*20+8,4,4));
             ghosts.forEach((g, i) => {
-                const gx = ghostPX[i], gy = ghostPY[i];
                 ctx.fillStyle = g.color;
-                ctx.beginPath();
-                ctx.arc(gx+10, gy+10, 8, 0, Math.PI*2);
-                ctx.fill();
+                ctx.fillRect(ghostPX[i]+3, ghostPY[i]+2, 14, 16);
                 ctx.fillStyle = '#fff';
-                const eyeOffX = g.dir==='right'?2:g.dir==='left'?-2:0;
-                const eyeOffY = g.dir==='down'?2:g.dir==='up'?-2:0;
-                ctx.beginPath(); ctx.arc(gx+6+eyeOffX, gy+7+eyeOffY, 2.5, 0, Math.PI*2); ctx.fill();
-                ctx.beginPath(); ctx.arc(gx+14+eyeOffX, gy+7+eyeOffY, 2.5, 0, Math.PI*2); ctx.fill();
-                // Зрачки
+                ctx.fillRect(ghostPX[i]+5, ghostPY[i]+5, 4, 4);
+                ctx.fillRect(ghostPX[i]+11, ghostPY[i]+5, 4, 4);
                 ctx.fillStyle = '#000';
-                ctx.beginPath(); ctx.arc(gx+7+eyeOffX, gy+7+eyeOffY, 1.2, 0, Math.PI*2); ctx.fill();
-                ctx.beginPath(); ctx.arc(gx+15+eyeOffX, gy+7+eyeOffY, 1.2, 0, Math.PI*2); ctx.fill();
+                ctx.fillRect(ghostPX[i]+6, ghostPY[i]+5, 2, 3);
+                ctx.fillRect(ghostPX[i]+12, ghostPY[i]+5, 2, 3);
             });
             ctx.fillStyle='#ffff00';
             ctx.beginPath();
-            const mouth = 0.2 + Math.abs(Math.sin(mouthAngle)) * 0.2;
-            const angles = {right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2};
-            const a = angles[dir] || 0;
-            ctx.arc(px+10, py+10, 8, a+mouth, a+Math.PI*2-mouth);
+            ctx.arc(px+10, py+10, 8, 0.2, Math.PI*2-0.2);
             ctx.lineTo(px+10, py+10);
             ctx.fill();
         }
 
-        document.getElementById('pmUp').addEventListener('click', () => nextDir = 'up');
-        document.getElementById('pmDown').addEventListener('click', () => nextDir = 'down');
-        document.getElementById('pmLeft').addEventListener('click', () => nextDir = 'left');
-        document.getElementById('pmRight').addEventListener('click', () => nextDir = 'right');
+        // Джойстик
+        (function() {
+            const base = document.getElementById('joyBase'), stick = document.getElementById('joyStick');
+            let active = false;
+            base.addEventListener('pointerdown', e => { active=true; base.setPointerCapture(e.pointerId); move(e); });
+            base.addEventListener('pointermove', e => { if(!active)return; move(e); });
+            base.addEventListener('pointerup', () => { active=false; stick.style.transform='translate(-50%,-50%)'; });
+            base.addEventListener('pointerleave', () => { active=false; stick.style.transform='translate(-50%,-50%)'; });
+            function move(e) {
+                const rect = base.getBoundingClientRect(), cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+                const dx = e.clientX-cx, dy = e.clientY-cy, dist = Math.sqrt(dx*dx+dy*dy), max = 35;
+                let mx=dx, my=dy;
+                if (dist>max) { mx=dx/dist*max; my=dy/dist*max; }
+                stick.style.transform = `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`;
+                if (dist>14) nextDir = Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up');
+            }
+        })();
+
         document.getElementById('pmStart').addEventListener('click', launch);
-
-        let touchStartX = 0, touchStartY = 0;
-        canvas.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; });
-        canvas.addEventListener('touchend', e => {
-            const dx = e.changedTouches[0].clientX - touchStartX;
-            const dy = e.changedTouches[0].clientY - touchStartY;
-            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-            if (Math.abs(dx) > Math.abs(dy)) nextDir = dx > 0 ? 'right' : 'left';
-            else nextDir = dy > 0 ? 'down' : 'up';
-        });
-
+        document.getElementById('pmNewGame').addEventListener('click', start);
         start();
     </script>
 </body>
