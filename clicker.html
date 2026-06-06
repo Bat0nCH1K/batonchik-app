@@ -2,12 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Кликер — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; --gold: #f0c040; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 16px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
@@ -17,21 +17,37 @@
             background: var(--card); color: white; font-size: 28px; font-weight: bold;
             cursor: pointer; box-shadow: 0 6px 20px rgba(233,69,96,0.4);
             transition: transform 0.1s; margin: 20px auto; display: block;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .click-btn:active { transform: scale(0.9); background: var(--accent); }
         .upgrades { display: flex; flex-direction: column; gap: 8px; max-width: 300px; margin: 0 auto; }
-        .upgrade-btn { padding: 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--card); color: var(--text); font-size: 13px; cursor: pointer; font-weight: bold; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .upgrade-btn {
+            padding: 12px; border: 2px solid var(--accent); border-radius: 12px;
+            background: var(--card); color: var(--text); font-size: 13px;
+            cursor: pointer; font-weight: bold; text-align: left;
+            display: flex; justify-content: space-between; align-items: center;
+            touch-action: manipulation;
+        }
         .upgrade-btn:disabled { opacity: 0.3; border-color: #555; }
         .upgrade-btn .info { font-size: 11px; color: var(--text-secondary); }
-        .rebirth-btn { padding: 14px; border: 2px solid var(--gold); border-radius: 12px; background: var(--card); color: var(--gold); font-size: 15px; cursor: pointer; font-weight: bold; margin-top: 12px; width: 100%; max-width: 300px; }
+        .rebirth-btn {
+            padding: 14px; border: 2px solid var(--gold); border-radius: 12px;
+            background: var(--card); color: var(--gold); font-size: 15px;
+            cursor: pointer; font-weight: bold; margin-top: 12px;
+            width: 100%; max-width: 300px; touch-action: manipulation;
+        }
         .rebirth-btn:disabled { opacity: 0.3; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
-        .reset-btn { display: block; width: 100%; max-width: 300px; margin: 10px auto; padding: 10px; background: none; border: 1px solid #555; color: #999; font-size: 12px; cursor: pointer; border-radius: 8px; }
+        .reset-btn {
+            display: block; width: 100%; max-width: 300px; margin: 10px auto;
+            padding: 10px; background: none; border: 1px solid #555;
+            color: #999; font-size: 12px; cursor: pointer; border-radius: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🔴 Кликер</h2>
         <div class="score" id="score">0</div>
         <p>За клик: <span id="perClick">1</span> | Авто: <span id="autoClicker">0</span>/сек | Множитель: x<span id="multiplier">1</span></p>
