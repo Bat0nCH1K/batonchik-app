@@ -2,110 +2,79 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Гонки — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .canvas-wrap { position: relative; display: inline-block; }
         canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
-        .start-overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
-            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
-        }
-        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🏎️ Гонки</h2>
         <div class="score">Очки: <span id="raceScore">0</span></div>
         <div class="record">🏆 Рекорд: <span id="raceRecord">0</span></div>
-        <div class="canvas-wrap">
-            <canvas id="raceCanvas" width="300" height="400"></canvas>
-            <div class="start-overlay" id="raceStart">▶ Старт</div>
-        </div>
-        <div class="controls">
-            <button class="ctrl" id="raceLeft">←</button>
-            <button class="ctrl" id="raceRight">→</button>
-        </div>
+        <canvas id="raceCanvas" width="300" height="400"></canvas>
+        <p style="color:var(--text-secondary);">Перетаскивай машину пальцем</p>
+        <button class="btn" id="raceNewGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('subway');
-        
-        const PLAYER_IMG = new Image();
-        PLAYER_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/IMG_20260531_122114.png';
-        const OBSTACLE_IMG = new Image();
-        OBSTACLE_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/lv_0_20260531105241.png';
-        const TRUCK_IMG = new Image();
-        TRUCK_IMG.src = 'https://github.com/Bat0nCH1K/batonchik-app/releases/download/v1.0/IMG_20260531_125358.png';
-
         const canvas = document.getElementById('raceCanvas'), ctx = canvas.getContext('2d');
-        let player = { x:130, y:340, w:40, h:50 }, obstacles = [], score = 0, interval = null, gameOver = false;
-        let leftDown = false, rightDown = false, speed = 3, spawnTimer = 0, running = false;
-
+        let car = { x: 130, y: 320, w: 40, h: 60 };
+        let obstacles = [], score = 0, interval = null, running = false;
+        const PW = 50, PG = 150;
         document.getElementById('raceRecord').textContent = Highscores.get('race');
 
         function start() {
-            score = 0; obstacles = []; gameOver = false; speed = 3; spawnTimer = 0; running = false;
+            score = 0; running = false;
             document.getElementById('raceScore').textContent = '0';
-            document.getElementById('raceStart').style.display = 'block';
-            player.x = 130;
+            car.x = 130; obstacles = [];
             if (interval) clearInterval(interval);
             draw();
-        }
-
-        function launch() {
-            running = true; document.getElementById('raceStart').style.display = 'none';
-            interval = setInterval(update, 30);
-        }
-
-        function spawn() {
-            const isTruck = Math.random() < 0.25;
-            const w = isTruck ? 50 : 40;
-            const h = isTruck ? 80 : 60;
-            const x = Math.random() * (300 - w);
-            obstacles.push({ x, y: -h, w, h, isTruck, passed: false });
+            setTimeout(() => { running = true; interval = setInterval(update, 30); }, 500);
         }
 
         function update() {
-            if (!running || gameOver) return;
-            if (leftDown && player.x > 0) player.x -= 5;
-            if (rightDown && player.x < 260) player.x += 5;
-
-            spawnTimer++;
-            if (spawnTimer > Math.max(20, 60 - speed*5)) { spawn(); spawnTimer = 0; }
-
-            obstacles = obstacles.filter(o => o.y < 420);
-            obstacles.forEach(o => {
-                o.y += speed;
-                if (!o.passed && o.y > player.y+player.h) { o.passed = true; score += o.isTruck ? 2 : 1; document.getElementById('raceScore').textContent = score; }
-            });
-
-            // Плавный разгон без ограничения
-            speed = 3 + score * 0.05;
-
+            if (!running) return;
+            
+            // Движение препятствий
+            if (Math.random() < 0.03) {
+                const lx = 50 + Math.random() * 100;
+                obstacles.push({ x: lx, y: -60, w: PW, h: 20, passed: false });
+            }
+            
+            for (let i = obstacles.length-1; i >= 0; i--) {
+                obstacles[i].y += 4;
+                if (obstacles[i].y > 420) {
+                    obstacles.splice(i, 1);
+                } else if (!obstacles[i].passed && obstacles[i].y > car.y + car.h) {
+                    obstacles[i].passed = true;
+                    score += 10;
+                    document.getElementById('raceScore').textContent = score;
+                    SFX.coin();
+                }
+            }
+            
+            // Коллизия
             for (const o of obstacles) {
-                const mx = 10, my = 12;
-                if (player.x+mx < o.x+o.w-mx && player.x+player.w-mx > o.x+mx && 
-                    player.y+my < o.y+o.h-my && player.y+player.h-my > o.y+my) {
-                    clearInterval(interval); gameOver = true; running = false;
+                if (car.x < o.x+o.w && car.x+car.w > o.x && car.y < o.y+o.h && car.y+car.h > o.y) {
+                    clearInterval(interval); running = false;
                     const isNew = Highscores.save('race', score);
                     document.getElementById('raceRecord').textContent = Highscores.get('race');
-                    Modal.show('💥 Разбился!', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
+                    Modal.show('💀 Авария!', `Очки: ${score}${isNew?'\n🏆 Новый рекорд!':''}`).then(() => start());
                     return;
                 }
             }
@@ -114,37 +83,39 @@
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle = '#555';
-            for (let i=0; i<400; i+=50) ctx.fillRect(148, (i+frame*speed*2)%400-50, 4, 30);
-            
-            if (PLAYER_IMG.complete && PLAYER_IMG.naturalWidth > 0) {
-                ctx.drawImage(PLAYER_IMG, player.x-8, player.y-5, player.w+16, player.h+10);
-            } else {
-                ctx.fillStyle = '#4a90d9'; ctx.fillRect(player.x, player.y, player.w, player.h);
-            }
-            
-            obstacles.forEach(o => {
-                const img = o.isTruck ? TRUCK_IMG : OBSTACLE_IMG;
-                if (img.complete && img.naturalWidth > 0) {
-                    if (o.isTruck) ctx.drawImage(img, o.x-5, o.y-5, o.w+10, o.h+10);
-                    else ctx.drawImage(img, o.x-8, o.y-5, o.w+16, o.h+10);
-                } else {
-                    ctx.fillStyle = o.isTruck ? '#4caf84' : '#e94560'; 
-                    ctx.fillRect(o.x, o.y, o.w, o.h);
-                }
-            });
+            // Дорога
+            ctx.fillStyle = '#333';
+            ctx.fillRect(50, 0, 200, 400);
+            // Разметка
+            ctx.fillStyle = '#fff';
+            for (let y = 0; y < 400; y += 40) ctx.fillRect(148, (y+frame*4)%400, 4, 20);
+            // Машина
+            ctx.fillStyle = '#e94560';
+            ctx.fillRect(car.x, car.y, car.w, car.h);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(car.x+5, car.y+5, 10, 15);
+            ctx.fillRect(car.x+25, car.y+5, 10, 15);
+            // Препятствия
+            ctx.fillStyle = '#ff9800';
+            obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
         }
 
         let frame = 0;
-        const origUpdate = update;
-        update = function() { frame++; origUpdate(); };
+        setInterval(() => { frame++; }, 16);
 
-        document.getElementById('raceStart').addEventListener('click', launch);
-        document.getElementById('raceLeft').addEventListener('pointerdown', () => leftDown = true);
-        document.getElementById('raceLeft').addEventListener('pointerup', () => leftDown = false);
-        document.getElementById('raceRight').addEventListener('pointerdown', () => rightDown = true);
-        document.getElementById('raceRight').addEventListener('pointerup', () => rightDown = false);
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left - car.w/2;
+            car.x = Math.max(50, Math.min(250-car.w, x));
+        });
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left - car.w/2;
+            car.x = Math.max(50, Math.min(250-car.w, x));
+        });
 
+        document.getElementById('raceNewGame').addEventListener('click', start);
         start();
     </script>
 </body>
