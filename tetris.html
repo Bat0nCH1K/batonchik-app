@@ -2,120 +2,124 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Тетрис — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .canvas-wrap { position: relative; display: inline-block; }
-        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; }
-        .start-overlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
-            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
-        }
-        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; }
+        canvas { border: 2px solid var(--accent); border-radius: 12px; background: #0a0a1a; display: block; margin: 10px auto; touch-action: none; }
+        .controls { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .ctrl { width: 55px; height: 55px; border-radius: 14px; background: var(--card); color: var(--text); border: 2px solid var(--accent); font-size: 22px; cursor: pointer; font-weight: bold; touch-action: manipulation; }
         .ctrl:active { background: var(--accent); }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🧱 Тетрис</h2>
-        <div class="score">Очки: <span id="tetScore">0</span></div>
-        <div class="record">🏆 Рекорд: <span id="tetRecord">0</span></div>
-        <div class="canvas-wrap">
-            <canvas id="tetCanvas" width="200" height="360"></canvas>
-            <div class="start-overlay" id="tetStart">▶ Старт</div>
-        </div>
+        <div class="score">Очки: <span id="tetrisScore">0</span></div>
+        <div class="record">🏆 Рекорд: <span id="tetrisRecord">0</span></div>
+        <canvas id="tetrisCanvas" width="240" height="400"></canvas>
         <div class="controls">
-            <button class="ctrl" id="tetLeft">←</button>
-            <button class="ctrl" id="tetRotate">↻</button>
-            <button class="ctrl" id="tetRight">→</button>
-            <button class="ctrl" id="tetDown">↓</button>
+            <button class="ctrl" id="tLeft">←</button>
+            <button class="ctrl" id="tRotate">↻</button>
+            <button class="ctrl" id="tRight">→</button>
+            <button class="ctrl" id="tDown" style="width:120px;">▼</button>
         </div>
+        <button class="btn" id="tetrisNewGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
     <script src="modals.js"></script>
     <script>
         SFX.playMusic('tetris');
-        const canvas = document.getElementById('tetCanvas'), ctx = canvas.getContext('2d');
-        const COLS = 10, ROWS = 18, CELL = 20;
-        const SHAPES = [[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]]];
-        const COLORS = ['#4a90d9','#f0c040','#8e44ad','#ff9800','#4caf84','#e94560','#1abc9c'];
-        let board = [], piece = null, score = 0, interval = null, gameOver = false, running = false;
-
-        document.getElementById('tetRecord').textContent = Highscores.get('tetris');
+        const canvas = document.getElementById('tetrisCanvas'), ctx = canvas.getContext('2d');
+        const COLS = 10, ROWS = 20, CELL = 20;
+        const SHAPES = [
+            [[1,1,1,1]], [[1,1],[1,1]], [[0,1,0],[1,1,1]], [[1,0,0],[1,1,1]], [[0,0,1],[1,1,1]],
+            [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]]
+        ];
+        const COLORS = ['#00f0f0','#f0f000','#a000f0','#00f000','#f00000','#0000f0','#f0a000'];
+        let grid, piece, score, interval, running;
+        document.getElementById('tetrisRecord').textContent = Highscores.get('tetris');
 
         function start() {
-            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
-            score = 0; gameOver = false; running = false;
-            document.getElementById('tetScore').textContent = '0';
-            document.getElementById('tetStart').style.display = 'block';
+            grid = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0; running = true;
+            document.getElementById('tetrisScore').textContent = '0';
+            spawnPiece();
             if (interval) clearInterval(interval);
+            interval = setInterval(tick, 600);
             draw();
         }
 
-        function spawn() {
+        function spawnPiece() {
             const idx = Math.floor(Math.random()*SHAPES.length);
-            piece = { shape: SHAPES[idx].map(r=>[...r]), color: idx, x: Math.floor((COLS-SHAPES[idx][0].length)/2), y: 0 };
-            if (!valid(piece.shape, piece.x, piece.y)) { clearInterval(interval); gameOver = true; running = false;
-                const isNew = Highscores.save('tetris', score);
-                document.getElementById('tetRecord').textContent = Highscores.get('tetris');
-                Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start());
-            }
+            piece = { shape: SHAPES[idx].map(r=>[...r]), color: COLORS[idx], x: Math.floor((COLS-SHAPES[idx][0].length)/2), y: 0 };
+            if (!canPlace(piece.shape, piece.x, piece.y)) { clearInterval(interval); running = false; const isNew = Highscores.save('tetris', score); document.getElementById('tetrisRecord').textContent = Highscores.get('tetris'); Modal.show('💀 Конец!', `Очки: ${score}${isNew?'\n🏆 Новый рекорд!':''}`).then(()=>start()); }
         }
 
-        function valid(shape, px, py) {
+        function canPlace(shape, px, py) {
             for (let r=0; r<shape.length; r++) for (let c=0; c<shape[r].length; c++) {
-                if (!shape[r][c]) continue;
-                const nx=px+c, ny=py+r;
-                if (nx<0||nx>=COLS||ny>=ROWS||(ny>=0&&board[ny][nx])) return false;
+                if (shape[r][c] && (py+r>=ROWS || px+c<0 || px+c>=COLS || (py+r>=0 && grid[py+r][px+c]))) return false;
             }
             return true;
         }
 
-        function lock() {
+        function placePiece() {
             for (let r=0; r<piece.shape.length; r++) for (let c=0; c<piece.shape[r].length; c++) {
-                if (!piece.shape[r][c]) continue;
-                const ny=piece.y+r, nx=piece.x+c;
-                if (ny<0) { clearInterval(interval); gameOver=true; running=false;
-                    const isNew = Highscores.save('tetris', score);
-                    document.getElementById('tetRecord').textContent = Highscores.get('tetris');
-                    Modal.show('💀 Игра окончена', `Очки: ${score}${isNew ? '\n🏆 Новый рекорд!' : ''}`).then(() => start()); return; }
-                board[ny][nx] = piece.color+1;
+                if (piece.shape[r][c]) grid[piece.y+r][piece.x+c] = piece.color;
             }
+            // Очистка линий
             let cleared = 0;
-            for (let r=ROWS-1; r>=0; r--) { if (board[r].every(c=>c)) { board.splice(r,1); board.unshift(Array(COLS).fill(0)); cleared++; r++; } }
-            if (cleared) { score += cleared*100; document.getElementById('tetScore').textContent = score; SFX.lineClear(); }
-            spawn(); draw();
+            for (let r=ROWS-1; r>=0; r--) {
+                if (grid[r].every(c=>c!==0)) { grid.splice(r,1); grid.unshift(Array(COLS).fill(0)); cleared++; r++; }
+            }
+            if (cleared > 0) { score += cleared*100; document.getElementById('tetrisScore').textContent = score; SFX.lineClear(); }
+            spawnPiece(); draw();
         }
 
-        function drop() { if (!running||gameOver) return; if (valid(piece.shape, piece.x, piece.y+1)) piece.y++; else lock(); draw(); }
-        function move(dir) { if (!running||gameOver||!piece) return; if (valid(piece.shape, piece.x+dir, piece.y)) piece.x+=dir; draw(); }
-        function rotate() { if (!running||gameOver||!piece) return; const rotated = piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse()); if (valid(rotated, piece.x, piece.y)) piece.shape = rotated; draw(); }
-        function hardDrop() { if (!running||gameOver||!piece) return; while (valid(piece.shape, piece.x, piece.y+1)) piece.y++; lock(); draw(); }
+        function tick() {
+            if (!running) return;
+            if (canPlace(piece.shape, piece.x, piece.y+1)) { piece.y++; }
+            else placePiece();
+            draw();
+        }
+
+        function moveLeft() { if (running && canPlace(piece.shape, piece.x-1, piece.y)) { piece.x--; draw(); } }
+        function moveRight() { if (running && canPlace(piece.shape, piece.x+1, piece.y)) { piece.x++; draw(); } }
+        function moveDown() { if (running && canPlace(piece.shape, piece.x, piece.y+1)) { piece.y++; draw(); } else placePiece(); }
+        function rotate() {
+            if (!running) return;
+            const rotated = piece.shape[0].map((_, i) => piece.shape.map(r => r[i]).reverse());
+            if (canPlace(rotated, piece.x, piece.y)) { piece.shape = rotated; draw(); }
+        }
 
         function draw() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) { if (board[r][c]) { ctx.fillStyle=COLORS[board[r][c]-1]; ctx.fillRect(c*CELL,r*CELL,CELL-1,CELL-1); } }
-            if (piece) { ctx.fillStyle=COLORS[piece.color]; for (let r=0;r<piece.shape.length;r++) for (let c=0;c<piece.shape[r].length;c++) if (piece.shape[r][c]) ctx.fillRect((piece.x+c)*CELL,(piece.y+r)*CELL,CELL-1,CELL-1); }
+            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) {
+                if (grid[r][c]) { ctx.fillStyle = grid[r][c]; ctx.fillRect(c*CELL, r*CELL, CELL-1, CELL-1); }
+            }
+            if (piece) {
+                ctx.fillStyle = piece.color;
+                for (let r=0; r<piece.shape.length; r++) for (let c=0; c<piece.shape[r].length; c++) {
+                    if (piece.shape[r][c] && piece.y+r >= 0) ctx.fillRect((piece.x+c)*CELL, (piece.y+r)*CELL, CELL-1, CELL-1);
+                }
+            }
         }
 
-        document.getElementById('tetStart').addEventListener('click', () => { running = true; document.getElementById('tetStart').style.display = 'none'; spawn(); interval = setInterval(drop, 600); draw(); });
-        document.getElementById('tetLeft').addEventListener('click', ()=>move(-1));
-        document.getElementById('tetRight').addEventListener('click', ()=>move(1));
-        document.getElementById('tetRotate').addEventListener('click', rotate);
-        document.getElementById('tetDown').addEventListener('click', hardDrop);
-
+        document.getElementById('tLeft').addEventListener('click', moveLeft);
+        document.getElementById('tRight').addEventListener('click', moveRight);
+        document.getElementById('tDown').addEventListener('click', moveDown);
+        document.getElementById('tRotate').addEventListener('click', rotate);
+        document.getElementById('tetrisNewGame').addEventListener('click', start);
         start();
     </script>
 </body>
