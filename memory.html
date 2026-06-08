@@ -2,161 +2,105 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Цветовая память — BatonCHIK Games</title>
     <style>
         :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; text-align: center; touch-action: manipulation; }
         .container { max-width: 500px; margin: 0 auto; }
         h2 { font-size: 20px; margin-bottom: 10px; }
         .back { display: inline-block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 10px; }
         .score { font-size: 20px; margin: 10px 0; }
-        .game-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 240px; margin: 20px auto; }
-        .color-btn { width: 110px; height: 110px; border-radius: 16px; cursor: pointer; transition: transform 0.1s, filter 0.3s; border: 3px solid transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        .color-btn:active { transform: scale(0.95); }
-        .color-btn.active { filter: brightness(2.5); border-color: #fff; }
-        .color-btn.red { background: #e94560; }
-        .color-btn.blue { background: #4a90d9; }
-        .color-btn.green { background: #4caf84; }
-        .color-btn.yellow { background: #f0c040; }
-        .start-overlay {
-            background: var(--accent); color: white; padding: 16px 32px; border-radius: 14px;
-            font-size: 20px; font-weight: bold; cursor: pointer; display: inline-block; margin: 10px;
-        }
-        .message { font-size: 18px; margin: 10px 0; min-height: 28px; }
+        .pads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 260px; margin: 20px auto; }
+        .pad { height: 120px; border-radius: 16px; cursor: pointer; opacity: 0.6; transition: opacity 0.1s, transform 0.1s; }
+        .pad:active, .pad.active { opacity: 1; transform: scale(0.95); }
+        .pad.red { background: #e94560; } .pad.blue { background: #4a90d9; } .pad.green { background: #4caf84; } .pad.yellow { background: #f0c040; }
         .record { font-size: 14px; color: #f0c040; margin-top: 5px; }
+        .btn { padding: 12px 20px; border-radius: 12px; font-size: 14px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="index.html" class="back">← Назад</a>
+        <a href="main.html" class="back">← Назад</a>
         <h2>🧠 Цветовая память</h2>
-        <div class="score">Уровень: <span id="memLevel">0</span></div>
+        <div class="score">Уровень: <span id="memLevel">1</span> | Очки: <span id="memScore">0</span></div>
         <div class="record">🏆 Рекорд: <span id="memRecord">0</span></div>
-        <div class="game-board" id="gameBoard">
-            <div class="color-btn red" data-color="0"></div>
-            <div class="color-btn blue" data-color="1"></div>
-            <div class="color-btn green" data-color="2"></div>
-            <div class="color-btn yellow" data-color="3"></div>
+        <div class="pads">
+            <div class="pad red" id="pad0"></div>
+            <div class="pad blue" id="pad1"></div>
+            <div class="pad green" id="pad2"></div>
+            <div class="pad yellow" id="pad3"></div>
         </div>
-        <div class="message" id="memMessage">Нажми Старт</div>
-        <div class="start-overlay" id="memStart">▶ Старт</div>
+        <button class="btn" id="memNewGame">🔄 Новая игра</button>
     </div>
     <script src="sfx.js"></script>
     <script src="highscores.js"></script>
+    <script src="modals.js"></script>
     <script>
         SFX.playMusic('sweden');
-        
-        const memorySounds = [
-            () => SFX.memory0(),
-            () => SFX.memory1(),
-            () => SFX.memory2(),
-            () => SFX.memory3()
-        ];
-        let sequence = [], playerSeq = [], level = 0, showing = false, canClick = false;
-
+        const COLORS = ['red','blue','green','yellow'];
+        const NOTES = [523,659,784,1047];
+        let sequence = [], playerSeq = [], level = 1, score = 0, playing = false, accepting = false;
         document.getElementById('memRecord').textContent = Highscores.get('memory');
 
-        function resetAllButtons() {
-            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
-        }
-
         function start() {
-            resetAllButtons();
-            sequence = []; playerSeq = []; level = 0;
-            document.getElementById('memLevel').textContent = '0';
-            document.getElementById('memMessage').textContent = 'Нажми Старт';
-            document.getElementById('memStart').style.display = 'inline-block';
-            canClick = false;
-            showing = false;
-        }
-
-        async function launch() {
-            resetAllButtons();
-            document.getElementById('memStart').style.display = 'none';
-            sequence = []; playerSeq = []; level = 1;
+            sequence = []; playerSeq = []; level = 1; score = 0; playing = true; accepting = false;
             document.getElementById('memLevel').textContent = '1';
+            document.getElementById('memScore').textContent = '0';
             addToSequence();
-            await showSequence();
         }
 
-        function addToSequence() { sequence.push(Math.floor(Math.random()*4)); }
-
-        async function showSequence() {
-            showing = true; canClick = false;
-            document.getElementById('memMessage').textContent = 'Запомни...';
-            
-            for (let i = 0; i < sequence.length; i++) {
-                await activate(sequence[i]);
-                await sleep(300);
-            }
-            
-            resetAllButtons();
-            showing = false; canClick = true;
+        function addToSequence() {
+            sequence.push(Math.floor(Math.random()*4));
             playerSeq = [];
-            document.getElementById('memMessage').textContent = 'Повтори!';
+            accepting = false;
+            playSequence();
         }
 
-        function activate(color) {
-            return new Promise(resolve => {
-                resetAllButtons();
-                const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
-                if (!btn) { resolve(); return; }
-                btn.classList.add('active');
-                memorySounds[color]();
-                setTimeout(() => { 
-                    if (btn) btn.classList.remove('active'); 
-                    resolve(); 
-                }, 350);
-            });
+        async function playSequence() {
+            for (let i=0; i<sequence.length; i++) {
+                await sleep(400);
+                flash(sequence[i]);
+                SFX.play(NOTES[sequence[i]], 'sine', 0.3, 0.2);
+            }
+            accepting = true;
         }
 
         function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-        function playerClick(color) {
-            if (!canClick || showing) return;
-            
-            resetAllButtons();
-            const btn = document.querySelector(`.color-btn[data-color="${color}"]`);
-            if (btn) {
-                btn.classList.add('active');
-                memorySounds[color]();
-                setTimeout(() => { if (btn) btn.classList.remove('active'); }, 200);
-            }
-            
-            playerSeq.push(color);
-            const idx = playerSeq.length - 1;
-            
-            if (playerSeq[idx] !== sequence[idx]) {
-                canClick = false;
-                SFX.lose();
-                Highscores.save('memory', level);
-                document.getElementById('memRecord').textContent = Highscores.get('memory');
-                document.getElementById('memMessage').textContent = '❌ Ошибка! Уровень: ' + level;
-                document.getElementById('memStart').style.display = 'inline-block';
-                return;
-            }
-
-            if (playerSeq.length === sequence.length) {
-                canClick = false;
-                level++;
-                document.getElementById('memLevel').textContent = level;
-                Highscores.save('memory', level);
-                document.getElementById('memRecord').textContent = Highscores.get('memory');
-                if (level >= 20) localStorage.setItem('earned_MEMORY-KING', '1');
-                document.getElementById('memMessage').textContent = '✅ Уровень ' + level + '!';
-                SFX.coin();
-                addToSequence();
-                setTimeout(() => showSequence(), 600);
-            }
+        function flash(i) {
+            const pad = document.getElementById('pad'+i);
+            pad.classList.add('active');
+            setTimeout(() => pad.classList.remove('active'), 200);
         }
 
-        document.getElementById('memStart').addEventListener('click', launch);
-        document.querySelectorAll('.color-btn').forEach(btn => {
-            btn.addEventListener('click', () => playerClick(parseInt(btn.dataset.color)));
+        document.querySelectorAll('.pad').forEach((pad, i) => {
+            pad.addEventListener('click', () => {
+                if (!playing || !accepting) return;
+                flash(i);
+                SFX.play(NOTES[i], 'sine', 0.3, 0.2);
+                playerSeq.push(i);
+                const idx = playerSeq.length-1;
+                if (playerSeq[idx] !== sequence[idx]) {
+                    playing = false; accepting = false;
+                    const isNew = Highscores.save('memory', score);
+                    document.getElementById('memRecord').textContent = Highscores.get('memory');
+                    if (level > 20) localStorage.setItem('earned_MEMORY-KING', '1');
+                    Modal.show('😵 Ошибка!', `Уровень: ${level}\nОчки: ${score}${isNew?'\n🏆 Новый рекорд!':''}`).then(() => start());
+                    return;
+                }
+                if (playerSeq.length === sequence.length) {
+                    level++; score += level*10;
+                    document.getElementById('memLevel').textContent = level;
+                    document.getElementById('memScore').textContent = score;
+                    SFX.coin();
+                    setTimeout(addToSequence, 600);
+                }
+            });
         });
 
+        document.getElementById('memNewGame').addEventListener('click', start);
         start();
     </script>
 </body>
